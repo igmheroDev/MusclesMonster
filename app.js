@@ -368,16 +368,33 @@ async function linkBackupFile() {
   }
 
   try {
+    // IndexedDB에 저장된 파일이 있으면 파일 선택 없이 권한만 재승인
+    if (typeof BackupStorage !== 'undefined') {
+      const stored = await BackupStorage.loadBackupHandle();
+      if (stored) {
+        const perm = await stored.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          backupFileHandle = stored;
+          localStorage.setItem('recovr_backup_linked', 'true');
+          await writeBackupFile();
+          updateBackupStatus();
+          return;
+        }
+      }
+    }
+
     backupFileHandle = await window.showSaveFilePicker({
       suggestedName: 'recovr_backup.json',
       types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
     });
 
+    if (typeof BackupStorage !== 'undefined') {
+      await BackupStorage.saveBackupHandle(backupFileHandle);
+    }
     localStorage.setItem('recovr_backup_linked', 'true');
 
     await writeBackupFile();
     updateBackupStatus();
-    alert('백업 파일이 연결됐어요!\n앞으로 운동 기록을 저장할 때마다 이 파일에 자동으로 백업돼요.\n\n(브라우저를 새로고침하면 다시 연결해야 해요)');
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('백업 파일 연결 실패:', err);
@@ -419,9 +436,9 @@ function updateBackupStatus() {
   if (backupFileHandle) {
     el.textContent = `연결됨: ${backupFileHandle.name}`;
     if (manualBtn) manualBtn.style.display = '';
-    if (linkBtn) linkBtn.textContent = '재연결';
+    if (linkBtn) linkBtn.textContent = '파일 변경';
   } else if (localStorage.getItem('recovr_backup_linked') === 'true') {
-    el.textContent = '연결 끊김 (다시 연결해주세요)';
+    el.textContent = '재연결 필요 (연결 버튼 한 번 탭)';
     if (manualBtn) manualBtn.style.display = 'none';
     if (linkBtn) { linkBtn.textContent = '연결'; }
   } else {
@@ -2129,6 +2146,36 @@ function clearAllData() {
   }
 }
 
+async function initBackupFromStorage() {
+  if (!isFileSystemAccessSupported()) {
+    updateBackupStatus();
+    return;
+  }
+
+  try {
+    if (typeof BackupStorage === 'undefined') {
+      updateBackupStatus();
+      return;
+    }
+
+    const handle = await BackupStorage.loadBackupHandle();
+    if (!handle) {
+      updateBackupStatus();
+      return;
+    }
+
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      backupFileHandle = handle;
+      localStorage.setItem('recovr_backup_linked', 'true');
+    }
+  } catch (e) {
+    console.warn('[RECOVR] 백업 파일 자동 복원 실패:', e);
+  }
+
+  updateBackupStatus();
+}
+
 // ============================================================
 // Init
 // ============================================================
@@ -2149,6 +2196,7 @@ function init() {
   document.getElementById('todayLabel').textContent =
     `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} (${dayNames[now.getDay()]})`;
 
+  initBackupFromStorage();
   renderHome();
 
   // refresh recovery every 60s while app is open

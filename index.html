@@ -1149,7 +1149,7 @@
     <div class="settings-row">
       <div>
         <div class="sr-label">데이터 저장 위치</div>
-        <div class="sr-sub">이 브라우저에만 저장됩니다 (localStorage)</div>
+        <div class="sr-sub">운동 기록은 이 브라우저(localStorage)에 저장돼요. 새로고침해도 유지됩니다.</div>
       </div>
     </div>
 
@@ -1164,7 +1164,7 @@
       </div>
     </div>
     <div style="font-size:10px;color:var(--muted);padding:0 4px 4px;line-height:1.5">
-      폰/PC의 파일을 선택하면, 운동 기록을 저장할 때마다 그 파일에 자동으로 백업돼요. (Chrome/Edge 지원, 새로고침 시 재연결 필요)
+      폰/PC의 파일을 선택하면 운동 저장 시 자동 백업돼요. 연결 정보는 브라우저에 기억되며, 새로고침 후에도 대부분 자동 복원됩니다. (Chrome/Edge)
     </div>
 
     <div class="settings-row">
@@ -1292,6 +1292,7 @@
 </div>
 
 <script src="app.js"></script>
+<script src="backupStorage.js"></script>
 <script src="recommendation.js"></script>
 <script src="workoutAdvice.js"></script>
 <script>init();</script>
