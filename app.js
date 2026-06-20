@@ -21,62 +21,80 @@ const MUSCLE_KEYWORDS = {
     '벤치', '벤치프레스', '벤치 프레스', '체스트', '가슴', '펙', '딥스', '딥',
     '플라이', '플라이오', '체스트프레스', '인클라인', '디클라인', '플랫 프레스',
     '푸시업', '푸쉬업', '팔굽혀펴기', '체스트 플라이', '펙덱', '케이블 크로스',
-    '크로스오버', '데클라인'
+    '크로스오버', '데클라인', '링 딥스', '불가리안 딥스', '체스트 딥스',
+    '케이블 체스트 플라이', '체스트 서포티드 플라이', '스미스 머신 벤치'
   ],
   back: [
     '랫풀', '랫 풀', '풀다운', '풀업', '턱걸이', '로우', '로잉', '바벨로우',
     '시티드로우', '시티드 로우', '케이블 로우', '원암 로우', '백 익스텐션',
     '데드리프트', '데드', '슈러그', '트랩', '광배근', '등',
     '슈퍼맨', '굿모닝', '벤트오버', '풀오버', '리버스 플라이',
-    '하이로우', '로우풀', '인버티드 로우'
+    '하이로우', '로우풀', '인버티드 로우', 'T바 로우', '티바 로우',
+    '머신 로우', '체스트 서포티드 로우', '스트레이트 암 풀다운',
+    '케이블 스트레이트 풀다운', '이지바 로우', '헥스 바 데드리프트'
   ],
   shoulder: [
     '숄더', '어깨', '오버헤드', '밀리터리 프레스', '프레스업', '쇼울더',
     '레터럴', '레이즈', '레이즈업', '프론트 레이즈', '리어 델트', '아놀드 프레스',
-    '업라이트', '페이스 풀', '숄더프레스', '쇼울더 프레스', '삼각근', '델트'
+    '업라이트', '페이스 풀', '숄더프레스', '쇼울더 프레스', '삼각근', '델트',
+    '리어 델트 머신', 'W레이즈', 'Y레이즈', 'T레이즈', '케이블 페이스 풀',
+    '밴드 페이스 풀', '어깨 내회전', '어깨 외회전'
   ],
   biceps: [
     '컬', '바벨컬', '덤벨컬', '암컬', '이두', '이두근', '컨센트레이션',
     '해머컬', '프리처', '프리처컬', '케이블 컬', '스파이더 컬', '인클라인 컬',
-    '리버스 컬', '21컬', '드래그컬', '바이셉'
+    '리버스 컬', '21컬', '드래그컬', '바이셉', '크로스바디 해머컬',
+    '케이블 해머 컬', '밴드 컬'
   ],
   triceps: [
     '트라이셉스', '삼두', '삼두근', '익스텐션', '킥백', '오버헤드 익스텐션',
     '푸시다운', '푸쉬다운', '로프 푸시다운', '로프 익스텐션', '로프 풀다운',
     '암 풀다운', '로프 암 풀다운', '스컬크러셔', '클로즈그립', '클로즈그립 벤치',
-    '딥 머신', '트라이셉 익스텐션', '오버헤드 트라이셉스'
+    '딥 머신', '트라이셉 익스텐션', '오버헤드 트라이셉스',
+    'JM 프레스', '케이블 오버헤드 익스텐션', '밴드 푸시다운'
   ],
   quads: [
     '스쿼트', '레그프레스', '레그 프레스', '레그익스텐션', '레그 익스텐션',
     '런지', '핵스쿼트', '핵 스쿼트', '와이드 스쿼트', '점프 스쿼트', '피스톨 스쿼트',
-    '브이업', '대퇴사두', '벌크업 스쿼트', '점핑잭', '스플릿 스쿼트', '불가리안 스플릿',
-    '실시드 스쿼트', '고블릿 스쿼트', '프론트 스쿼트', '백 스쿼트', '월싯', '스텝업'
+    '대퇴사두', '스플릿 스쿼트', '불가리안 스플릿',
+    '고블릿 스쿼트', '프론트 스쿼트', '백 스쿼트', '월싯', '스텝업',
+    '스미스 머신 스쿼트', '스미스 런지', '박스 스쿼트', '박스 점프',
+    '시저 런지', '리버스 런지', '워킹 런지'
   ],
   hamstrings: [
     '레그컬', '레그 컬', '햄스트링', '루마니안', '데드리프트', '굿모닝', '백런지',
     '글루트', '힙쓰러스트', '힙 쓰러스트', '브릿지', '글루트 브릿지', '둔근',
     '스티프 레그', '루마니안 데드리프트', 'rdl', '시티드 레그 컬', '라잉 레그컬',
-    '케틀벨 스윙', '킥백', '도그', '버드독'
+    '케틀벨 스윙', '도그', '버드독',
+    '바벨 힙 쓰러스트', '힙 쓰러스트 머신', '슈퍼맨 힙 익스텐션',
+    '케이블 킥백', '도어 앵커 킥백', '싱글 레그 데드리프트',
+    '노르딕 컬', '글루트 킥백 머신'
   ],
   adductors: [
     '어덕션', '어브덕션', '이너타이', '아웃타이', '이너 타이', '아웃 타이',
     '내전근', '외전근', '힙 어덕션', '힙 어브덕션', '인사이드 사이',
-    '아웃사이드 사이', '어덕터', '어브덕터'
+    '아웃사이드 사이', '어덕터', '어브덕터',
+    '코펜하겐 플랭크', '슬라이딩 어덕션'
   ],
   calves: [
     '카프', '종아리', '카프레이즈', '카프 레이즈', '스탠딩 카프', '시티드 카프',
-    '발끝', '레그프레스 카프', '동키 카프'
+    '발끝', '레그프레스 카프', '동키 카프', '싱글 레그 카프레이즈'
   ],
   core: [
     '플랭크', '크런치', '복근', '코어', '싯업', '윗몸일으키기', '레그레이즈',
     '레그 레이즈', '행잉 레그', '러시안 트위스트', '바이시클', '마운틴 클라이머',
-    '데드버그', '브이업', '사이드 플랭크', '에이비 휠', 'ab', '복부'
+    '데드버그', '브이업', '사이드 플랭크', '에이비 휠', 'ab', '복부',
+    'TRX 파이크', '드래곤 플래그', '케이블 우드찹', '토 투 바',
+    'V싯업', 'L싯', '행잉 니 레이즈', '행잉 레그레이즈',
+    '케이블 크런치', '씨 크런치', '스파이더 플랭크'
   ],
   forearms: [
-    '리스트 컬', '손목', '전완', '그립', '파머스 워크'
+    '리스트 컬', '손목', '전완', '그립', '파머스 워크',
+    '리버스 리스트 컬', '바 행잉', '핑거 익스텐션', '그립 트레이너'
   ],
   mobility: [
-    '스트레칭', '모빌리티', '폼롤러', '요가', '필라테스', '워밍업', '쿨다운'
+    '스트레칭', '모빌리티', '동적스트레칭', '동적 스트레칭', '정적스트레칭', '정적 스트레칭',
+    '폼롤러', '요가', '필라테스', '워밍업', '쿨다운', '고관절', '어깨회전'
   ],
   cardio: [
     '러닝', '조깅', '달리기', '트레드밀', '사이클', '싸이클', '자전거', '로잉머신',
@@ -117,39 +135,56 @@ const COMMON_EXERCISES = [
   // 가슴
   '벤치 프레스','인클라인 벤치 프레스','디클라인 벤치 프레스','덤벨 벤치 프레스',
   '덤벨 인클라인 프레스','체스트 프레스 머신','펙덱 플라이','케이블 플라이',
-  '딥스','맨몸 딥스','푸시업','와이드 푸시업','케이블 크로스오버','스미스 머신 벤치 프레스',
+  '딥스','맨몸 딥스','링 딥스','체스트 딥스','푸시업','와이드 푸시업',
+  '케이블 크로스오버','케이블 체스트 플라이','스미스 머신 벤치 프레스',
   // 등
-  '랫 풀다운','풀업','맨몸 턱걸이','어시스트 풀업','시티드 케이블 로우','벤트오버 바벨로우',
-  '원암 덤벨 로우','데드리프트','루마니안 데드리프트','백 익스텐션','티바 로우','풀오버',
-  '인버티드 로우','하이로우 머신',
+  '랫 풀다운','풀업','맨몸 턱걸이','어시스트 풀업',
+  '시티드 케이블 로우','벤트오버 바벨로우','원암 덤벨 로우',
+  '데드리프트','루마니안 데드리프트','헥스 바 데드리프트',
+  '백 익스텐션','T바 로우','티바 로우','머신 로우','체스트 서포티드 로우',
+  '풀오버','인버티드 로우','하이로우 머신','스트레이트 암 풀다운',
   // 어깨
   '숄더 프레스 머신','덤벨 숄더 프레스','오버헤드 프레스','바벨 밀리터리 프레스',
-  '아놀드 프레스','덤벨 사이드 레터럴 레이즈','케이블 레터럴 레이즈','프론트 레이즈',
-  '리어 델트 플라이','페이스 풀','업라이트 로우',
+  '아놀드 프레스','덤벨 사이드 레터럴 레이즈','케이블 레터럴 레이즈',
+  '프론트 레이즈','리어 델트 플라이','리어 델트 머신',
+  '페이스 풀','케이블 페이스 풀','업라이트 로우','W레이즈',
   // 이두
-  '바벨 컬','덤벨 컬','해머 컬','케이블 컬','프리처 컬','인클라인 덤벨 컬','컨센트레이션 컬',
+  '바벨 컬','덤벨 컬','해머 컬','케이블 컬','프리처 컬',
+  '인클라인 덤벨 컬','컨센트레이션 컬','크로스바디 해머컬','스파이더 컬',
   // 삼두
-  '로프 트라이셉스 푸시다운','오버헤드 트라이셉스 익스텐션','스컬크러셔','클로즈그립 벤치프레스',
-  '딥 머신','킥백','로프 암 풀다운',
+  '로프 트라이셉스 푸시다운','오버헤드 트라이셉스 익스텐션','스컬크러셔',
+  '클로즈그립 벤치프레스','딥 머신','로프 암 풀다운','케이블 오버헤드 익스텐션',
   // 대퇴사두
   '스쿼트','바벨 백 스쿼트','프론트 스쿼트','스미스 머신 스쿼트','핵 스쿼트',
-  '레그프레스','레그 익스텐션','런지','덤벨 런지','불가리안 스플릿 스쿼트','고블릿 스쿼트',
-  '점프 스쿼트','월싯','스텝업',
+  '레그프레스','레그 익스텐션','런지','덤벨 런지','불가리안 스플릿 스쿼트',
+  '고블릿 스쿼트','점프 스쿼트','박스 점프','월싯','스텝업',
+  '워킹 런지','리버스 런지','시저 런지',
   // 둔근/햄스트링
-  '레그컬','시티드 레그컬','라잉 레그컬','힙 쓰러스트','글루트 브릿지','케틀벨 스윙',
-  '굿모닝','백 런지','RDL',
+  '레그컬','시티드 레그컬','라잉 레그컬',
+  '힙 쓰러스트','바벨 힙 쓰러스트','힙 쓰러스트 머신','글루트 브릿지',
+  '케틀벨 스윙','굿모닝','백 런지','RDL','싱글 레그 데드리프트',
+  '케이블 킥백','글루트 킥백 머신','노르딕 컬',
   // 내전/외전근
-  '힙 어덕션 머신','힙 어브덕션 머신','이너 타이','아웃 타이',
+  '힙 어덕션 머신','힙 어브덕션 머신','이너 타이','아웃 타이','코펜하겐 플랭크',
   // 종아리
-  '스탠딩 카프레이즈','시티드 카프레이즈','레그프레스 카프레이즈','동키 카프레이즈',
+  '스탠딩 카프레이즈','시티드 카프레이즈','레그프레스 카프레이즈',
+  '동키 카프레이즈','싱글 레그 카프레이즈',
   // 코어
-  '플랭크','크런치','레그레이즈','행잉 레그레이즈','러시안 트위스트','싯업','케이블 크런치',
+  '플랭크','사이드 플랭크','크런치','레그레이즈','행잉 레그레이즈',
+  '러시안 트위스트','싯업','케이블 크런치','에이비 휠',
+  'TRX 파이크','드래곤 플래그','케이블 우드찹','토 투 바',
+  'V싯업','행잉 니 레이즈','마운틴 클라이머','데드버그',
   // 전완
-  '리스트 컬','파머스 워크',
+  '리스트 컬','파머스 워크','리버스 리스트 컬','바 행잉',
+  // 기능성 / 전신
+  '배틀로프','슬레드 푸시','슬레드 풀','메디신볼 슬램','케틀벨 클린',
+  '케틀벨 스내치','터키시 겟업',
   // 유산소
-  '러닝','트레드밀 러닝','사이클','실내자전거','로잉머신','줄넘기','수영','계단 오르기','걷기',
+  '러닝','트레드밀 러닝','사이클','실내자전거','로잉머신',
+  '줄넘기','수영','계단 오르기','걷기','버피','인터벌 러닝',
   // 모빌리티
-  '스트레칭','폼롤러','요가','필라테스','워밍업','쿨다운',
+  '스트레칭','모빌리티','동적 스트레칭','정적 스트레칭',
+  '폼롤러','요가','필라테스','워밍업','쿨다운',
 ];
 
 function getExerciseSuggestions(query) {
@@ -208,6 +243,120 @@ function triggerAutoBackup() {
 // ============================================================
 let backupFileHandle = null; // FileSystemFileHandle (in-memory only per session)
 
+// ============================================================
+// PWA 설치 안내 (beforeinstallprompt 이벤트 캡처)
+// ============================================================
+let pwaInstallPrompt = null; // beforeinstallprompt 이벤트 저장
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  pwaInstallPrompt = e;
+  renderPwaInstallSection(); // 설정 뷰가 열려 있으면 즉시 갱신
+});
+
+window.addEventListener('appinstalled', () => {
+  pwaInstallPrompt = null;
+  renderPwaInstallSection();
+});
+
+function isRunningAsPwa() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isAndroid() {
+  return /android/i.test(navigator.userAgent);
+}
+
+function renderPwaInstallSection() {
+  const section = document.getElementById('pwaInstallSection');
+  if (!section) return;
+
+  if (isRunningAsPwa()) {
+    // 이미 앱으로 실행 중
+    section.innerHTML = `
+      <div class="settings-row" style="background:rgba(0,255,157,0.05);border-color:rgba(0,255,157,0.2)">
+        <div>
+          <div class="sr-label" style="color:var(--green)">✅ 앱으로 실행 중</div>
+          <div class="sr-sub">홈 화면에 설치되어 앱처럼 동작하고 있어요.</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  if (pwaInstallPrompt) {
+    // Android Chrome - 브라우저가 설치 배너 제공 가능
+    section.innerHTML = `
+      <div class="settings-row">
+        <div>
+          <div class="sr-label">홈 화면에 앱 추가</div>
+          <div class="sr-sub">아이콘을 만들어 앱처럼 바로 실행할 수 있어요.</div>
+        </div>
+        <span class="add-link" onclick="triggerPwaInstall()" style="color:var(--green);white-space:nowrap">+ 설치</span>
+      </div>`;
+    return;
+  }
+
+  if (isIos()) {
+    // iPhone/iPad - Safari에서 수동 안내
+    section.innerHTML = `
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <div>
+          <div class="sr-label">📱 iPhone 홈 화면에 추가</div>
+          <div class="sr-sub">Safari에서 아래 단계를 따라 하세요.</div>
+        </div>
+        <div style="font-size:11.5px;line-height:1.85;color:var(--text);width:100%">
+          1️⃣ <b>Safari</b>로 이 페이지를 열기<br>
+          2️⃣ 하단 <b>공유 버튼 (□↑)</b> 탭<br>
+          3️⃣ <b>"홈 화면에 추가"</b> 선택<br>
+          4️⃣ 오른쪽 위 <b>"추가"</b> 탭
+        </div>
+        <div style="font-size:10px;color:var(--muted)">⚠️ Chrome, Edge 등 다른 브라우저에서는 PWA 설치가 지원되지 않아요.</div>
+      </div>`;
+    return;
+  }
+
+  if (isAndroid()) {
+    // Android - Chrome 외 브라우저이거나 아직 프롬프트 없음
+    section.innerHTML = `
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <div>
+          <div class="sr-label">📱 Android 홈 화면에 추가</div>
+          <div class="sr-sub">Chrome 브라우저에서 아래 단계를 따라 하세요.</div>
+        </div>
+        <div style="font-size:11.5px;line-height:1.85;color:var(--text);width:100%">
+          1️⃣ <b>Chrome</b>으로 이 페이지를 열기<br>
+          2️⃣ 우측 상단 <b>메뉴 (⋮)</b> 탭<br>
+          3️⃣ <b>"홈 화면에 추가"</b> 또는 <b>"앱 설치"</b> 선택
+        </div>
+      </div>`;
+    return;
+  }
+
+  // PC 또는 기타
+  section.innerHTML = `
+    <div class="settings-row">
+      <div>
+        <div class="sr-label">앱 설치</div>
+        <div class="sr-sub">Chrome/Edge 주소창 오른쪽의 설치 아이콘을 눌러 설치할 수 있어요.</div>
+      </div>
+    </div>`;
+}
+
+async function triggerPwaInstall() {
+  if (!pwaInstallPrompt) return;
+  pwaInstallPrompt.prompt();
+  const { outcome } = await pwaInstallPrompt.userChoice;
+  if (outcome === 'accepted') {
+    pwaInstallPrompt = null;
+    renderPwaInstallSection();
+  }
+}
+
 function isFileSystemAccessSupported() {
   return 'showSaveFilePicker' in window;
 }
@@ -257,19 +406,43 @@ function updateBackupStatus() {
   const el = document.getElementById('backupStatus');
   if (!el) return;
 
+  const manualBtn = document.getElementById('manualBackupBtn');
+  const linkBtn = document.getElementById('linkBackupBtn');
+
   if (!isFileSystemAccessSupported()) {
     el.textContent = '이 브라우저 미지원 (수동 내보내기 이용)';
-    const btn = document.getElementById('linkBackupBtn');
-    if (btn) btn.style.display = 'none';
+    if (linkBtn) linkBtn.style.display = 'none';
+    if (manualBtn) manualBtn.style.display = 'none';
     return;
   }
 
   if (backupFileHandle) {
     el.textContent = `연결됨: ${backupFileHandle.name}`;
+    if (manualBtn) manualBtn.style.display = '';
+    if (linkBtn) linkBtn.textContent = '재연결';
   } else if (localStorage.getItem('recovr_backup_linked') === 'true') {
     el.textContent = '연결 끊김 (다시 연결해주세요)';
+    if (manualBtn) manualBtn.style.display = 'none';
+    if (linkBtn) { linkBtn.textContent = '연결'; }
   } else {
     el.textContent = '연결 안 됨';
+    if (manualBtn) manualBtn.style.display = 'none';
+    if (linkBtn) linkBtn.textContent = '연결';
+  }
+}
+
+async function manualBackupSave() {
+  if (!backupFileHandle) {
+    alert('백업 파일이 연결되지 않았어요. 먼저 연결해주세요.');
+    return;
+  }
+  const btn = document.getElementById('manualBackupBtn');
+  const original = btn ? btn.textContent : '';
+  if (btn) btn.textContent = '저장 중...';
+  await writeBackupFile();
+  if (btn) {
+    btn.textContent = '✓ 저장됨';
+    setTimeout(() => { btn.textContent = original; }, 1800);
   }
 }
 
@@ -300,6 +473,23 @@ const REFERENCE_VOLUME = {
   // 부위별 "표준 1세션 볼륨" 참고값 (kg) - 사용자 데이터 기반 추정
   chest: 3600, back: 2820, shoulder: 2400, biceps: 1800, triceps: 1800,
   quads: 5000, hamstrings: 2400, adductors: 2880, calves: 1500, core: 500, forearms: 800,
+};
+
+// 부위별 기본 회복 시간 (시간) - 근육 크기와 피로 특성 반영
+// 사용자의 "회복 속도" 설정이 이 값에 배율로 적용됩니다.
+// 기준: 설정 48h = ×1.0 (보통), 36h = ×0.75 (빠름), 60h = ×1.25 (느림)
+const MUSCLE_BASE_RECOVERY = {
+  forearms:   36,  // 소근육 · 일상에서 지속 사용 · 회복 빠름
+  biceps:     38,  // 소근육
+  triceps:    38,  // 소근육
+  calves:     40,  // 소근육 · 지근 비율 높아 회복 빠름
+  core:       40,  // 자세근 · 지근 비율 높음
+  adductors:  44,  // 중소 근육
+  shoulder:   48,  // 중근육 · 다관절 참여
+  chest:      52,  // 중대 근육 · 다관절
+  back:       60,  // 대근육 · 복합 근육군
+  hamstrings: 64,  // 대근육 · 집중 자극 → 회복 느림
+  quads:      64,  // 대근육 · 하체 주력
 };
 
 // 운동명을 정규화 (소문자화, 공백/특수문자 제거 후 비교용 버전도 생성)
@@ -362,11 +552,14 @@ function getActivityTagsFromExerciseName(name) {
 // Returns: { chest: { volume, lastWorkoutDate, recoveryPct, hoursElapsed, recoveryHours }, ... }
 function calcMuscleRecovery(workouts, settings) {
   const now = new Date();
-  const baseHours = settings.baseRecoveryHours || 48;
+  // 사용자 설정값(기본 48h)을 기준으로 개인 회복 속도 배율 계산
+  // 48h → ×1.0 (보통), 36h → ×0.75 (빠름), 72h → ×1.5 (느림)
+  const userScale = (settings.baseRecoveryHours || 48) / 48;
   const result = {};
 
   MUSCLE_ORDER.forEach(m => {
-    result[m] = { volume: 0, lastDate: null, recoveryPct: 100, hoursElapsed: null, recoveryHours: baseHours, exercises: [] };
+    const muscleBase = (MUSCLE_BASE_RECOVERY[m] || 48) * userScale;
+    result[m] = { volume: 0, lastDate: null, recoveryPct: 100, hoursElapsed: null, recoveryHours: Math.round(muscleBase), exercises: [] };
   });
 
   // For each muscle, find the most recent workout that hit it, and accumulate that session's volume for that muscle
@@ -391,7 +584,7 @@ function calcMuscleRecovery(workouts, settings) {
       if (sessionVolumeForMuscle > 0) {
         if (!mostRecentDate || wDate > mostRecentDate) {
           mostRecentDate = wDate;
-          mostRecent = { volume: sessionVolumeForMuscle, exercises: exNames, date: w.date };
+          mostRecent = { volume: sessionVolumeForMuscle, exercises: exNames, date: w.date, fatigue: w.fatigue || 3 };
         }
       }
     });
@@ -400,10 +593,12 @@ function calcMuscleRecovery(workouts, settings) {
       const hoursElapsed = (now - mostRecentDate) / (1000 * 60 * 60);
       const refVol = REFERENCE_VOLUME[muscleKey] || 2000;
       const intensityFactor = mostRecent.volume / refVol; // 1.0 = average session
-      // recovery hours scales with intensity: harder session -> longer recovery
-      // clamp factor between 0.5 and 2.0 to avoid extreme values
+      // 볼륨 강도에 따라 0.5~2.0배 보정
       const clampedFactor = Math.max(0.5, Math.min(2.0, intensityFactor));
-      const recoveryHours = baseHours * clampedFactor;
+      // 피로도 보정: 1(0.7배)~5(1.55배), 기본 3(1.0배)
+      const fatigueScale = FATIGUE_RECOVERY_SCALE[mostRecent.fatigue] || 1.0;
+      const muscleBase = (MUSCLE_BASE_RECOVERY[muscleKey] || 48) * userScale;
+      const recoveryHours = muscleBase * clampedFactor * fatigueScale;
 
       const pct = Math.min(100, Math.round((hoursElapsed / recoveryHours) * 100));
 
@@ -446,6 +641,46 @@ function formatHoursElapsed(hours) {
 // ============================================================
 // Rendering
 // ============================================================
+// 연속 운동일(Streak) 계산
+// 오늘 또는 어제까지 운동 기록이 있으면 연속으로 인정
+function calcStreak(workouts) {
+  if (workouts.length === 0) return 0;
+
+  const dates = new Set(workouts.map(w => w.date));
+  const today = formatDate(new Date());
+
+  let streak = 0;
+  let cursor = new Date();
+  cursor.setHours(12, 0, 0, 0);
+
+  // 오늘 운동 기록이 없으면 어제부터 체크 (하루 유예)
+  if (!dates.has(today)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  while (true) {
+    const ds = formatDate(cursor);
+    if (!dates.has(ds)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}
+
+function renderStreak(workouts) {
+  const pill = document.getElementById('streakPill');
+  if (!pill) return;
+  const streak = calcStreak(workouts);
+  if (streak < 2) {
+    pill.style.display = 'none';
+    return;
+  }
+  pill.style.display = '';
+  pill.classList.toggle('hot', streak >= 7);
+  pill.textContent = `🔥 ${streak}일 연속`;
+}
+
 function renderHome() {
   const workouts = loadWorkouts();
   const settings = loadSettings();
@@ -484,8 +719,14 @@ function renderHome() {
   ring.textContent = ringIcon;
   document.getElementById('overallDesc').textContent = desc;
 
+  // streak
+  renderStreak(workouts);
+
   // week bar
   renderWeekBar(workouts);
+
+  // workout recommendation (10일+ 기록 시)
+  if (window.WorkoutRecommendation) WorkoutRecommendation.render();
 
   // muscle list
   const muscleList = document.getElementById('muscleList');
@@ -574,6 +815,30 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
+// 운동 세부 내용 HTML 생성 (캘린더 day detail과 공용)
+function buildExerciseDetailHTML(w, realIdx) {
+  const grouped = {};
+  (w.exercises || []).forEach(ex => {
+    if (!grouped[ex.name]) grouped[ex.name] = [];
+    if (ex.mode === 'duration') {
+      grouped[ex.name].push(`${ex.durationMin || '-'}분`);
+    } else if (ex.setDetails && ex.setDetails.length > 0) {
+      ex.setDetails.forEach(s => {
+        const mark = s.completed ? '' : ' (미완료)';
+        grouped[ex.name].push(`${s.weight}kg×${s.reps}${mark}`);
+      });
+    } else {
+      grouped[ex.name].push(`${ex.weight || '-'}kg×${ex.reps || '-'}`);
+    }
+  });
+
+  return Object.entries(grouped).map(([name, sets]) => `
+    <div class="exercise-detail-row" onclick="event.stopPropagation(); openEditModal(${realIdx})">
+      <span class="ex-name">${name}</span>
+      <span class="ex-sets">${sets.join(', ')}</span>
+    </div>`).join('');
+}
+
 function renderLog() {
   const workouts = loadWorkouts();
   const list = document.getElementById('workoutList');
@@ -590,44 +855,76 @@ function renderLog() {
   }
 
   const sorted = [...workouts].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const FATIGUE_EMOJI = ['','😌','🙂','😐','😓','🥵'];
 
-  sorted.forEach((w, idx) => {
+  sorted.forEach((w) => {
     const realIdx = workouts.indexOf(w);
     const totalVolume = (w.exercises || []).reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
     const typeLabel = w.type === 'upper' ? '상체' : w.type === 'lower' ? '하체' : '전신';
     const typeCls = w.type === 'lower' ? 'lower' : 'upper';
     const dateObj = new Date(w.date + 'T12:00:00');
-    const dateStr = `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일`;
+    const dowLabels = ['일','월','화','수','목','금','토'];
+    const dateStr = `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${dowLabels[dateObj.getDay()]})`;
 
-    // 유산소/모빌리티 태그 수집
     const activityTags = new Set();
     (w.exercises || []).forEach(ex => {
       getActivityTagsFromExerciseName(ex.name).forEach(tag => activityTags.add(tag));
     });
     let tagsHtml = '';
     activityTags.forEach(tag => {
-      const label = NON_MUSCLE_LABELS[tag];
-      tagsHtml += `<span class="activity-tag">${label.icon} ${label.name}</span>`;
+      const lbl = NON_MUSCLE_LABELS[tag];
+      tagsHtml += `<span class="activity-tag">${lbl.icon} ${lbl.name}</span>`;
     });
 
-    list.innerHTML += `
-      <div class="workout-item" style="cursor:default">
-        <div class="wi-top">
+    const exDetailHTML = buildExerciseDetailHTML(w, realIdx);
+    const itemId = `wi-${realIdx}`;
+    const panelId = `wp-${realIdx}`;
+
+    const item = document.createElement('div');
+    item.className = 'workout-item';
+    item.id = itemId;
+    item.innerHTML = `
+      <div class="wi-top" onclick="toggleWorkoutDetail('${panelId}', '${itemId}')">
+        <div>
           <div class="wi-date">${dateStr}</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <div class="wi-type ${typeCls}">${typeLabel}</div>
-            <button class="wi-action" onclick="openEditModal(${realIdx})" title="수정">✏️</button>
-            <button class="wi-action" onclick="deleteWorkoutPrompt(${realIdx})" title="삭제">🗑️</button>
+          <div class="wi-meta" style="margin-top:4px">
+            <span><span class="wi-type ${typeCls}" style="padding:1px 6px;font-size:9px">${typeLabel}</span></span>
+            <span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>
+            <span>${w.duration || '-'}분</span>
+            ${w.fatigue ? `<span>${FATIGUE_EMOJI[w.fatigue]}</span>` : ''}
+          </div>
+          ${tagsHtml ? `<div style="margin-top:4px">${tagsHtml}</div>` : ''}
+        </div>
+        <span class="wi-expand-icon" id="icon-${realIdx}">▼</span>
+      </div>
+      <div class="workout-detail-panel" id="${panelId}">
+        <div style="padding:10px 0 4px">
+          ${exDetailHTML}
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="wi-action" style="flex:1;width:auto;border-radius:8px;font-size:12px;padding:6px" onclick="event.stopPropagation();openEditModal(${realIdx})">✏️ 수정</button>
+            <button class="wi-action" style="flex:1;width:auto;border-radius:8px;font-size:12px;padding:6px;color:var(--red)" onclick="event.stopPropagation();deleteWorkoutPrompt(${realIdx})">🗑️ 삭제</button>
           </div>
         </div>
-        <div class="wi-meta">
-          <span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>
-          <span>${w.duration || '-'}분</span>
-          <span>${(w.exercises||[]).length}개 종목</span>
-        </div>
-        ${tagsHtml ? `<div style="margin-top:6px">${tagsHtml}</div>` : ''}
       </div>`;
+    list.appendChild(item);
   });
+}
+
+function toggleWorkoutDetail(panelId, itemId) {
+  const panel = document.getElementById(panelId);
+  const idx = panelId.replace('wp-', '');
+  const icon = document.getElementById('icon-' + idx);
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  // 다른 열린 패널 모두 닫기
+  document.querySelectorAll('.workout-detail-panel.open').forEach(p => {
+    p.classList.remove('open');
+  });
+  document.querySelectorAll('.wi-expand-icon.open').forEach(ic => ic.classList.remove('open'));
+  if (!isOpen) {
+    panel.classList.add('open');
+    if (icon) icon.classList.add('open');
+  }
 }
 
 function deleteWorkoutPrompt(idx) {
@@ -868,15 +1165,22 @@ function toggleTheme() {
 let calViewDate = new Date(); // month being viewed
 let calWeekDate = new Date(); // a date within the week being viewed
 let calSelectedDate = null;
-let calViewMode = 'week'; // 'week' or 'month'
+let logTabMode = 'list'; // 'list' | 'week' | 'month'
 
-function setCalViewMode(mode) {
-  calViewMode = mode;
-  document.getElementById('calToggleWeek').classList.toggle('selected', mode === 'week');
-  document.getElementById('calToggleMonth').classList.toggle('selected', mode === 'month');
-  document.getElementById('weekStripView').style.display = mode === 'week' ? '' : 'none';
-  document.getElementById('monthGridView').style.display = mode === 'month' ? '' : 'none';
-  renderCalendar();
+function setLogTab(mode) {
+  logTabMode = mode;
+  document.getElementById('logTabList').classList.toggle('selected', mode === 'list');
+  document.getElementById('logTabWeek').classList.toggle('selected', mode === 'week');
+  document.getElementById('logTabMonth').classList.toggle('selected', mode === 'month');
+  document.getElementById('logListView').style.display  = mode === 'list'  ? '' : 'none';
+  document.getElementById('logWeekView').style.display  = mode === 'week'  ? '' : 'none';
+  document.getElementById('logMonthView').style.display = mode === 'month' ? '' : 'none';
+
+  const icsBtn = document.querySelector('#view-log .save-btn');
+  if (icsBtn) icsBtn.style.display = mode === 'list' ? 'none' : '';
+
+  if (mode === 'list') renderLog();
+  else renderCalendar();
 }
 
 function changeCalMonth(delta) {
@@ -943,17 +1247,13 @@ function renderCalendar() {
     byDate[w.date].push(w);
   });
 
-  if (calViewMode === 'week') {
+  if (logTabMode === 'week') {
     renderWeekStrip(byDate);
-  } else {
+  } else if (logTabMode === 'month') {
     renderMonthGrid(byDate);
   }
 
-  if (!calSelectedDate) {
-    renderCalDayDetail(null);
-  } else {
-    renderCalDayDetail(calSelectedDate);
-  }
+  renderCalDayDetail(calSelectedDate);
 }
 
 function renderMonthGrid(byDate) {
@@ -1003,70 +1303,69 @@ function selectCalDay(dateStr) {
 }
 
 function renderCalDayDetail(dateStr) {
-  const label = document.getElementById('calSelectedLabel');
-  const detail = document.getElementById('calDayDetail');
+  // 주간/월간 각 패널에 렌더링
+  const detailEl = logTabMode === 'week'
+    ? document.getElementById('logDayDetail')
+    : document.getElementById('logMonthDayDetail');
+  if (!detailEl) return;
 
   if (!dateStr) {
-    label.textContent = '날짜를 선택하세요';
-    detail.innerHTML = `<div class="empty-state" style="padding:20px"><div class="ee-body">달력에서 날짜를 탭하면<br>그날의 운동 기록이 표시돼요.</div></div>`;
-    return;
-  }
-
-  const d = new Date(dateStr + 'T12:00:00');
-  label.textContent = `${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]})`;
-
-  const allWorkouts = loadWorkouts();
-  const workouts = allWorkouts.filter(w => w.date === dateStr);
-
-  if (workouts.length === 0) {
-    detail.innerHTML = `<div class="empty-state" style="padding:20px">
-      <div class="ee-icon">💤</div>
-      <div class="ee-body">이 날은 운동 기록이 없어요.</div>
+    detailEl.innerHTML = `<div class="empty-state" style="padding:20px">
+      <div class="ee-body">날짜를 탭하면 그날의 운동 기록이 표시돼요.</div>
     </div>`;
     return;
   }
 
-  detail.innerHTML = '';
-  workouts.forEach(w => {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dowLabels = ['일','월','화','수','목','금','토'];
+  const dateLabel = `${d.getMonth()+1}월 ${d.getDate()}일 (${dowLabels[d.getDay()]})`;
+
+  const allWorkouts = loadWorkouts();
+  const dayWorkouts = allWorkouts.filter(w => w.date === dateStr);
+
+  if (dayWorkouts.length === 0) {
+    detailEl.innerHTML = `
+      <div class="section-title" style="margin-top:16px"><span>${dateLabel}</span>
+        <span class="add-link" onclick="openModal()">+ 추가</span>
+      </div>
+      <div class="empty-state" style="padding:20px">
+        <div class="ee-icon">💤</div>
+        <div class="ee-body">이 날은 운동 기록이 없어요.</div>
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="section-title" style="margin-top:16px"><span>${dateLabel}</span>
+    <span class="add-link" onclick="openModal()">+ 추가</span>
+  </div>`;
+
+  dayWorkouts.forEach(w => {
     const realIdx = allWorkouts.indexOf(w);
     const totalVolume = (w.exercises || []).reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
     const typeLabel = w.type === 'upper' ? '상체' : w.type === 'lower' ? '하체' : '전신';
     const typeCls = w.type === 'lower' ? 'lower' : 'upper';
+    const exDetailHTML = buildExerciseDetailHTML(w, realIdx);
 
-    let exList = '';
-    const grouped = {};
-    (w.exercises || []).forEach(ex => {
-      if (!grouped[ex.name]) grouped[ex.name] = [];
-      if (ex.mode === 'duration') {
-        grouped[ex.name].push(`${ex.durationMin}분`);
-      } else if (ex.setDetails && ex.setDetails.length > 0) {
-        ex.setDetails.forEach(s => {
-          const mark = s.completed ? '' : ' (미완료)';
-          grouped[ex.name].push(`${s.weight}kg×${s.reps}${mark}`);
-        });
-      } else {
-        grouped[ex.name].push(`${ex.weight}kg×${ex.reps}`);
-      }
-    });
-    Object.entries(grouped).forEach(([name, sets]) => {
-      exList += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
-        <span>${name}</span><span style="color:var(--muted)">${sets.join(', ')}</span>
-      </div>`;
-    });
-
-    detail.innerHTML += `
-      <div class="workout-item" onclick="openEditModal(${realIdx})">
+    html += `
+      <div class="workout-item">
         <div class="wi-top">
-          <div class="wi-date">${typeLabel} 운동</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <div class="wi-type ${typeCls}">${w.duration || '-'}분</div>
-            <button class="wi-action" onclick="event.stopPropagation(); deleteWorkoutAndRefreshCalendar(${realIdx})" title="삭제">🗑️</button>
+          <div>
+            <div class="wi-date">${typeLabel} 운동</div>
+            <div class="wi-meta" style="margin-top:3px">
+              <span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>
+              <span>${w.duration || '-'}분</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="wi-action" onclick="openEditModal(${realIdx})" title="수정">✏️</button>
+            <button class="wi-action" onclick="deleteWorkoutAndRefreshCalendar(${realIdx})" title="삭제">🗑️</button>
           </div>
         </div>
-        <div class="wi-meta" style="margin-bottom:8px"><span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span></div>
-        ${exList}
+        <div style="padding-top:8px">${exDetailHTML}</div>
       </div>`;
   });
+
+  detailEl.innerHTML = html;
 }
 
 function deleteWorkoutAndRefreshCalendar(idx) {
@@ -1075,6 +1374,7 @@ function deleteWorkoutAndRefreshCalendar(idx) {
     workouts.splice(idx, 1);
     saveWorkouts(workouts);
     renderCalendar();
+    renderLog();
     renderHome();
   }
 }
@@ -1189,13 +1489,16 @@ function switchView(viewName) {
   if (navItem) navItem.classList.add('active');
 
   if (viewName === 'home') renderHome();
-  if (viewName === 'log') renderLog();
-  if (viewName === 'calendar') renderCalendar();
+  if (viewName === 'log') {
+    if (logTabMode === 'list') renderLog();
+    else renderCalendar();
+  }
   if (viewName === 'stats') renderStats();
   if (viewName === 'settings') {
     const s = loadSettings();
     document.getElementById('baseRecoveryHours').value = s.baseRecoveryHours || 48;
     updateBackupStatus();
+    renderPwaInstallSection();
   }
 }
 
@@ -1294,7 +1597,26 @@ function manageTemplates() {
 // Modal / Add workout
 // ============================================================
 let selectedType = 'upper';
+let selectedFatigue = 3; // 1~5, 기본 '보통'
 let editingIndex = null; // null = new workout, number = editing existing index
+
+// 피로도 선택 (1=매우가벼움 ~ 5=매우힘들었음)
+const FATIGUE_LABELS = ['', '매우 가벼움', '가벼움', '보통', '힘들었음', '매우 힘들었음'];
+const FATIGUE_RECOVERY_SCALE = { 1: 0.7, 2: 0.85, 3: 1.0, 4: 1.25, 5: 1.55 };
+
+function selectFatigue(val) {
+  selectedFatigue = val;
+  document.querySelectorAll('.fatigue-btn').forEach(btn => {
+    btn.classList.toggle('selected', Number(btn.dataset.val) === val);
+  });
+  const desc = [
+    '', '볼륨 기준 회복 시간의 70%로 단축', '회복 시간 약간 단축',
+    '회복 시간 볼륨 기준 그대로 적용', '회복 시간 25% 연장', '회복 시간 55% 연장'
+  ];
+  const el = document.getElementById('fatigueDesc');
+  if (el) el.textContent = desc[val] || '';
+  saveDraft();
+}
 
 // ============================================================
 // 입력 중 자동 임시저장 (Draft)
@@ -1409,6 +1731,28 @@ function openModal() {
   document.getElementById('exerciseRows').innerHTML = '';
   addExerciseRow();
   selectType('upper');
+  selectFatigue(3);
+  populateTemplateSelect();
+  attachDraftListeners();
+}
+
+function openModalWithPrefill({ type, exercises, title }) {
+  clearDraft();
+  editingIndex = null;
+  document.getElementById('modalTitle').textContent = title || '운동 기록 추가';
+  document.getElementById('saveBtn').textContent = '저장하기';
+  document.getElementById('modalOverlay').classList.add('show');
+
+  document.getElementById('workoutDate').value = formatDate(new Date());
+  const now = new Date();
+  document.getElementById('workoutTime').value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('workoutDuration').value = 100;
+  document.getElementById('exerciseRows').innerHTML = '';
+
+  (exercises || []).forEach(ex => addExerciseRow(ex));
+  if (!exercises || exercises.length === 0) addExerciseRow();
+
+  selectType(type || 'upper');
   populateTemplateSelect();
   attachDraftListeners();
 }
@@ -1431,6 +1775,7 @@ function openEditModal(idx) {
   if ((w.exercises || []).length === 0) addExerciseRow();
 
   selectType(w.type || 'upper');
+  selectFatigue(w.fatigue || 3);
   populateTemplateSelect();
 }
 
@@ -1690,6 +2035,7 @@ function saveWorkout() {
       startTime,
       duration,
       type: selectedType,
+      fatigue: selectedFatigue,
       exercises,
       updatedAt: new Date().toISOString(),
     };
@@ -1700,6 +2046,7 @@ function saveWorkout() {
       startTime,
       duration,
       type: selectedType,
+      fatigue: selectedFatigue,
       exercises,
       createdAt: new Date().toISOString(),
     });
@@ -1712,9 +2059,7 @@ function saveWorkout() {
   closeModal();
   renderHome();
   renderLog();
-  if (document.getElementById('view-calendar').classList.contains('active')) {
-    renderCalendar();
-  }
+  if (logTabMode !== 'list') renderCalendar();
 }
 
 // ============================================================
@@ -1773,53 +2118,6 @@ function clearAllData() {
 }
 
 // ============================================================
-// Seed data (optional - for first-time demo)
-// ============================================================
-function seedDemoData() {
-  const existing = loadWorkouts();
-  if (existing.length > 0) return;
-
-  const today = new Date();
-  const fmt = (daysAgo) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - daysAgo);
-    return formatDate(d);
-  };
-
-  const demo = [
-    {
-      date: fmt(1), duration: 100, type: 'lower',
-      exercises: [
-        { name: '스쿼트', weight: 80, reps: 10, sets: 2 },
-        { name: '스쿼트', weight: 60, reps: 10, sets: 1 },
-        { name: '덤벨 런지', weight: 20, reps: 10, sets: 3 },
-        { name: '시티드 레그 프레스', weight: 110, reps: 10, sets: 3 },
-        { name: '시티드 레그 컬', weight: 55, reps: 10, sets: 3 },
-        { name: '힙 어덕션 (이너 타이)', weight: 60, reps: 12, sets: 2 },
-        { name: '힙 어브덕션 (아웃 타이)', weight: 60, reps: 12, sets: 2 },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      date: fmt(3), duration: 100, type: 'upper',
-      exercises: [
-        { name: '벤치 프레스', weight: 60, reps: 10, sets: 3 },
-        { name: '체스트 프레스 머신', weight: 60, reps: 10, sets: 3 },
-        { name: '랫 풀다운', weight: 47, reps: 10, sets: 3 },
-        { name: '시티드 케이블 로우 (롱 풀)', weight: 47, reps: 10, sets: 3 },
-        { name: '숄더 프레스 머신', weight: 40, reps: 10, sets: 3 },
-        { name: '로프 암 풀다운', weight: 40, reps: 10, sets: 3 },
-        { name: '바벨 컬', weight: 20, reps: 10, sets: 3 },
-        { name: '덤벨 사이드 레터럴 레이즈', weight: 10, reps: 10, sets: 3 },
-      ],
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  saveWorkouts(demo);
-}
-
-// ============================================================
 // Init
 // ============================================================
 function init() {
@@ -1839,7 +2137,6 @@ function init() {
   document.getElementById('todayLabel').textContent =
     `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} (${dayNames[now.getDay()]})`;
 
-  seedDemoData();
   renderHome();
 
   // refresh recovery every 60s while app is open
