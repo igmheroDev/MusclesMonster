@@ -728,6 +728,9 @@ function renderHome() {
   // workout recommendation (10일+ 기록 시)
   if (window.WorkoutRecommendation) WorkoutRecommendation.render();
 
+  // workout advice (패턴 분석 조언)
+  if (window.WorkoutAdvice) WorkoutAdvice.render();
+
   // muscle list
   const muscleList = document.getElementById('muscleList');
   muscleList.innerHTML = '';
