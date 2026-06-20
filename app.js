@@ -494,7 +494,8 @@ const MUSCLE_BASE_RECOVERY = {
 
 // 운동명을 정규화 (소문자화, 공백/특수문자 제거 후 비교용 버전도 생성)
 function normalizeExerciseName(name) {
-  return name.toLowerCase().replace(/\s+/g, '');
+  if (name == null || name === '') return '';
+  return String(name).toLowerCase().replace(/\s+/g, '');
 }
 
 // 운동 1개 항목의 볼륨(kg) 계산.
@@ -726,10 +727,18 @@ function renderHome() {
   renderWeekBar(workouts);
 
   // workout recommendation (10일+ 기록 시)
-  if (window.WorkoutRecommendation) WorkoutRecommendation.render();
+  try {
+    if (typeof WorkoutRecommendation !== 'undefined') WorkoutRecommendation.render();
+  } catch (e) {
+    console.warn('[RECOVR] 추천 카드 렌더 실패:', e);
+  }
 
   // workout advice (패턴 분석 조언)
-  if (window.WorkoutAdvice) WorkoutAdvice.render();
+  try {
+    if (typeof WorkoutAdvice !== 'undefined') WorkoutAdvice.render();
+  } catch (e) {
+    console.warn('[RECOVR] 조언 카드 렌더 실패:', e);
+  }
 
   // muscle list
   const muscleList = document.getElementById('muscleList');
@@ -2148,5 +2157,3 @@ function init() {
     if (activeView === 'view-home') renderHome();
   }, 60000);
 }
-
-init();
