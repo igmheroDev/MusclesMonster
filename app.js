@@ -540,9 +540,9 @@ async function manualBackupSave() {
   const btn = document.getElementById('manualBackupBtn');
   const original = btn ? btn.textContent : '';
   if (btn) btn.textContent = '저장 중...';
-  await writeBackupFile();
+  const ok = await writeBackupFile();
   if (btn) {
-    btn.textContent = '✓ 저장됨';
+    btn.textContent = ok ? '✓ 저장됨' : '⚠️ 실패';
     setTimeout(() => { btn.textContent = original; }, 1800);
   }
 }
