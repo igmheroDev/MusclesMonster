@@ -380,6 +380,9 @@ async function triggerPwaInstall() {
 }
 
 function isFileSystemAccessSupported() {
+  if (typeof BackupWriter !== 'undefined') {
+    return BackupWriter.supportsAutoFileBackup();
+  }
   return 'showSaveFilePicker' in window;
 }
 
@@ -394,7 +397,10 @@ async function clearBackupConnection() {
 
 async function linkBackupFile() {
   if (!isFileSystemAccessSupported()) {
-    alert('이 브라우저는 파일 자동 저장을 지원하지 않아요.\n\n대신 "전체 데이터 내보내기"로 수동 백업해주세요.\n(아이폰 Safari는 미지원, PC/안드로이드 Chrome 권장)');
+    const msg = typeof BackupWriter !== 'undefined'
+      ? BackupWriter.getUnsupportedBrowserMessage()
+      : '이 브라우저는 파일 자동 저장을 지원하지 않아요.\n\n대신 "전체 데이터보내기"로 수동 백업해주세요.';
+    alert(msg);
     return;
   }
 
@@ -516,6 +522,12 @@ async function writeBackupFile() {
   return success;
 }
 
+function updateBackupGuideText() {
+  const el = document.getElementById('backupGuideText');
+  if (!el || typeof BackupWriter === 'undefined') return;
+  el.textContent = BackupWriter.getSettingsGuide();
+}
+
 function updateBackupStatus() {
   const el = document.getElementById('backupStatus');
   if (!el) return;
@@ -524,7 +536,10 @@ function updateBackupStatus() {
   const linkBtn = document.getElementById('linkBackupBtn');
 
   if (!isFileSystemAccessSupported()) {
-    el.textContent = '이 브라우저 미지원 (수동 내보내기 이용)';
+    const hint = typeof BackupWriter !== 'undefined'
+      ? BackupWriter.getBackupStatusHint()
+      : '이 브라우저 미지원 (수동보내기 이용)';
+    el.textContent = hint;
     if (linkBtn) linkBtn.style.display = 'none';
     if (manualBtn) manualBtn.style.display = 'none';
     return;
@@ -2418,6 +2433,7 @@ function init() {
     `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} (${dayNames[now.getDay()]})`;
 
   initBackupFromStorage();
+  updateBackupGuideText();
   setupBackgroundSave();
 
   const versionText = `v${APP_VERSION}`;

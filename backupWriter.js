@@ -10,30 +10,88 @@ const BackupWriter = (() => {
     return /android/i.test(navigator.userAgent);
   }
 
+  function isIos() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  }
+
+  function isSamsungInternet() {
+    return /SamsungBrowser/i.test(navigator.userAgent);
+  }
+
+  function isChromeAndroid() {
+    return isAndroid()
+      && /Chrome\//i.test(navigator.userAgent)
+      && !/EdgA\//i.test(navigator.userAgent)
+      && !isSamsungInternet();
+  }
+
   function isRunningAsPwa() {
     return window.matchMedia('(display-mode: standalone)').matches
       || window.navigator.standalone === true;
   }
 
-  // Android PWA/모바일에서 단일 파일 쓰기가 불안정한 환경
+  // Chrome Android에서만 폴더 연결 시도 (삼성 인터넷·기타 브라우저는 미지원)
   function prefersDirectoryBackup() {
-    return isAndroid() && 'showDirectoryPicker' in window;
+    return isChromeAndroid() && 'showDirectoryPicker' in window;
+  }
+
+  function supportsAutoFileBackup() {
+    if (isIos()) return false;
+    if (isSamsungInternet()) return false;
+    return 'showSaveFilePicker' in window;
   }
 
   function shouldSkipPreRead() {
     return isAndroid();
   }
 
+  function getUnsupportedBrowserMessage() {
+    if (isSamsungInternet()) {
+      return (
+        '삼성 인터넷 브라우저는 폴더/파일 자동 백업을 지원하지 않아요.\n\n' +
+        '✅ Chrome으로 이 페이지를 열어주세요\n' +
+        '✅ 또는 아래 "전체 데이터보내기"로 수동 백업하세요'
+      );
+    }
+    return '이 브라우저는 파일 자동 저장을 지원하지 않아요.\n\n대신 "전체 데이터보내기"로 수동 백업해주세요.\n(아이폰 Safari는 미지원, PC/안드로이드 Chrome 권장)';
+  }
+
+  function getBackupStatusHint() {
+    if (isSamsungInternet()) {
+      return '삼성 인터넷 미지원 · Chrome 또는 수동보내기 이용';
+    }
+    if (!supportsAutoFileBackup()) {
+      return '이 브라우저 미지원 (수동보내기 이용)';
+    }
+    return '';
+  }
+
+  function getSettingsGuide() {
+    if (isSamsungInternet()) {
+      return '삼성 인터넷은 자동 파일 백업을 지원하지 않아요. Chrome 브라우저 사용을 권장합니다.';
+    }
+    if (isChromeAndroid()) {
+      return 'Android Chrome에서는 "내 파일" 앱에 RECOVR 폴더를 만들고 연결하는 것을 권장해요.';
+    }
+    return '폰/PC의 폴더 또는 파일을 선택하면 운동 저장 시 자동 백업돼요. (Chrome/Edge)';
+  }
+
   function describeError(err) {
     if (!err) return '알 수 없는 오류가 발생했어요.';
 
     if (err.name === 'NoModificationAllowedError') {
+      if (isSamsungInternet()) {
+        return getUnsupportedBrowserMessage();
+      }
       return '선택한 위치에 쓰기 권한이 없어요.\n\n"내 파일" 앱에서 RECOVR 폴더를 새로 만든 뒤, 그 폴더를 선택해주세요.';
     }
     if (err.name === 'InvalidStateError') {
       return '파일 상태가 바뀌었어요.\n\n연결을 다시 시도하거나 "전체 데이터보내기"를 이용해주세요.';
     }
     if (err.name === 'NotAllowedError') {
+      if (isSamsungInternet()) {
+        return getUnsupportedBrowserMessage();
+      }
       return '파일 접근 권한이 거부됐어요.\n\n다시 연결할 때 권한을 허용해주세요.';
     }
     if (err.name === 'AbortError') {
@@ -85,7 +143,7 @@ const BackupWriter = (() => {
 
   function getMobileConnectGuide() {
     return (
-      'Android 앱 모드에서는 폴더 연결이 더 안정적이에요.\n\n' +
+      'Android Chrome에서는 폴더 연결이 더 안정적이에요.\n\n' +
       '1. "내 파일" 앱에서 RECOVR 폴더를 새로 만드세요\n' +
       '2. 다음 화면에서 그 폴더를 선택하세요\n' +
       '3. 폴더 안에 recovr_backup.json 이 자동 저장됩니다'
@@ -95,6 +153,7 @@ const BackupWriter = (() => {
   return {
     BACKUP_FILE_NAME,
     prefersDirectoryBackup,
+    supportsAutoFileBackup,
     shouldSkipPreRead,
     describeError,
     writeToFileHandle,
@@ -102,6 +161,10 @@ const BackupWriter = (() => {
     writeToRoot,
     getRootLabel,
     getMobileConnectGuide,
+    getUnsupportedBrowserMessage,
+    getBackupStatusHint,
+    getSettingsGuide,
+    isSamsungInternet,
     isRunningAsPwa,
   };
 })();
