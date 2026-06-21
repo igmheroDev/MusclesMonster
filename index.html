@@ -108,6 +108,15 @@
   }
   .logo span { color: var(--green); }
 
+  .app-version {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
   .date-pill {
     font-size: 11px;
     color: var(--muted);
@@ -993,7 +1002,7 @@
 <div class="app">
 
   <header>
-    <div class="logo">RECOV<span>R</span></div>
+    <div class="logo">RECOV<span>R</span><span class="app-version" id="appVersionBadge"></span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="date-pill" id="todayLabel">—</div>
       <div class="streak-pill" id="streakPill" style="display:none"></div>
