@@ -396,24 +396,45 @@ async function linkBackupFile() {
         if (perm === 'granted') {
           backupFileHandle = stored;
           localStorage.setItem('recovr_backup_linked', 'true');
-          await writeBackupFile();
+          const ok = await writeBackupFile();
+          if (!ok) {
+            console.warn('[Backup] 재연결 후 쓰기 실패 — 연결 유지하되 다음 저장 시 재시도');
+          }
           updateBackupStatus();
           return;
         }
       }
     }
 
-    backupFileHandle = await window.showSaveFilePicker({
+    // 새 파일 선택 전에 JSON 페이로드를 미리 준비 (선택 즉시 쓰기 위해)
+    const json = JSON.stringify(buildBackupPayload(), null, 2);
+
+    const handle = await window.showSaveFilePicker({
       suggestedName: 'recovr_backup.json',
       types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
     });
 
+    // 파일 선택 후 즉시 내용 쓰기 (exportData 방식처럼 전체 덮어쓰기)
+    let writable = null;
+    try {
+      writable = await handle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      writable = null;
+    } catch (writeErr) {
+      if (writable) {
+        try { await writable.abort(); } catch (_) { /* ignore */ }
+      }
+      console.error('[Backup] 파일 연결 중 쓰기 실패:', writeErr);
+      alert('백업 파일에 쓰기를 실패했어요. 연결이 취소됩니다.\n\n다른 위치에 저장하거나 다시 시도해주세요.');
+      return;
+    }
+
+    backupFileHandle = handle;
     if (typeof BackupStorage !== 'undefined') {
       await BackupStorage.saveBackupHandle(backupFileHandle);
     }
     localStorage.setItem('recovr_backup_linked', 'true');
-
-    await writeBackupFile();
     updateBackupStatus();
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -423,31 +444,55 @@ async function linkBackupFile() {
 }
 
 async function writeBackupFile() {
-  if (!backupFileHandle) return;
+  if (!backupFileHandle) return false;
   if (backupWriteInProgress) {
     backupWritePending = true;
-    return;
+    return false;
   }
 
   backupWriteInProgress = true;
-    // createWritable()가 파일을 먼저 비우므로, JSON을 미리 만들어 두고 실패 시 abort
+
   const json = JSON.stringify(buildBackupPayload(), null, 2);
-  if (!json || json.length < 2) {
+  if (!json || json.length < 10) {
     backupWriteInProgress = false;
-    return;
+    return false;
   }
 
+  // 쓰기 실패 시 원본 복원에 사용할 기존 파일 내용 미리 읽기
+  let originalContent = null;
+  try {
+    const existingFile = await backupFileHandle.getFile();
+    if (existingFile.size > 0) {
+      originalContent = await existingFile.text();
+    }
+  } catch (_) { /* 최초 연결 시 파일이 비어있을 수 있음 */ }
+
   let writable = null;
+  let success = false;
   try {
     writable = await backupFileHandle.createWritable();
     await writable.write(json);
     await writable.close();
     writable = null;
+    success = true;
   } catch (err) {
+    // abort()로 원본 복원 시도 (일부 환경에서 작동 안 할 수 있음)
     if (writable) {
       try { await writable.abort(); } catch (_) { /* ignore */ }
+      writable = null;
     }
-    console.error('자동 백업 실패:', err);
+    // abort가 파일을 0바이트로 만든 경우 원본 내용으로 직접 복원
+    if (originalContent && originalContent.length > 10) {
+      try {
+        const restoreWritable = await backupFileHandle.createWritable();
+        await restoreWritable.write(originalContent);
+        await restoreWritable.close();
+        console.log('[Backup] 원본 파일 복원 완료');
+      } catch (restoreErr) {
+        console.error('[Backup] 원본 복원 실패:', restoreErr);
+      }
+    }
+    console.error('[Backup] 자동 백업 실패:', err);
   } finally {
     backupWriteInProgress = false;
     if (backupWritePending) {
@@ -455,6 +500,7 @@ async function writeBackupFile() {
       writeBackupFile();
     }
   }
+  return success;
 }
 
 function updateBackupStatus() {
