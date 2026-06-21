@@ -241,7 +241,7 @@ let backupWritePending = false;
 let backupDebounceTimer = null;
 
 function triggerAutoBackup() {
-  if (!backupFileHandle) return;
+  if (!backupRootHandle) return;
   clearTimeout(backupDebounceTimer);
   backupDebounceTimer = setTimeout(() => {
     writeBackupFile();
@@ -263,7 +263,7 @@ function buildBackupPayload() {
 // 운동 기록이 저장될 때마다 자동으로 덮어쓰기 백업됨.
 // iOS Safari는 미지원 -> 수동 내보내기로 안내.
 // ============================================================
-let backupFileHandle = null; // FileSystemFileHandle (in-memory only per session)
+let backupRootHandle = null; // FileSystemFileHandle | FileSystemDirectoryHandle
 
 // ============================================================
 // PWA 설치 안내 (beforeinstallprompt 이벤트 캡처)
@@ -383,70 +383,98 @@ function isFileSystemAccessSupported() {
   return 'showSaveFilePicker' in window;
 }
 
+async function clearBackupConnection() {
+  backupRootHandle = null;
+  localStorage.removeItem('recovr_backup_linked');
+  if (typeof BackupStorage !== 'undefined') {
+    await BackupStorage.clearBackupHandle();
+  }
+  updateBackupStatus();
+}
+
 async function linkBackupFile() {
   if (!isFileSystemAccessSupported()) {
     alert('이 브라우저는 파일 자동 저장을 지원하지 않아요.\n\n대신 "전체 데이터 내보내기"로 수동 백업해주세요.\n(아이폰 Safari는 미지원, PC/안드로이드 Chrome 권장)');
     return;
   }
 
+  if (typeof BackupWriter === 'undefined') {
+    alert('백업 모듈을 불러오지 못했어요. 페이지를 새로고침해주세요.');
+    return;
+  }
+
   try {
-    // IndexedDB에 저장된 파일이 있으면 파일 선택 없이 권한만 재승인
+    const json = JSON.stringify(buildBackupPayload(), null, 2);
+
     if (typeof BackupStorage !== 'undefined') {
       const stored = await BackupStorage.loadBackupHandle();
       if (stored) {
         const perm = await stored.requestPermission({ mode: 'readwrite' });
         if (perm === 'granted') {
-          backupFileHandle = stored;
-          localStorage.setItem('recovr_backup_linked', 'true');
-          const ok = await writeBackupFile();
-          if (!ok) {
-            console.warn('[Backup] 재연결 후 쓰기 실패 — 연결 유지하되 다음 저장 시 재시도');
+          const result = await BackupWriter.writeToRoot(stored, json);
+          if (result.ok) {
+            backupRootHandle = stored;
+            localStorage.setItem('recovr_backup_linked', 'true');
+            updateBackupStatus();
+            return;
           }
-          updateBackupStatus();
-          return;
+          console.warn('[Backup] 재연결 후 쓰기 실패:', result.error);
+          await clearBackupConnection();
+          const reconnectMsg = BackupWriter.describeError(result.error);
+          if (reconnectMsg) alert(reconnectMsg);
         }
       }
     }
 
-    // 새 파일 선택 전에 JSON 페이로드를 미리 준비 (선택 즉시 쓰기 위해)
-    const json = JSON.stringify(buildBackupPayload(), null, 2);
-
-    const handle = await window.showSaveFilePicker({
-      suggestedName: 'recovr_backup.json',
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
-    });
-
-    // 파일 선택 후 즉시 내용 쓰기 (exportData 방식처럼 전체 덮어쓰기)
-    let writable = null;
-    try {
-      writable = await handle.createWritable();
-      await writable.write(json);
-      await writable.close();
-      writable = null;
-    } catch (writeErr) {
-      if (writable) {
-        try { await writable.abort(); } catch (_) { /* ignore */ }
+    if (BackupWriter.prefersDirectoryBackup()) {
+      if (!confirm(BackupWriter.getMobileConnectGuide() + '\n\n계속하시겠어요?')) {
+        return;
       }
-      console.error('[Backup] 파일 연결 중 쓰기 실패:', writeErr);
-      alert('백업 파일에 쓰기를 실패했어요. 연결이 취소됩니다.\n\n다른 위치에 저장하거나 다시 시도해주세요.');
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const dirResult = await BackupWriter.writeToDirectory(dirHandle, json);
+      if (!dirResult.ok) {
+        const msg = BackupWriter.describeError(dirResult.error);
+        if (msg) alert(msg);
+        return;
+      }
+      backupRootHandle = dirHandle;
+      if (typeof BackupStorage !== 'undefined') {
+        await BackupStorage.saveBackupHandle(backupRootHandle);
+      }
+      localStorage.setItem('recovr_backup_linked', 'true');
+      updateBackupStatus();
       return;
     }
 
-    backupFileHandle = handle;
+    const handle = await window.showSaveFilePicker({
+      suggestedName: BackupWriter.BACKUP_FILE_NAME,
+      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+    });
+
+    const fileResult = await BackupWriter.writeToFileHandle(handle, json);
+    if (!fileResult.ok) {
+      const msg = BackupWriter.describeError(fileResult.error);
+      if (msg) alert(msg);
+      return;
+    }
+
+    backupRootHandle = handle;
     if (typeof BackupStorage !== 'undefined') {
-      await BackupStorage.saveBackupHandle(backupFileHandle);
+      await BackupStorage.saveBackupHandle(backupRootHandle);
     }
     localStorage.setItem('recovr_backup_linked', 'true');
     updateBackupStatus();
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('백업 파일 연결 실패:', err);
+      const msg = BackupWriter.describeError(err);
+      if (msg) alert(msg);
     }
   }
 }
 
 async function writeBackupFile() {
-  if (!backupFileHandle) return false;
+  if (!backupRootHandle || typeof BackupWriter === 'undefined') return false;
   if (backupWriteInProgress) {
     backupWritePending = true;
     return false;
@@ -460,47 +488,30 @@ async function writeBackupFile() {
     return false;
   }
 
-  // 쓰기 실패 시 원본 복원에 사용할 기존 파일 내용 미리 읽기
   let originalContent = null;
-  try {
-    const existingFile = await backupFileHandle.getFile();
-    if (existingFile.size > 0) {
-      originalContent = await existingFile.text();
-    }
-  } catch (_) { /* 최초 연결 시 파일이 비어있을 수 있음 */ }
-
-  let writable = null;
-  let success = false;
-  try {
-    writable = await backupFileHandle.createWritable();
-    await writable.write(json);
-    await writable.close();
-    writable = null;
-    success = true;
-  } catch (err) {
-    // abort()로 원본 복원 시도 (일부 환경에서 작동 안 할 수 있음)
-    if (writable) {
-      try { await writable.abort(); } catch (_) { /* ignore */ }
-      writable = null;
-    }
-    // abort가 파일을 0바이트로 만든 경우 원본 내용으로 직접 복원
-    if (originalContent && originalContent.length > 10) {
-      try {
-        const restoreWritable = await backupFileHandle.createWritable();
-        await restoreWritable.write(originalContent);
-        await restoreWritable.close();
-        console.log('[Backup] 원본 파일 복원 완료');
-      } catch (restoreErr) {
-        console.error('[Backup] 원본 복원 실패:', restoreErr);
+  if (!BackupWriter.shouldSkipPreRead() && backupRootHandle.kind === 'file') {
+    try {
+      const existingFile = await backupRootHandle.getFile();
+      if (existingFile.size > 0) {
+        originalContent = await existingFile.text();
       }
+    } catch (_) { /* ignore */ }
+  }
+
+  const result = await BackupWriter.writeToRoot(backupRootHandle, json);
+  const success = result.ok;
+
+  if (!success) {
+    if (originalContent && originalContent.length > 10 && backupRootHandle.kind === 'file') {
+      await BackupWriter.writeToFileHandle(backupRootHandle, originalContent);
     }
-    console.error('[Backup] 자동 백업 실패:', err);
-  } finally {
-    backupWriteInProgress = false;
-    if (backupWritePending) {
-      backupWritePending = false;
-      writeBackupFile();
-    }
+    console.error('[Backup] 자동 백업 실패:', result.error);
+  }
+
+  backupWriteInProgress = false;
+  if (backupWritePending) {
+    backupWritePending = false;
+    writeBackupFile();
   }
   return success;
 }
@@ -519,10 +530,13 @@ function updateBackupStatus() {
     return;
   }
 
-  if (backupFileHandle) {
-    el.textContent = `연결됨: ${backupFileHandle.name}`;
+  if (backupRootHandle) {
+    const label = typeof BackupWriter !== 'undefined'
+      ? BackupWriter.getRootLabel(backupRootHandle)
+      : backupRootHandle.name;
+    el.textContent = `연결됨: ${label}`;
     if (manualBtn) manualBtn.style.display = '';
-    if (linkBtn) linkBtn.textContent = '파일 변경';
+    if (linkBtn) linkBtn.textContent = '변경';
   } else if (localStorage.getItem('recovr_backup_linked') === 'true') {
     el.textContent = '재연결 필요 (연결 버튼 한 번 탭)';
     if (manualBtn) manualBtn.style.display = 'none';
@@ -535,7 +549,7 @@ function updateBackupStatus() {
 }
 
 async function manualBackupSave() {
-  if (!backupFileHandle) {
+  if (!backupRootHandle) {
     alert('백업 파일이 연결되지 않았어요. 먼저 연결해주세요.');
     return;
   }
@@ -2373,9 +2387,8 @@ async function initBackupFromStorage() {
 
     const perm = await handle.queryPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
-      backupFileHandle = handle;
+      backupRootHandle = handle;
       localStorage.setItem('recovr_backup_linked', 'true');
-      await writeBackupFile();
     }
   } catch (e) {
     console.warn('[RECOVR] 백업 파일 자동 복원 실패:', e);
