@@ -229,10 +229,30 @@ function saveWorkouts(workouts) {
   triggerAutoBackup();
 }
 
+// 완료된 운동만 (진행 중 임시 기록 제외)
+function getCompletedWorkouts() {
+  return loadWorkouts().filter(w => !w.inProgress);
+}
+
+let backupWriteInProgress = false;
+let backupWritePending = false;
+let backupDebounceTimer = null;
+
 function triggerAutoBackup() {
-  if (backupFileHandle) {
+  if (!backupFileHandle) return;
+  clearTimeout(backupDebounceTimer);
+  backupDebounceTimer = setTimeout(() => {
     writeBackupFile();
-  }
+  }, 300);
+}
+
+function buildBackupPayload() {
+  return {
+    workouts: loadWorkouts(),
+    settings: loadSettings(),
+    templates: loadTemplates(),
+    exportedAt: new Date().toISOString(),
+  };
 }
 
 // ============================================================
@@ -404,18 +424,36 @@ async function linkBackupFile() {
 
 async function writeBackupFile() {
   if (!backupFileHandle) return;
+  if (backupWriteInProgress) {
+    backupWritePending = true;
+    return;
+  }
+
+  backupWriteInProgress = true;
+    // createWritable()가 파일을 먼저 비우므로, JSON을 미리 만들어 두고 실패 시 abort
+  const json = JSON.stringify(buildBackupPayload(), null, 2);
+  if (!json || json.length < 2) {
+    backupWriteInProgress = false;
+    return;
+  }
+
+  let writable = null;
   try {
-    const data = {
-      workouts: loadWorkouts(),
-      settings: loadSettings(),
-      templates: loadTemplates(),
-      exportedAt: new Date().toISOString(),
-    };
-    const writable = await backupFileHandle.createWritable();
-    await writable.write(JSON.stringify(data, null, 2));
+    writable = await backupFileHandle.createWritable();
+    await writable.write(json);
     await writable.close();
+    writable = null;
   } catch (err) {
+    if (writable) {
+      try { await writable.abort(); } catch (_) { /* ignore */ }
+    }
     console.error('자동 백업 실패:', err);
+  } finally {
+    backupWriteInProgress = false;
+    if (backupWritePending) {
+      backupWritePending = false;
+      writeBackupFile();
+    }
   }
 }
 
@@ -700,7 +738,7 @@ function renderStreak(workouts) {
 }
 
 function renderHome() {
-  const workouts = loadWorkouts();
+  const workouts = getCompletedWorkouts();
   const settings = loadSettings();
   const recovery = calcMuscleRecovery(workouts, settings);
 
@@ -908,9 +946,12 @@ function renderLog() {
     const exDetailHTML = buildExerciseDetailHTML(w, realIdx);
     const itemId = `wi-${realIdx}`;
     const panelId = `wp-${realIdx}`;
+    const progressBadge = w.inProgress
+      ? '<span class="wi-type" style="padding:1px 6px;font-size:9px;background:rgba(0,229,255,0.15);color:var(--cyan)">진행 중</span>'
+      : '';
 
     const item = document.createElement('div');
-    item.className = 'workout-item';
+    item.className = 'workout-item' + (w.inProgress ? ' in-progress' : '');
     item.id = itemId;
     item.innerHTML = `
       <div class="wi-top" onclick="toggleWorkoutDetail('${panelId}', '${itemId}')">
@@ -918,6 +959,7 @@ function renderLog() {
           <div class="wi-date">${dateStr}</div>
           <div class="wi-meta" style="margin-top:4px">
             <span><span class="wi-type ${typeCls}" style="padding:1px 6px;font-size:9px">${typeLabel}</span></span>
+            ${progressBadge}
             <span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>
             <span>${w.duration || '-'}분</span>
             ${w.fatigue ? `<span>${FATIGUE_EMOJI[w.fatigue]}</span>` : ''}
@@ -967,7 +1009,7 @@ function deleteWorkoutPrompt(idx) {
 }
 
 function renderStats() {
-  const workouts = loadWorkouts();
+  const workouts = getCompletedWorkouts();
   const now = new Date();
   const weekAgo = new Date(now);
   weekAgo.setDate(weekAgo.getDate() - 7);
@@ -1374,12 +1416,15 @@ function renderCalDayDetail(dateStr) {
     const typeLabel = w.type === 'upper' ? '상체' : w.type === 'lower' ? '하체' : '전신';
     const typeCls = w.type === 'lower' ? 'lower' : 'upper';
     const exDetailHTML = buildExerciseDetailHTML(w, realIdx);
+    const progressBadge = w.inProgress
+      ? '<span style="font-size:9px;color:var(--cyan);margin-left:4px">진행 중</span>'
+      : '';
 
     html += `
       <div class="workout-item">
         <div class="wi-top">
           <div>
-            <div class="wi-date">${typeLabel} 운동</div>
+            <div class="wi-date">${typeLabel} 운동${progressBadge}</div>
             <div class="wi-meta" style="margin-top:3px">
               <span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>
               <span>${w.duration || '-'}분</span>
@@ -1412,7 +1457,7 @@ function deleteWorkoutAndRefreshCalendar(idx) {
 // ICS export (for Google Calendar import)
 // ============================================================
 function exportICS() {
-  const workouts = loadWorkouts();
+  const workouts = getCompletedWorkouts();
   if (workouts.length === 0) {
     alert('내보낼 운동 기록이 없어요.');
     return;
@@ -1644,46 +1689,111 @@ function selectFatigue(val) {
   ];
   const el = document.getElementById('fatigueDesc');
   if (el) el.textContent = desc[val] || '';
-  saveDraft();
+  saveWorkoutProgress(true);
 }
 
 // ============================================================
-// 입력 중 자동 임시저장 (Draft)
-// 모달에 입력하는 도중 새로고침/창 닫힘이 발생해도 내용이
-// 사라지지 않도록, 변경될 때마다 localStorage에 자동 저장하고
-// 다음에 모달을 열 때 복구를 제안함.
+// 입력 중 자동 저장 (세트 체크, 스트레칭 시간 등)
+// 운동 중 앱을 나갔다 와도 내용이 유지되도록
+// localStorage + 자동 백업 파일에 즉시 반영합니다.
 // ============================================================
 const DRAFT_KEY = 'recovr_draft_v1';
-let draftSaveTimer = null;
+let autoSaveTimer = null;
+let activeSessionId = null;
+let modalListenersAttached = false;
 
-function saveDraft() {
-  // editingIndex가 있으면(기존 기록 수정 중) 드래프트 저장 안 함
-  // (수정 중 새로고침되면 그냥 원본 데이터로 돌아가는 게 안전함)
-  if (editingIndex !== null) return;
+function generateSessionId() {
+  return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
 
-  clearTimeout(draftSaveTimer);
-  draftSaveTimer = setTimeout(() => {
+function isModalOpen() {
+  return document.getElementById('modalOverlay')?.classList.contains('show');
+}
+
+function findInProgressWorkout() {
+  const workouts = loadWorkouts();
+  const inProgress = workouts.filter(w => w.inProgress);
+  if (inProgress.length === 0) return null;
+  return inProgress.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+}
+
+function applyWorkoutToForm(w) {
+  document.getElementById('workoutDate').value = w.date || formatDate(new Date());
+  document.getElementById('workoutTime').value = w.startTime || '';
+  document.getElementById('workoutDuration').value = w.duration || 100;
+  document.getElementById('exerciseRows').innerHTML = '';
+  (w.exercises || []).forEach(ex => addExerciseRow(ex));
+  if ((w.exercises || []).length === 0) addExerciseRow();
+  selectType(w.type || 'upper');
+  selectFatigue(w.fatigue || 3);
+  activeSessionId = w.sessionId || generateSessionId();
+}
+
+function saveWorkoutProgress(immediate) {
+  if (!isModalOpen()) return;
+
+  const runSave = () => {
     try {
-      const draft = {
-        date: document.getElementById('workoutDate').value,
-        startTime: document.getElementById('workoutTime').value,
-        duration: document.getElementById('workoutDuration').value,
-        type: selectedType,
-        exercises: extractExercisesFromForm(),
-        savedAt: new Date().toISOString(),
-      };
-      // 빈 운동 1개뿐이면(아무것도 안 적은 상태) 드래프트 저장 안 함
-      const hasContent = draft.exercises.some(ex =>
-        ex.name && (ex.name.trim() !== '' )
-      );
-      if (!hasContent) {
-        localStorage.removeItem(DRAFT_KEY);
-        return;
+      const exercises = extractExercisesFromForm();
+      const hasContent = exercises.some(ex => ex.name && ex.name.trim());
+      if (!hasContent) return;
+
+      const date = document.getElementById('workoutDate').value;
+      const startTime = document.getElementById('workoutTime').value;
+      const duration = parseInt(document.getElementById('workoutDuration').value) || 0;
+      const workouts = loadWorkouts();
+
+      if (editingIndex !== null) {
+        const existing = workouts[editingIndex];
+        if (!existing) return;
+        workouts[editingIndex] = {
+          ...existing,
+          date,
+          startTime,
+          duration,
+          type: selectedType,
+          fatigue: selectedFatigue,
+          exercises,
+          updatedAt: new Date().toISOString(),
+        };
+      } else {
+        if (!activeSessionId) activeSessionId = generateSessionId();
+        const idx = workouts.findIndex(w => w.inProgress && w.sessionId === activeSessionId);
+        const payload = {
+          date,
+          startTime,
+          duration,
+          type: selectedType,
+          fatigue: selectedFatigue,
+          exercises,
+          inProgress: true,
+          sessionId: activeSessionId,
+          updatedAt: new Date().toISOString(),
+        };
+        if (idx >= 0) {
+          workouts[idx] = { ...workouts[idx], ...payload };
+        } else {
+          workouts.push({ ...payload, createdAt: new Date().toISOString() });
+        }
       }
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+
+      saveWorkouts(workouts);
       showDraftIndicator();
+      localStorage.removeItem(DRAFT_KEY);
     } catch (e) { /* ignore */ }
-  }, 400);
+  };
+
+  if (immediate) {
+    clearTimeout(autoSaveTimer);
+    runSave();
+  } else {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(runSave, 400);
+  }
+}
+
+function flushWorkoutProgress() {
+  saveWorkoutProgress(true);
 }
 
 function clearDraft() {
@@ -1706,50 +1816,76 @@ function showDraftIndicator() {
 }
 
 function applyDraftToForm(draft) {
-  document.getElementById('workoutDate').value = draft.date || formatDate(new Date());
-  document.getElementById('workoutTime').value = draft.startTime || '';
-  document.getElementById('workoutDuration').value = draft.duration || 100;
-  document.getElementById('exerciseRows').innerHTML = '';
-
-  (draft.exercises || []).forEach(ex => addExerciseRow(ex));
-  if ((draft.exercises || []).length === 0) addExerciseRow();
-
-  selectType(draft.type || 'upper');
+  applyWorkoutToForm(draft);
 }
 
-// 모달 내 모든 입력 변화를 감지해서 saveDraft 호출
+let onModalInput = null;
+let onModalClick = null;
+
 function attachDraftListeners() {
   const modal = document.querySelector('.modal');
-  if (!modal) return;
-  modal.addEventListener('input', saveDraft);
-  modal.addEventListener('click', (e) => {
-    // 체크박스, 세트추가, 세트삭제, 모드전환 등 클릭 기반 변경도 감지
-    if (e.target.closest('.set-check, .add-set-btn, .set-del, .row-mode-toggle, .row-del, .type-btn')) {
-      saveDraft();
+  if (!modal || modalListenersAttached) return;
+  modalListenersAttached = true;
+
+  onModalInput = () => saveWorkoutProgress(false);
+  onModalClick = (e) => {
+    if (e.target.closest('.set-check, .add-set-btn, .set-del, .row-mode-toggle, .row-del, .type-btn, .fatigue-btn')) {
+      saveWorkoutProgress(true);
     }
+  };
+
+  modal.addEventListener('input', onModalInput);
+  modal.addEventListener('click', onModalClick);
+}
+
+function setupBackgroundSave() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushWorkoutProgress();
   });
+  window.addEventListener('pagehide', flushWorkoutProgress);
 }
 
 
 function openModal() {
   editingIndex = null;
+  activeSessionId = null;
   document.getElementById('modalTitle').textContent = '운동 기록 추가';
   document.getElementById('saveBtn').textContent = '저장하기';
   document.getElementById('modalOverlay').classList.add('show');
 
-  const draft = loadDraft();
-  if (draft) {
-    const savedTime = new Date(draft.savedAt);
+  // 구버전 드래프트 호환
+  const legacyDraft = loadDraft();
+  if (legacyDraft) {
+    const savedTime = new Date(legacyDraft.savedAt || 0);
     const minsAgo = Math.round((new Date() - savedTime) / 60000);
     const timeLabel = minsAgo < 1 ? '방금' : minsAgo < 60 ? `${minsAgo}분 전` : `${Math.round(minsAgo/60)}시간 전`;
     const restore = confirm(`작성 중이던 기록이 있어요 (${timeLabel} 저장됨).\n이어서 작성하시겠어요?\n\n취소하면 새로 시작해요.`);
     if (restore) {
-      applyDraftToForm(draft);
+      applyDraftToForm(legacyDraft);
       populateTemplateSelect();
       attachDraftListeners();
       return;
-    } else {
-      clearDraft();
+    }
+    clearDraft();
+  }
+
+  const inProgress = findInProgressWorkout();
+  if (inProgress) {
+    const savedTime = new Date(inProgress.updatedAt || inProgress.createdAt || 0);
+    const minsAgo = Math.round((new Date() - savedTime) / 60000);
+    const timeLabel = minsAgo < 1 ? '방금' : minsAgo < 60 ? `${minsAgo}분 전` : `${Math.round(minsAgo/60)}시간 전`;
+    const restore = confirm(`진행 중인 운동 기록이 있어요 (${timeLabel} 저장됨).\n이어서 작성하시겠어요?\n\n취소하면 새로 시작해요.`);
+    if (restore) {
+      applyWorkoutToForm(inProgress);
+      populateTemplateSelect();
+      attachDraftListeners();
+      return;
+    }
+    const workouts = loadWorkouts();
+    const idx = workouts.findIndex(w => w.sessionId === inProgress.sessionId);
+    if (idx >= 0) {
+      workouts.splice(idx, 1);
+      saveWorkouts(workouts);
     }
   }
 
@@ -1761,6 +1897,7 @@ function openModal() {
   addExerciseRow();
   selectType('upper');
   selectFatigue(3);
+  activeSessionId = generateSessionId();
   populateTemplateSelect();
   attachDraftListeners();
 }
@@ -1768,6 +1905,7 @@ function openModal() {
 function openModalWithPrefill({ type, exercises, title }) {
   clearDraft();
   editingIndex = null;
+  activeSessionId = generateSessionId();
   document.getElementById('modalTitle').textContent = title || '운동 기록 추가';
   document.getElementById('saveBtn').textContent = '저장하기';
   document.getElementById('modalOverlay').classList.add('show');
@@ -1784,6 +1922,7 @@ function openModalWithPrefill({ type, exercises, title }) {
   selectType(type || 'upper');
   populateTemplateSelect();
   attachDraftListeners();
+  saveWorkoutProgress(true);
 }
 
 function openEditModal(idx) {
@@ -1806,6 +1945,7 @@ function openEditModal(idx) {
   selectType(w.type || 'upper');
   selectFatigue(w.fatigue || 3);
   populateTemplateSelect();
+  attachDraftListeners();
 }
 
 function closeModal() {
@@ -1924,10 +2064,15 @@ function addSetRow(row, values) {
     <div class="set-num">${setNum}</div>
     <input type="number" class="set-weight" value="${weight}">
     <input type="number" class="set-reps" value="${reps}">
-    <div class="set-check ${completed ? 'checked' : ''}" onclick="this.classList.toggle('checked')">✓</div>
+    <div class="set-check ${completed ? 'checked' : ''}" onclick="toggleSetCheck(this)">✓</div>
     <button class="set-del" onclick="removeSetRow(this)">✕</button>
   `;
   checklist.appendChild(setRow);
+}
+
+function toggleSetCheck(el) {
+  el.classList.toggle('checked');
+  saveWorkoutProgress(true);
 }
 
 function removeSetRow(btn) {
@@ -2068,21 +2213,40 @@ function saveWorkout() {
       exercises,
       updatedAt: new Date().toISOString(),
     };
+    delete workouts[editingIndex].inProgress;
+    delete workouts[editingIndex].sessionId;
   } else {
-    // new
-    workouts.push({
+    // new — 진행 중 임시 기록을 완료 처리하거나 새로 추가
+    const idx = activeSessionId
+      ? workouts.findIndex(w => w.inProgress && w.sessionId === activeSessionId)
+      : -1;
+    const finalized = {
       date,
       startTime,
       duration,
       type: selectedType,
       fatigue: selectedFatigue,
       exercises,
-      createdAt: new Date().toISOString(),
-    });
+      updatedAt: new Date().toISOString(),
+    };
+    if (idx >= 0) {
+      workouts[idx] = {
+        ...workouts[idx],
+        ...finalized,
+      };
+      delete workouts[idx].inProgress;
+      delete workouts[idx].sessionId;
+    } else {
+      workouts.push({
+        ...finalized,
+        createdAt: new Date().toISOString(),
+      });
+    }
   }
 
   saveWorkouts(workouts);
   editingIndex = null;
+  activeSessionId = null;
   clearDraft();
 
   closeModal();
@@ -2101,12 +2265,7 @@ function saveSettings() {
 }
 
 function exportData() {
-  const data = {
-    workouts: loadWorkouts(),
-    settings: loadSettings(),
-    templates: loadTemplates(),
-    exportedAt: new Date().toISOString(),
-  };
+  const data = buildBackupPayload();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2168,6 +2327,7 @@ async function initBackupFromStorage() {
     if (perm === 'granted') {
       backupFileHandle = handle;
       localStorage.setItem('recovr_backup_linked', 'true');
+      await writeBackupFile();
     }
   } catch (e) {
     console.warn('[RECOVR] 백업 파일 자동 복원 실패:', e);
@@ -2197,6 +2357,7 @@ function init() {
     `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} (${dayNames[now.getDay()]})`;
 
   initBackupFromStorage();
+  setupBackgroundSave();
   renderHome();
 
   // refresh recovery every 60s while app is open
