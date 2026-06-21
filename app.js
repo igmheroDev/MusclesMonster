@@ -3,6 +3,8 @@
 // 모든 계산은 로컬에서 수행됩니다. AI/외부 API 호출 없음.
 // ============================================================
 
+const APP_VERSION = '1.0.0';
+
 const STORAGE_KEY = 'recovr_workouts_v1';
 const SETTINGS_KEY = 'recovr_settings_v1';
 
@@ -2404,6 +2406,9 @@ function init() {
 
   initBackupFromStorage();
   setupBackgroundSave();
+
+  const versionEl = document.getElementById('appVersionLabel');
+  if (versionEl) versionEl.textContent = `RECOVR v${APP_VERSION}`;
   renderHome();
 
   // refresh recovery every 60s while app is open

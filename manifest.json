@@ -1,6 +1,7 @@
 {
   "name": "RECOVR - 근육 회복 트래커",
   "short_name": "RECOVR",
+  "version": "1.0.0",
   "description": "운동 기록과 근육 회복도를 추적하는 트래커",
   "start_url": "./index.html",
   "scope": "./",
