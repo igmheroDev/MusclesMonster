@@ -134,3 +134,26 @@ MusclesMonster/
 **현재 sw.js 캐시 버전**: `recovr-cache-v8`
 
 ---
+
+### 세션 2 — 2026-06-21
+
+**버전 관리 도입**
+- 앱 버전 `1.0.0` 설정
+- `app.js` 최상단에 `APP_VERSION = '1.0.0'` 상수 추가
+- `manifest.json`에 `"version": "1.0.0"` 필드 추가
+- `index.html` 설정 탭 하단에 `RECOVR v1.0.0` 버전 라벨 표시 (JS에서 주입)
+- `sw.js` 캐시 버전 `v11 → v12`
+
+**백업 시스템 버그 수정 (PR #3)**
+- 자동 백업 파일 연결 시 파일이 0바이트가 되는 문제 수정
+  - `linkBackupFile()`: 파일 선택 전에 JSON 페이로드 미리 빌드 → 선택 직후 즉시 전체 쓰기 (exportData 방식)
+  - `linkBackupFile()`: 쓰기 실패 시 연결 취소 + alert 표시 (기존은 0바이트 방치)
+  - `writeBackupFile()`: 기존 파일 내용 미리 읽기 → 실패 시 직접 복원 폴백 추가
+  - `writeBackupFile()`: 성공/실패 `boolean` 반환으로 변경
+  - `manualBackupSave()`: 쓰기 실패 시 "⚠️ 실패" 표시 (기존은 항상 "✓ 저장됨")
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v12`
+
+**현재 앱 버전**: `1.0.0`
+
+---
