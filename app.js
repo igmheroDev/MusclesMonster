@@ -2407,8 +2407,10 @@ function init() {
   initBackupFromStorage();
   setupBackgroundSave();
 
-  const versionEl = document.getElementById('appVersionLabel');
-  if (versionEl) versionEl.textContent = `RECOVR v${APP_VERSION}`;
+  const versionText = `v${APP_VERSION}`;
+  document.querySelectorAll('#appVersionBadge, #appVersionLabel').forEach(el => {
+    el.textContent = el.id === 'appVersionLabel' ? `RECOVR ${versionText}` : versionText;
+  });
   renderHome();
 
   // refresh recovery every 60s while app is open
