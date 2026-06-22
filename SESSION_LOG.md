@@ -11,10 +11,14 @@
 ### 파일 구성
 ```
 MusclesMonster/
-├── index.html        # UI 전체 (뷰, 스타일, 모달 포함)
-├── app.js            # 메인 로직 (~2100줄)
-├── recommendation.js # 운동 추천 모듈 (독립 모듈)
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v8)
+├── index.html        # UI 전체 (뷰, 스타일, 모달, AI 채팅 포함)
+├── app.js            # 메인 로직 (~2460줄)
+├── recommendation.js # 운동 추천 모듈 (독립 모듈, 드롭다운 선택)
+├── workoutAdvice.js  # 운동 패턴 조언 모듈 (독립 모듈)
+├── aiCoach.js        # AI 코치 상담 모듈 (Gemini Flash, BYOK)
+├── backupStorage.js  # IndexedDB 백업 핸들 저장
+├── backupWriter.js   # File System API 백업 쓰기
+├── sw.js             # Service Worker (PWA 캐싱, 현재 v19)
 ├── manifest.json     # PWA 메타 정보
 ├── icon-192.png      # PWA 앱 아이콘
 ├── icon-512.png      # PWA 앱 아이콘
@@ -60,9 +64,23 @@ MusclesMonster/
 | `manualBackupSave()` | 수동 백업 저장 |
 
 ### recommendation.js
-- `WorkoutRecommendation.compute()` — 10일치 기록 분석 → 4가지 추천 중 1개 선택
-- `WorkoutRecommendation.render()` — 홈 화면 추천 카드 렌더링
+- `WorkoutRecommendation.compute()` — 10일치 기록 분석 → 4가지 추천 중 1개 선택 (자동)
+- `WorkoutRecommendation.setType()` — 드롭다운으로 상·하체 × 유지/성장 직접 선택
+- `WorkoutRecommendation.render()` — 홈 화면 추천 카드 + select 드롭다운
 - `WorkoutRecommendation.apply()` — 추천 내용으로 운동 모달 열기
+- 선택값 `localStorage` 키: `recovr_rec_selected_v1`
+
+### workoutAdvice.js
+- `WorkoutAdvice.compute()` — 14일 패턴 분석 (푸시/풀, 상하체, 허리 주의 등)
+- `WorkoutAdvice.render()` — 홈 화면 조언 카드
+
+### aiCoach.js
+- `AiCoach.sendMessage()` — Gemini 2.5 Flash API 호출 (BYOK)
+- `AiCoach.buildContext()` — 운동 기록·회복도·규칙 추천/조언 컨텍스트 생성
+- `AiCoach.renderHomeCard()` — 홈 AI 코치 카드
+- API 키 설정: `settings.geminiApiKey` (localStorage)
+- 대화 기록 키: `recovr_ai_chat_v1`
+- thinkingBudget: 0, maxOutputTokens: 8192, MAX_TOKENS 시 자동 이어쓰기
 
 ### 회복 시간 로직
 ```
@@ -153,6 +171,45 @@ MusclesMonster/
   - `manualBackupSave()`: 쓰기 실패 시 "⚠️ 실패" 표시 (기존은 항상 "✓ 저장됨")
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v12`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 3 — 2026-06-22
+
+**AI 코치 상담 기능 (PR #7, #8, #9)**
+- `aiCoach.js` 신규 모듈 — Gemini 2.5 Flash API 연동 (BYOK, 무료 티어)
+- 홈 화면 AI 코치 카드 + 채팅 모달 UI
+- 설정 탭에 Gemini API 키 입력란 추가
+- 운동 기록·회복도·규칙 추천/조언을 컨텍스트로 전송
+- **버그 수정**: `ex.sets`가 숫자인데 배열로 처리하던 오류 수정 (PR #8)
+- **응답 잘림 수정**: thinkingBudget 0, maxOutputTokens 8192, MAX_TOKENS 자동 이어쓰기 (PR #9)
+- **페르소나 강화**: 헬스 트레이너 20년차 · 모빌리티·근비대·체형교정 전문가 톤
+
+**운동 추천 드롭다운 (PR #10)**
+- 상체/하체 × 유지/성장 4가지를 `<select>` 드롭다운으로 직접 선택
+- 기록 분석 자동 추천은 `★ 추천` 표시 + 기본값
+- 선택값 `recovr_rec_selected_v1` localStorage 저장
+- 수동 선택 시 "기록 분석 추천: ~" 힌트 표시
+
+**머지된 PR 목록**
+| PR | 내용 |
+|----|------|
+| #7 | AI 코치 기능 추가 |
+| #8 | AI 코치 sets/setDetails 오류 수정 |
+| #9 | AI 코치 응답 잘림 + 트레이너 페르소나 |
+| #10 | 운동 추천 드롭다운 선택 |
+
+**다음 세션 후보 작업**
+- [ ] AI 코치 답변 품질 실기기 테스트 및 프롬프트 미세 조정
+- [ ] 운동 목표 설정 (월별 목표 횟수 등)
+- [ ] 세트 간 휴식 타이머
+- [ ] 근육 히트맵 다이어그램 (전면/후면 신체 실루엣)
+- [ ] 모빌리티 전용 운동 목록 확충
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v19`
 
 **현재 앱 버전**: `1.0.0`
 
