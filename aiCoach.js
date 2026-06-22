@@ -64,14 +64,29 @@ const AiCoach = (() => {
   function summarizeExercise(ex) {
     if (!ex.name) return null;
     if (ex.mode === 'duration') return `${ex.name} (${ex.durationMin || 0}분)`;
-    const sets = (ex.sets || []).filter(s => s.done);
-    if (sets.length === 0) return ex.name;
-    const top = sets.reduce((best, s) => {
-      const w = parseFloat(s.weight) || 0;
-      const r = parseInt(s.reps) || 0;
-      return (w * r) > (best.w * best.r) ? { w, r } : best;
-    }, { w: 0, r: 0 });
-    return `${ex.name} ${sets.length}세트 (최고 ${top.w}kg×${top.r})`;
+
+    if (ex.setDetails && ex.setDetails.length > 0) {
+      const doneSets = ex.setDetails.filter(s => s.completed);
+      const target = doneSets.length > 0 ? doneSets : ex.setDetails;
+      const top = target.reduce((best, s) => {
+        const w = parseFloat(s.weight) || 0;
+        const r = parseInt(s.reps, 10) || 0;
+        return (w * r) > (best.w * best.r) ? { w, r } : best;
+      }, { w: 0, r: 0 });
+      const count = doneSets.length > 0 ? doneSets.length : ex.setDetails.length;
+      if (top.w > 0 || top.r > 0) {
+        return `${ex.name} ${count}세트 (최고 ${top.w}kg×${top.r})`;
+      }
+      return `${ex.name} ${count}세트`;
+    }
+
+    const setCount = parseInt(ex.sets, 10) || 0;
+    const w = parseFloat(ex.weight) || 0;
+    const r = parseInt(ex.reps, 10) || 0;
+    if (setCount > 0 && (w > 0 || r > 0)) {
+      return `${ex.name} ${setCount}세트 (${w}kg×${r})`;
+    }
+    return ex.name;
   }
 
   function buildContext() {
