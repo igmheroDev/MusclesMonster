@@ -18,20 +18,31 @@ const AiCoach = (() => {
     '회복 안 된 부위 알려줘',
   ];
 
-  const SYSTEM_PROMPT = `당신은 RECOVR 앱의 AI 운동 코치입니다.
-사용자의 운동 기록·회복도·패턴 분석 데이터를 바탕으로 맞춤 조언을 제공합니다.
+  const SYSTEM_PROMPT = `당신은 헬스 트레이너 경력 20년차 전문가입니다.
+모빌리티, 근비대(근육빵빵), 체형교정을 아우르는 실전 코치로서 말합니다.
 
-역할:
-- 운동 조언, 추천 운동, 주간/일일 운동 계획 수립
-- 푸시/풀, 상체/하체 밸런스, 회복 상태 고려
-- 구체적 운동명·세트·반복·무게 가이드 (가능하면 사용자 기록 기반)
+[전문 분야]
+· 모빌리티: 관절 가동범위, 유연성, 워밍업/쿨다운, 폼롤러·스트레칭 루틴
+· 근비대: 점진적 과부하, 볼륨·빈도·강도 밸런스, 부위별 자극 최적화
+· 체형교정: 라운드숄더·골반전방경사·좌우 불균형 등 자세 패턴 교정 운동
 
-규칙:
-- 한국어로 답변
-- 간결하고 실행 가능한 조언 (모바일 화면에 맞게)
-- 의학적 진단·치료 조언 금지. 통증·부상 시 전문의 상담 권고
-- 데이터에 없는 내용은 추측하지 말고 일반 원칙으로 안내
-- 마크다운 대신 짧은 문단과 불릿(·) 사용`;
+[말투·스타일]
+· 자신감 있고 따뜻한 선배 트레이너 톤 ("~해보세요", "~가 핵심이에요")
+· 추상적 조언 금지 → 운동명·세트·반복·무게·휴식·순서를 구체적으로
+· 사용자 운동 기록·회복도·패턴 데이터를 반드시 근거로 인용 ("기록 보니 ~하셨는데")
+· 데이터에 없는 수치는 지어내지 말고, 기록 기반 추정임을 명시
+
+[답변 구조]
+· 핵심 결론을 먼저 1~2문장
+· 오늘/이번 주 실행 계획 (운동명·세트×반복·무게 또는 RPE)
+· 모빌리티·체형교정 포인트가 있으면 짧게 추가
+· 답변은 반드시 완결된 문장으로 마무리 (중간에 끊기지 않게)
+
+[주의]
+· 한국어로 답변
+· 의학적 진단·치료 조언 금지. 통증·부상·디스크 의심 시 전문의 상담 권고
+· 마크다운 대신 짧은 문단과 불릿(·) 사용
+· 모바일에서 읽기 좋게, 한 답변은 400~800자 내외 (계획 질문은 최대 1,200자까지 가능)`;
 
   let chatHistory = [];
   let isSending = false;
@@ -169,16 +180,20 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
     return contents;
   }
 
-  async function callGemini(userMessage) {
-    const apiKey = getApiKey();
-    if (!apiKey) throw new Error('API_KEY_MISSING');
+  function extractResponseText(candidate) {
+    const parts = candidate?.content?.parts || [];
+    return parts.map(p => p.text || '').join('').trim();
+  }
 
+  async function requestGemini(contents) {
+    const apiKey = getApiKey();
     const body = {
       system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: buildGeminiContents(userMessage),
+      contents,
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
+        temperature: 0.75,
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingBudget: 0 },
       },
     };
 
@@ -196,10 +211,36 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
       throw new Error(msg);
     }
 
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('EMPTY_RESPONSE');
-    return text.trim();
+    return res.json();
+  }
+
+  async function callGemini(userMessage) {
+    if (!getApiKey()) throw new Error('API_KEY_MISSING');
+
+    let contents = buildGeminiContents(userMessage);
+    let fullText = '';
+    const MAX_CONTINUES = 2;
+
+    for (let attempt = 0; attempt <= MAX_CONTINUES; attempt++) {
+      const data = await requestGemini(contents);
+      const candidate = data?.candidates?.[0];
+      const chunk = extractResponseText(candidate);
+      if (!chunk && attempt === 0) throw new Error('EMPTY_RESPONSE');
+
+      fullText += (fullText && chunk ? '\n' : '') + chunk;
+      const finishReason = candidate?.finishReason;
+
+      if (finishReason !== 'MAX_TOKENS') break;
+
+      contents = [
+        ...contents,
+        { role: 'model', parts: [{ text: chunk }] },
+        { role: 'user', parts: [{ text: '방금 답변이 중간에 끊겼어요. 끊긴 부분부터 이어서 완결된 문장으로 마무리해주세요.' }] },
+      ];
+    }
+
+    if (!fullText.trim()) throw new Error('EMPTY_RESPONSE');
+    return fullText.trim();
   }
 
   function getErrorMessage(err) {
@@ -231,8 +272,8 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
       list.innerHTML = `
         <div class="ai-chat-welcome">
           <div class="ai-chat-welcome-icon">🤖</div>
-          <div class="ai-chat-welcome-title">AI 코치에게 물어보세요</div>
-          <div class="ai-chat-welcome-desc">운동 기록·회복도를 바탕으로 맞춤 조언을 드려요.</div>
+          <div class="ai-chat-welcome-title">20년차 전문 트레이너에게 물어보세요</div>
+          <div class="ai-chat-welcome-desc">모빌리티·근비대·체형교정 — 내 운동 기록을 바탕으로 맞춤 코칭해드려요.</div>
         </div>`;
       return;
     }
@@ -315,9 +356,6 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
     if (!container) return;
 
     const hasKey = !!getApiKey();
-    const statusText = hasKey
-      ? '운동 조언·추천·계획을 AI와 상담해보세요'
-      : '설정에서 Gemini API 키를 입력하면 이용 가능해요';
 
     container.innerHTML = `
       <div class="ai-coach-card">
@@ -325,7 +363,7 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
           <div class="ai-coach-icon">🤖</div>
           <div class="ai-coach-info">
             <div class="ai-coach-title">AI 코치 상담</div>
-            <div class="ai-coach-desc">${statusText}</div>
+            <div class="ai-coach-desc">${hasKey ? '20년차 트레이너 · 모빌리티·근비대·체형교정 전문' : '설정에서 Gemini API 키를 입력하면 이용 가능해요'}</div>
           </div>
         </div>
         <div class="ai-quick-prompts">
