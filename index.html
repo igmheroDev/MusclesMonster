@@ -430,9 +430,6 @@
     padding: 0;
   }
   .exercise-row .row-mode-toggle:active { background: var(--card-hover); }
-  .exercise-row.duration-mode .ex-duration {
-    grid-column: 2 / 3;
-  }
 
   .exercise-row-wrap {
     position: relative;
@@ -550,6 +547,107 @@
     margin-top: 8px;
   }
   .add-set-btn:active { background: rgba(0,229,255,0.12); }
+
+  /* duration mode stopwatch sets */
+  .duration-checklist { margin-top: 6px; }
+  .duration-checklist:empty { display: none; }
+  .duration-checklist-header {
+    display: grid;
+    grid-template-columns: 32px 1fr 52px 38px 32px;
+    gap: 6px;
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 6px;
+    padding: 0 2px;
+  }
+  .duration-checklist-header span:first-child { text-align: left; }
+  .duration-set-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 52px 38px 32px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .duration-set-row:last-child { margin-bottom: 0; }
+  .duration-set-row.is-running .duration-display {
+    color: var(--cyan);
+    font-weight: 700;
+  }
+  .duration-display {
+    height: 38px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .duration-display.running {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 1px rgba(0, 255, 200, 0.15) inset;
+  }
+  .duration-toggle-btn {
+    width: 52px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--green);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .duration-toggle-btn.active {
+    color: var(--orange);
+    border-color: rgba(255, 107, 53, 0.4);
+    background: rgba(255, 107, 53, 0.08);
+  }
+  .duration-toggle-btn:active { background: var(--card-hover); }
+  .duration-check {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted2);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .duration-check.checked {
+    background: rgba(0, 255, 157, 0.12);
+    border-color: rgba(0, 255, 157, 0.35);
+    color: var(--green);
+  }
+  .duration-set-del {
+    width: 32px;
+    height: 38px;
+    border: none;
+    background: none;
+    color: var(--red);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .duration-total {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin: 4px 2px 6px;
+  }
+  .duration-total-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-left: 4px;
+  }
 
   .add-exercise-btn {
     width: 100%;
@@ -1667,6 +1765,7 @@
 
 <script src="app.js"></script>
 <script src="userProfile.js"></script>
+<script src="durationTimer.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>
 <script src="recommendation.js"></script>
