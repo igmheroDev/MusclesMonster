@@ -149,7 +149,20 @@ const WorkoutRecommendation = (() => {
     return scores;
   }
 
-  function buildReason(id, stats) {
+  function countWeekSessions(workouts) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    cutoff.setHours(0, 0, 0, 0);
+    return workouts.filter(w => new Date(`${w.date}T12:00:00`) >= cutoff).length;
+  }
+
+  function applyProfileScores(scores, settings, weekSessionCount) {
+    if (typeof UserProfile === 'undefined') return scores;
+    const profile = UserProfile.normalize(settings?.profile);
+    return UserProfile.applyGoalToScores(scores, profile, weekSessionCount);
+  }
+
+  function buildReason(id, stats, settings) {
     const meta = TYPE_META[id];
     const regionLabel = meta.workoutType === 'upper' ? '상체' : '하체';
     const recPct = Math.round(meta.workoutType === 'upper' ? stats.upperRec : stats.lowerRec);
@@ -157,9 +170,25 @@ const WorkoutRecommendation = (() => {
     const sessions = meta.workoutType === 'upper' ? stats.upperSessions : stats.lowerSessions;
 
     if (meta.mode === 'growth') {
-      return `${regionLabel} 회복 ${recPct}% · 마지막 ${regionLabel} 운동 ${daysSince}일 전 · 최근 10일 ${sessions}회 → 점진적 과부하 추천`;
+      let reason = `${regionLabel} 회복 ${recPct}% · 마지막 ${regionLabel} 운동 ${daysSince}일 전 · 최근 10일 ${sessions}회 → 점진적 과부하 추천`;
+      if (typeof UserProfile !== 'undefined' && settings) {
+        const p = UserProfile.normalize(settings.profile);
+        if (UserProfile.isComplete(p)) {
+          const goalLabel = UserProfile.GOAL_OPTIONS[p.goal]?.label;
+          if (goalLabel) reason += ` · 목표: ${goalLabel}`;
+        }
+      }
+      return reason;
     }
-    return `${regionLabel} 회복 ${recPct}% · 최근 10일 ${sessions}회 운동 → 평소 루틴 유지 추천`;
+    let reason = `${regionLabel} 회복 ${recPct}% · 최근 10일 ${sessions}회 운동 → 평소 루틴 유지 추천`;
+    if (typeof UserProfile !== 'undefined' && settings) {
+      const p = UserProfile.normalize(settings.profile);
+      if (UserProfile.isComplete(p)) {
+        const goalLabel = UserProfile.GOAL_OPTIONS[p.goal]?.label;
+        if (goalLabel) reason += ` · 목표: ${goalLabel}`;
+      }
+    }
+    return reason;
   }
 
   function getRepresentativeExercise(workouts, name) {
@@ -222,12 +251,12 @@ const WorkoutRecommendation = (() => {
     return ranked.map(name => exerciseToPrefill(getRepresentativeExercise(source, name), meta.mode));
   }
 
-  function buildRecommendation(workouts, stats, typeId) {
+  function buildRecommendation(workouts, stats, typeId, settings) {
     const meta = TYPE_META[typeId];
     return {
       id: typeId,
       ...meta,
-      reason: buildReason(typeId, stats),
+      reason: buildReason(typeId, stats, settings),
       tip: meta.mode === 'growth'
         ? '무게 또는 반복을 소폭 올려보세요 (약 2.5~5%)'
         : '평소와 비슷한 무게·세트로 가볍게 진행하세요',
@@ -239,6 +268,7 @@ const WorkoutRecommendation = (() => {
   function buildStats(workouts, settings) {
     const recovery = calcMuscleRecovery(workouts, settings);
     const recent = getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
+    const weekSessionCount = countWeekSessions(workouts);
 
     const stats = {
       upperRec: getRegionRecoveryAvg(recovery, UPPER_MUSCLES),
@@ -250,9 +280,11 @@ const WorkoutRecommendation = (() => {
       daysSinceUpper: daysSinceLastRegionSession(workouts, 'upper'),
       daysSinceLower: daysSinceLastRegionSession(workouts, 'lower'),
       historyDays: getHistorySpanDays(workouts),
+      weekSessionCount,
     };
 
-    const scores = scoreRecommendations(stats);
+    const baseScores = scoreRecommendations(stats);
+    const scores = applyProfileScores(baseScores, settings, weekSessionCount);
     const autoTypeId = getBestTypeId(scores);
     const selectedTypeId = loadSelectedTypeId() || autoTypeId;
 
@@ -265,7 +297,7 @@ const WorkoutRecommendation = (() => {
     const { stats, scores, autoTypeId, selectedTypeId } = buildStats(workouts, settings);
 
     return {
-      ...buildRecommendation(workouts, stats, selectedTypeId),
+      ...buildRecommendation(workouts, stats, selectedTypeId, settings),
       scores,
       autoTypeId,
       selectedTypeId,

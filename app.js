@@ -581,7 +581,11 @@ async function manualBackupSave() {
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : { baseRecoveryHours: 48 };
+    const settings = raw ? JSON.parse(raw) : { baseRecoveryHours: 48 };
+    if (typeof UserProfile !== 'undefined') {
+      return UserProfile.mergeIntoSettings(settings);
+    }
+    return settings;
   } catch (e) { return { baseRecoveryHours: 48 }; }
 }
 
@@ -685,9 +689,10 @@ function getActivityTagsFromExerciseName(name) {
 // Returns: { chest: { volume, lastWorkoutDate, recoveryPct, hoursElapsed, recoveryHours }, ... }
 function calcMuscleRecovery(workouts, settings) {
   const now = new Date();
-  // 사용자 설정값(기본 48h)을 기준으로 개인 회복 속도 배율 계산
-  // 48h → ×1.0 (보통), 36h → ×0.75 (빠름), 72h → ×1.5 (느림)
-  const userScale = (settings.baseRecoveryHours || 48) / 48;
+  // 사용자 설정값 + 프로필 보정으로 개인 회복 속도 배율 계산
+  const userScale = (typeof UserProfile !== 'undefined')
+    ? UserProfile.getRecoveryScale(settings)
+    : (settings.baseRecoveryHours || 48) / 48;
   const result = {};
 
   MUSCLE_ORDER.forEach(m => {
@@ -851,6 +856,15 @@ function renderHome() {
   ring.style.background = ringBg;
   ring.textContent = ringIcon;
   document.getElementById('overallDesc').textContent = desc;
+
+  const profileSummaryEl = document.getElementById('profileSummary');
+  if (profileSummaryEl) {
+    const summary = (typeof UserProfile !== 'undefined')
+      ? UserProfile.getHomeSummary(settings.profile, settings)
+      : '';
+    profileSummaryEl.textContent = summary;
+    profileSummaryEl.style.display = summary ? '' : 'none';
+  }
 
   // streak
   renderStreak(workouts);
@@ -1655,6 +1669,7 @@ function switchView(viewName) {
   if (viewName === 'settings') {
     const s = loadSettings();
     document.getElementById('baseRecoveryHours').value = s.baseRecoveryHours || 48;
+    if (typeof UserProfile !== 'undefined') UserProfile.fillForm(s);
     updateBackupStatus();
     renderPwaInstallSection();
     try {
@@ -2349,6 +2364,7 @@ function saveSettings() {
   const settings = loadSettings();
   settings.baseRecoveryHours = parseInt(document.getElementById('baseRecoveryHours').value) || 48;
   saveSettingsToStorage(settings);
+  if (typeof UserProfile !== 'undefined') UserProfile.updateHint(settings.profile, settings);
   renderHome();
 }
 
@@ -2373,6 +2389,7 @@ function importData(event) {
       if (data.workouts) saveWorkouts(data.workouts);
       if (data.settings) saveSettingsToStorage(data.settings);
       if (data.templates) saveTemplates(data.templates);
+      if (typeof UserProfile !== 'undefined') UserProfile.fillForm(loadSettings());
       alert('데이터를 불러왔어요.');
       renderHome(); renderLog(); renderStats();
     } catch (err) {
@@ -2446,6 +2463,10 @@ function init() {
   initBackupFromStorage();
   updateBackupGuideText();
   setupBackgroundSave();
+
+  if (typeof UserProfile !== 'undefined') {
+    UserProfile.fillForm(loadSettings());
+  }
 
   const versionText = `v${APP_VERSION}`;
   document.querySelectorAll('#appVersionBadge, #appVersionLabel').forEach(el => {
