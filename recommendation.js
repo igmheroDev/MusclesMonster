@@ -171,16 +171,22 @@ const WorkoutRecommendation = (() => {
 
     if (meta.mode === 'growth') {
       let reason = `${regionLabel} 회복 ${recPct}% · 마지막 ${regionLabel} 운동 ${daysSince}일 전 · 최근 10일 ${sessions}회 → 점진적 과부하 추천`;
-      if (typeof UserProfile !== 'undefined' && UserProfile.isComplete(settings?.profile)) {
-        const goalLabel = UserProfile.GOAL_OPTIONS[settings.profile.goal]?.label;
-        if (goalLabel) reason += ` · 목표: ${goalLabel}`;
+      if (typeof UserProfile !== 'undefined' && settings) {
+        const p = UserProfile.normalize(settings.profile);
+        if (UserProfile.isComplete(p)) {
+          const goalLabel = UserProfile.GOAL_OPTIONS[p.goal]?.label;
+          if (goalLabel) reason += ` · 목표: ${goalLabel}`;
+        }
       }
       return reason;
     }
     let reason = `${regionLabel} 회복 ${recPct}% · 최근 10일 ${sessions}회 운동 → 평소 루틴 유지 추천`;
-    if (typeof UserProfile !== 'undefined' && UserProfile.isComplete(settings?.profile)) {
-      const goalLabel = UserProfile.GOAL_OPTIONS[settings.profile.goal]?.label;
-      if (goalLabel) reason += ` · 목표: ${goalLabel}`;
+    if (typeof UserProfile !== 'undefined' && settings) {
+      const p = UserProfile.normalize(settings.profile);
+      if (UserProfile.isComplete(p)) {
+        const goalLabel = UserProfile.GOAL_OPTIONS[p.goal]?.label;
+        if (goalLabel) reason += ` · 목표: ${goalLabel}`;
+      }
     }
     return reason;
   }

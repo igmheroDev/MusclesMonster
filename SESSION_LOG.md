@@ -226,6 +226,8 @@ MusclesMonster/
 - `aiCoach.js` — AI 컨텍스트에 프로필 정보 포함
 - 홈 화면 프로필 요약 한 줄 표시 (입력 완료 시)
 - `sw.js` 캐시 `v19 → v20`, `userProfile.js` 캐시 목록 추가
+- **버그 수정**: 회복 기준값만 변경 시 빈 폼이 프로필을 덮어쓰던 문제 (`saveSettings` 분리, `init`/`import` 시 `fillForm`)
+- `test-profile-integration.js` 검증 스크립트 추가
 
 **프로필 스키마** (`settings.profile`)
 ```js

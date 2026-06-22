@@ -2363,9 +2363,6 @@ function saveWorkout() {
 function saveSettings() {
   const settings = loadSettings();
   settings.baseRecoveryHours = parseInt(document.getElementById('baseRecoveryHours').value) || 48;
-  if (typeof UserProfile !== 'undefined') {
-    settings.profile = UserProfile.readFromForm();
-  }
   saveSettingsToStorage(settings);
   if (typeof UserProfile !== 'undefined') UserProfile.updateHint(settings.profile, settings);
   renderHome();
@@ -2392,6 +2389,7 @@ function importData(event) {
       if (data.workouts) saveWorkouts(data.workouts);
       if (data.settings) saveSettingsToStorage(data.settings);
       if (data.templates) saveTemplates(data.templates);
+      if (typeof UserProfile !== 'undefined') UserProfile.fillForm(loadSettings());
       alert('데이터를 불러왔어요.');
       renderHome(); renderLog(); renderStats();
     } catch (err) {
@@ -2465,6 +2463,10 @@ function init() {
   initBackupFromStorage();
   updateBackupGuideText();
   setupBackgroundSave();
+
+  if (typeof UserProfile !== 'undefined') {
+    UserProfile.fillForm(loadSettings());
+  }
 
   const versionText = `v${APP_VERSION}`;
   document.querySelectorAll('#appVersionBadge, #appVersionLabel').forEach(el => {
