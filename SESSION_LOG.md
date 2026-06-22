@@ -14,6 +14,7 @@ MusclesMonster/
 ├── index.html        # UI 전체 (뷰, 스타일, 모달, AI 채팅 포함)
 ├── app.js            # 메인 로직 (~2460줄)
 ├── recommendation.js # 운동 추천 모듈 (독립 모듈, 드롭다운 선택)
+├── userProfile.js    # 사용자 프로필 모듈 (신체정보·목표·회복 보정)
 ├── workoutAdvice.js  # 운동 패턴 조언 모듈 (독립 모듈)
 ├── aiCoach.js        # AI 코치 상담 모듈 (Gemini Flash, BYOK)
 ├── backupStorage.js  # IndexedDB 백업 핸들 저장
@@ -210,6 +211,42 @@ MusclesMonster/
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v19`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 4 — 2026-06-22
+
+**사용자 프로필 맞춤 기능 (PR 예정)**
+- `userProfile.js` 신규 독립 모듈 — 성별·나이·키·몸무게·목표·경력·주당 일수·부상 메모
+- 설정 탭 `👤 내 프로필` 섹션 UI 추가
+- `calcMuscleRecovery()` — 프로필 기반 회복 배율 보정 (`getRecoveryScale`)
+- `recommendation.js` — 목표·경력·주당 운동 일수 기반 추천 점수 보정
+- `aiCoach.js` — AI 컨텍스트에 프로필 정보 포함
+- 홈 화면 프로필 요약 한 줄 표시 (입력 완료 시)
+- `sw.js` 캐시 `v19 → v20`, `userProfile.js` 캐시 목록 추가
+
+**프로필 스키마** (`settings.profile`)
+```js
+{
+  gender: 'male' | 'female' | 'other' | '',
+  age: number | null,
+  heightCm: number | null,
+  weightKg: number | null,
+  goal: 'hypertrophy' | 'fat_loss' | 'maintain' | 'strength' | 'rehab' | '',
+  experience: 'beginner' | 'under1year' | '1to3years' | '3years+' | '',
+  daysPerWeek: number | null,
+  injuryNotes: string
+}
+```
+
+**회복 보정 공식**
+```
+최종 userScale = (baseRecoveryHours / 48) × 나이계수 × 경력계수 × BMI계수
+```
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v20`
 
 **현재 앱 버전**: `1.0.0`
 

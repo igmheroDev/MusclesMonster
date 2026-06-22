@@ -151,9 +151,14 @@ const AiCoach = (() => {
       } catch (e) { /* ignore */ }
     }
 
-    return `[사용자 운동 데이터 요약]
+    return `[사용자 프로필]
+${typeof UserProfile !== 'undefined' ? UserProfile.formatForAI(settings.profile) : '미입력'}
+
+[사용자 운동 데이터 요약]
 전체 회복도: ${overallPct}%
-회복 속도 설정: ${settings.baseRecoveryHours || 48}h 기준
+회복 속도 설정: ${settings.baseRecoveryHours || 48}h 기준${typeof UserProfile !== 'undefined' && UserProfile.isComplete(settings.profile)
+  ? ` · 프로필 보정 ×${UserProfile.getProfileRecoveryFactor(settings.profile).toFixed(2)}`
+  : ''}
 총 기록: ${workouts.length}회 · 최근 ${LOOKBACK_DAYS}일: ${recent.length}회
 
 [부위별 회복 (낮은 순)]

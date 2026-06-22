@@ -626,6 +626,71 @@
   .settings-row .sr-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
   .settings-row.col { flex-direction: column; align-items: flex-start; gap: 10px; }
 
+  .profile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 15px;
+    margin-bottom: 8px;
+  }
+  .profile-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .profile-card-sub {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+  .profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .profile-field.full { grid-column: 1 / -1; }
+  .profile-field label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .profile-field input,
+  .profile-field select,
+  .profile-field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .profile-field textarea {
+    min-height: 56px;
+    resize: vertical;
+  }
+  #profileHint {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+  .profile-summary {
+    font-size: 11px;
+    color: var(--cyan);
+    margin-top: 4px;
+    line-height: 1.45;
+    min-height: 16px;
+  }
+
   .danger-btn {
     width: 100%;
     padding: 12px;
@@ -1213,6 +1278,7 @@
         <div>
           <div class="hero-pct" id="overallPct">—<span class="unit">% 회복</span></div>
           <div class="hero-desc" id="overallDesc">운동 기록을 추가하면 회복도가 표시돼요.</div>
+          <div class="profile-summary" id="profileSummary"></div>
         </div>
         <div class="hero-ring" id="heroRing">🧘</div>
       </div>
@@ -1412,6 +1478,73 @@
       API 키는 이 기기(localStorage)에만 저장돼요. 운동 기록이 AI에 전송되며, 무료 티어는 Google이 데이터를 모델 개선에 사용할 수 있어요.
     </div>
 
+    <div class="section-title" style="margin-top:24px"><span>👤 내 프로필</span></div>
+    <div class="profile-card">
+      <div class="profile-card-title">신체 정보 · 목표</div>
+      <div class="profile-card-sub">입력한 정보로 회복도·운동 추천·AI 코치 조언이 맞춤 조정됩니다. 모두 로컬에만 저장돼요.</div>
+      <div class="profile-grid">
+        <div class="profile-field">
+          <label for="profileGender">성별</label>
+          <select id="profileGender" onchange="UserProfile.saveFromForm()">
+            <option value="">선택</option>
+            <option value="male">남성</option>
+            <option value="female">여성</option>
+            <option value="other">기타/응답 안 함</option>
+          </select>
+        </div>
+        <div class="profile-field">
+          <label for="profileAge">나이</label>
+          <input type="number" id="profileAge" min="10" max="100" placeholder="예: 32" onchange="UserProfile.saveFromForm()">
+        </div>
+        <div class="profile-field">
+          <label for="profileHeight">키 (cm)</label>
+          <input type="number" id="profileHeight" min="100" max="250" placeholder="예: 175" onchange="UserProfile.saveFromForm()">
+        </div>
+        <div class="profile-field">
+          <label for="profileWeight">몸무게 (kg)</label>
+          <input type="number" id="profileWeight" min="30" max="300" placeholder="예: 72" onchange="UserProfile.saveFromForm()">
+        </div>
+        <div class="profile-field full">
+          <label for="profileGoal">운동 목표</label>
+          <select id="profileGoal" onchange="UserProfile.saveFromForm()">
+            <option value="">선택</option>
+            <option value="hypertrophy">근비대</option>
+            <option value="fat_loss">체중 감량</option>
+            <option value="maintain">유지</option>
+            <option value="strength">근력</option>
+            <option value="rehab">재활·통증 관리</option>
+          </select>
+        </div>
+        <div class="profile-field full">
+          <label for="profileExperience">운동 경력</label>
+          <select id="profileExperience" onchange="UserProfile.saveFromForm()">
+            <option value="">선택</option>
+            <option value="beginner">초보 (6개월 미만)</option>
+            <option value="under1year">1년 미만</option>
+            <option value="1to3years">1~3년</option>
+            <option value="3years+">3년 이상</option>
+          </select>
+        </div>
+        <div class="profile-field">
+          <label for="profileDaysPerWeek">주당 운동 가능 일수</label>
+          <select id="profileDaysPerWeek" onchange="UserProfile.saveFromForm()">
+            <option value="">선택 (선택)</option>
+            <option value="2">2일</option>
+            <option value="3">3일</option>
+            <option value="4">4일</option>
+            <option value="5">5일</option>
+            <option value="6">6일</option>
+            <option value="7">7일</option>
+          </select>
+        </div>
+        <div class="profile-field full">
+          <label for="profileInjuryNotes">부상·주의 부위 (선택)</label>
+          <textarea id="profileInjuryNotes" placeholder="예: 허리 디스크 주의, 무릎 통증" onchange="UserProfile.saveFromForm()"></textarea>
+        </div>
+      </div>
+      <div id="profileHint">기본 정보를 입력하면 회복도·추천이 나에게 맞게 조정됩니다.</div>
+    </div>
+
     <div class="section-title" style="margin-top:24px"><span>개인 회복 속도 설정</span></div>
     <div class="settings-row">
       <div>
@@ -1533,6 +1666,7 @@
 </div>
 
 <script src="app.js"></script>
+<script src="userProfile.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>
 <script src="recommendation.js"></script>
