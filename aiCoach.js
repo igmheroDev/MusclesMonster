@@ -74,7 +74,12 @@ const AiCoach = (() => {
 
   function summarizeExercise(ex) {
     if (!ex.name) return null;
-    if (ex.mode === 'duration') return `${ex.name} (${ex.durationMin || 0}분)`;
+    if (ex.mode === 'duration') {
+      if (typeof DurationTimer !== 'undefined' && ex.durationSets?.length) {
+        return `${ex.name} ${DurationTimer.formatExerciseSummary(ex)}`;
+      }
+      return `${ex.name} (${ex.durationMin || 0}분)`;
+    }
 
     if (ex.setDetails && ex.setDetails.length > 0) {
       const doneSets = ex.setDetails.filter(s => s.completed);

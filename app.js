@@ -986,7 +986,14 @@ function buildExerciseDetailHTML(w, realIdx) {
   (w.exercises || []).forEach(ex => {
     if (!grouped[ex.name]) grouped[ex.name] = [];
     if (ex.mode === 'duration') {
-      grouped[ex.name].push(`${ex.durationMin || '-'}분`);
+      if (ex.durationSets?.length && typeof DurationTimer !== 'undefined') {
+        ex.durationSets.forEach((s) => {
+          const mark = s.completed ? '' : ' (미완료)';
+          grouped[ex.name].push(`${DurationTimer.formatSeconds(s.seconds)}${mark}`);
+        });
+      } else {
+        grouped[ex.name].push(`${ex.durationMin || '-'}분`);
+      }
     } else if (ex.setDetails && ex.setDetails.length > 0) {
       ex.setDetails.forEach(s => {
         const mark = s.completed ? '' : ' (미완료)';
@@ -1578,7 +1585,12 @@ function exportICS() {
     const endStr = `${endDt.getFullYear()}${pad(endDt.getMonth()+1)}${pad(endDt.getDate())}T${pad(endDt.getHours())}${pad(endDt.getMinutes())}00`;
 
     let desc = (w.exercises || []).map(ex => {
-      if (ex.mode === 'duration') return `${ex.name} ${ex.durationMin}분`;
+      if (ex.mode === 'duration') {
+        if (typeof DurationTimer !== 'undefined' && ex.durationSets?.length) {
+          return `${ex.name} ${DurationTimer.formatExerciseSummary(ex)}`;
+        }
+        return `${ex.name} ${ex.durationMin}분`;
+      }
       return `${ex.name} ${ex.weight}kg x ${ex.reps}`;
     }).join('\\n');
     desc += `\\n\\n총 볼륨: ${totalVolume.toLocaleString()}kg`;
@@ -1931,7 +1943,7 @@ function attachDraftListeners() {
 
   onModalInput = () => saveWorkoutProgress(false);
   onModalClick = (e) => {
-    if (e.target.closest('.set-check, .add-set-btn, .set-del, .row-mode-toggle, .row-del, .type-btn, .fatigue-btn')) {
+    if (e.target.closest('.set-check, .add-set-btn, .set-del, .row-mode-toggle, .row-del, .type-btn, .fatigue-btn, .duration-toggle-btn, .duration-check, .duration-set-del')) {
       saveWorkoutProgress(true);
     }
   };
@@ -2051,6 +2063,7 @@ function openEditModal(idx) {
 }
 
 function closeModal() {
+  if (typeof DurationTimer !== 'undefined') DurationTimer.onModalClose();
   document.getElementById('modalOverlay').classList.remove('show');
 }
 
@@ -2076,14 +2089,15 @@ function addExerciseRow(prefill) {
   row.innerHTML = `
     <div class="exercise-row ${isDuration ? 'duration-mode' : ''}">
       <input type="text" placeholder="예: 스쿼트" class="ex-name" value="${prefill?.name || ''}" autocomplete="off">
-      <input type="number" placeholder="분" class="ex-duration" value="${prefill?.durationMin || ''}" style="${isDuration ? '' : 'display:none'}">
       <button class="row-mode-toggle" title="시간 입력으로 전환" style="${isDuration ? 'display:none' : ''}">⏱</button>
       <button class="row-mode-toggle" title="세트 입력으로 전환" style="${isDuration ? '' : 'display:none'}">🏋️</button>
       <button class="row-del" onclick="this.closest('.exercise-row-wrap').remove()">✕</button>
     </div>
     <div class="ex-suggest"></div>
     <div class="set-checklist" style="${isDuration ? 'display:none' : ''}"></div>
-    <button class="add-set-btn" style="${isDuration ? 'display:none' : ''}">+ 세트 추가</button>
+    <div class="duration-checklist" style="${isDuration ? '' : 'display:none'}"></div>
+    <div class="duration-total" style="${isDuration ? '' : 'display:none'}">합계 <span class="duration-total-val">0:00</span></div>
+    <button class="add-set-btn" style="${isDuration ? '' : 'display:none'}">${isDuration ? '+ 시간 세트 추가' : '+ 세트 추가'}</button>
   `;
   container.appendChild(row);
 
@@ -2101,7 +2115,13 @@ function addExerciseRow(prefill) {
   });
 
   addSetBtn.addEventListener('click', () => {
-    addSetRow(row);
+    const isDur = row.querySelector('.exercise-row').classList.contains('duration-mode');
+    if (isDur && typeof DurationTimer !== 'undefined') {
+      DurationTimer.addSetRow(row);
+      if (typeof saveWorkoutProgress === 'function') saveWorkoutProgress(true);
+    } else {
+      addSetRow(row);
+    }
   });
 
   nameInput.addEventListener('input', () => {
@@ -2123,7 +2143,11 @@ function addExerciseRow(prefill) {
 
   // 세트별 입력 초기화: prefill.setDetails가 있으면 그대로, 없으면
   // weight/reps/sets(구버전 데이터 또는 신규 행)로부터 세트 생성
-  if (!isDuration) {
+  if (isDuration) {
+    if (typeof DurationTimer !== 'undefined') {
+      DurationTimer.populateWrap(row, prefill);
+    }
+  } else {
     if (prefill?.setDetails && prefill.setDetails.length > 0) {
       prefill.setDetails.forEach(s => addSetRow(row, s));
     } else {
@@ -2210,23 +2234,34 @@ function autoDetectMode(row, name, silent) {
 
 function setRowMode(row, durationMode) {
   const exRow = row.querySelector('.exercise-row');
-  const duration = row.querySelector('.ex-duration');
   const checklist = row.querySelector('.set-checklist');
+  const durationChecklist = row.querySelector('.duration-checklist');
+  const durationTotal = row.querySelector('.duration-total');
   const addSetBtn = row.querySelector('.add-set-btn');
   const toggleBtns = row.querySelectorAll('.row-mode-toggle');
 
   if (durationMode) {
     exRow.classList.add('duration-mode');
-    duration.style.display = '';
     checklist.style.display = 'none';
-    addSetBtn.style.display = 'none';
+    if (durationChecklist) durationChecklist.style.display = '';
+    if (durationTotal) durationTotal.style.display = '';
+    addSetBtn.style.display = '';
+    addSetBtn.textContent = '+ 시간 세트 추가';
     toggleBtns[0].style.display = 'none';
     toggleBtns[1].style.display = '';
+    if (typeof DurationTimer !== 'undefined') {
+      if (durationChecklist && durationChecklist.querySelectorAll('.duration-set-row').length === 0) {
+        DurationTimer.populateWrap(row, {});
+      }
+    }
   } else {
+    if (typeof DurationTimer !== 'undefined') DurationTimer.clearWrap(row);
     exRow.classList.remove('duration-mode');
-    duration.style.display = 'none';
     checklist.style.display = '';
+    if (durationChecklist) durationChecklist.style.display = 'none';
+    if (durationTotal) durationTotal.style.display = 'none';
     addSetBtn.style.display = '';
+    addSetBtn.textContent = '+ 세트 추가';
     toggleBtns[0].style.display = '';
     toggleBtns[1].style.display = 'none';
 
@@ -2262,8 +2297,10 @@ function extractExercisesFromForm() {
     if (!name) return;
 
     if (row.classList.contains('duration-mode')) {
-      const durationMin = parseInt(row.querySelector('.ex-duration').value) || 0;
-      exercises.push({ name, mode: 'duration', durationMin, weight: 0, reps: 0, sets: 0 });
+      const durationData = (typeof DurationTimer !== 'undefined')
+        ? DurationTimer.extractFromWrap(wrap)
+        : { durationMin: 0, durationSets: [], sets: 0, weight: 0, reps: 0 };
+      exercises.push({ name, mode: 'duration', ...durationData });
     } else {
       const setDetails = [];
       wrap.querySelectorAll('.set-row').forEach(setRow => {
