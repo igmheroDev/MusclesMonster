@@ -1943,7 +1943,8 @@ function attachDraftListeners() {
 
   onModalInput = () => saveWorkoutProgress(false);
   onModalClick = (e) => {
-    if (e.target.closest('.set-check, .add-set-btn, .set-del, .row-mode-toggle, .row-del, .type-btn, .fatigue-btn, .duration-toggle-btn, .duration-check, .duration-set-del')) {
+    if (e.target.closest('.duration-toggle-btn')) return;
+    if (e.target.closest('.set-check, .add-set-btn, .set-del, .row-mode-toggle, .row-del, .type-btn, .fatigue-btn, .duration-check, .duration-set-del')) {
       saveWorkoutProgress(true);
     }
   };
@@ -2298,7 +2299,7 @@ function extractExercisesFromForm() {
 
     if (row.classList.contains('duration-mode')) {
       const durationData = (typeof DurationTimer !== 'undefined')
-        ? DurationTimer.extractFromWrap(wrap)
+        ? DurationTimer.readFromWrap(wrap)
         : { durationMin: 0, durationSets: [], sets: 0, weight: 0, reps: 0 };
       exercises.push({ name, mode: 'duration', ...durationData });
     } else {
@@ -2327,6 +2328,7 @@ function extractExercisesFromForm() {
 }
 
 function saveWorkout() {
+  if (typeof DurationTimer !== 'undefined') DurationTimer.freezeActiveTimer();
   const date = document.getElementById('workoutDate').value;
   const startTime = document.getElementById('workoutTime').value;
   const duration = parseInt(document.getElementById('workoutDuration').value) || 0;

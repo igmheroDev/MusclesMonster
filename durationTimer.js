@@ -187,13 +187,16 @@ const DurationTimer = (() => {
 
     setRow.querySelector('.duration-toggle-btn').addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       toggleTimer(setRow, wrap);
     });
-    setRow.querySelector('.duration-check').addEventListener('click', () => {
+    setRow.querySelector('.duration-check').addEventListener('click', (e) => {
+      e.stopPropagation();
       toggleCheck(setRow.querySelector('.duration-check'));
     });
     setRow.querySelector('.duration-set-del').addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       removeSetRow(wrap, setRow);
     });
 
@@ -229,21 +232,11 @@ const DurationTimer = (() => {
     if (totalEl) totalEl.textContent = '0:00';
   }
 
-  function extractFromWrap(wrap) {
-    if (active?.wrapEl === wrap) {
-      const row = active.setRowEl;
-      const total = Math.floor(active.baseSeconds + (Date.now() - active.startedAt) / 1000);
-      stopActive(false);
-      row.dataset.seconds = String(total);
-      updateSetDisplay(row, total, false);
-    } else {
-      stopActive(true);
-    }
-
+  function readFromWrap(wrap) {
     const sets = [];
     wrap.querySelectorAll('.duration-set-row').forEach((setRow) => {
       sets.push({
-        seconds: readSecondsFromRow(setRow),
+        seconds: getLiveSeconds(setRow),
         completed: setRow.querySelector('.duration-check')?.classList.contains('checked') || false,
       });
     });
@@ -257,8 +250,17 @@ const DurationTimer = (() => {
     };
   }
 
-  function onModalClose() {
+  function freezeActiveTimer() {
     stopActive(true);
+  }
+
+  function extractFromWrap(wrap) {
+    if (active?.wrapEl === wrap) freezeActiveTimer();
+    return readFromWrap(wrap);
+  }
+
+  function onModalClose() {
+    freezeActiveTimer();
   }
 
   return {
@@ -270,7 +272,9 @@ const DurationTimer = (() => {
     populateWrap,
     addSetRow,
     clearWrap,
+    readFromWrap,
     extractFromWrap,
+    freezeActiveTimer,
     toggleCheck,
     onModalClose,
   };

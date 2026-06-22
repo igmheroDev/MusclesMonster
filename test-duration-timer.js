@@ -33,5 +33,9 @@ assert(
   'summary multi set'
 );
 
+// readFromWrap는 실행 중 타이머를 멈추지 않아야 함 (API 존재 확인)
+assert(typeof DurationTimer.readFromWrap === 'function', 'readFromWrap exists');
+assert(typeof DurationTimer.freezeActiveTimer === 'function', 'freezeActiveTimer exists');
+
 console.log(failures === 0 ? 'DurationTimer tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);
