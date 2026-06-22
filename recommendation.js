@@ -22,7 +22,28 @@ const WorkoutRecommendation = (() => {
     lower_growth:   { label: '하체 성장', icon: '📈', workoutType: 'lower', mode: 'growth', accent: 'var(--orange)' },
   };
 
+  const TYPE_ORDER = ['upper_growth', 'upper_maintain', 'lower_growth', 'lower_maintain'];
+  const SELECTED_TYPE_KEY = 'recovr_rec_selected_v1';
+
   let currentRecommendation = null;
+
+  function loadSelectedTypeId() {
+    try {
+      const raw = localStorage.getItem(SELECTED_TYPE_KEY);
+      return raw && TYPE_META[raw] ? raw : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveSelectedTypeId(id) {
+    if (!TYPE_META[id]) return;
+    localStorage.setItem(SELECTED_TYPE_KEY, id);
+  }
+
+  function getBestTypeId(scores) {
+    return Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+  }
 
   function getWorkoutsInLookback(workouts, days) {
     const cutoff = new Date();
@@ -201,9 +222,21 @@ const WorkoutRecommendation = (() => {
     return ranked.map(name => exerciseToPrefill(getRepresentativeExercise(source, name), meta.mode));
   }
 
-  function compute(workouts, settings) {
-    if (!hasEnoughHistory(workouts)) return null;
+  function buildRecommendation(workouts, stats, typeId) {
+    const meta = TYPE_META[typeId];
+    return {
+      id: typeId,
+      ...meta,
+      reason: buildReason(typeId, stats),
+      tip: meta.mode === 'growth'
+        ? '무게 또는 반복을 소폭 올려보세요 (약 2.5~5%)'
+        : '평소와 비슷한 무게·세트로 가볍게 진행하세요',
+      exercises: buildSuggestedExercises(workouts, typeId),
+      stats,
+    };
+  }
 
+  function buildStats(workouts, settings) {
     const recovery = calcMuscleRecovery(workouts, settings);
     const recent = getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
 
@@ -220,20 +253,38 @@ const WorkoutRecommendation = (() => {
     };
 
     const scores = scoreRecommendations(stats);
-    const bestId = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
-    const meta = TYPE_META[bestId];
+    const autoTypeId = getBestTypeId(scores);
+    const selectedTypeId = loadSelectedTypeId() || autoTypeId;
+
+    return { stats, scores, autoTypeId, selectedTypeId };
+  }
+
+  function compute(workouts, settings) {
+    if (!hasEnoughHistory(workouts)) return null;
+
+    const { stats, scores, autoTypeId, selectedTypeId } = buildStats(workouts, settings);
 
     return {
-      id: bestId,
-      ...meta,
-      reason: buildReason(bestId, stats),
-      tip: meta.mode === 'growth'
-        ? '무게 또는 반복을 소폭 올려보세요 (약 2.5~5%)'
-        : '평소와 비슷한 무게·세트로 가볍게 진행하세요',
-      exercises: buildSuggestedExercises(workouts, bestId),
-      stats,
+      ...buildRecommendation(workouts, stats, selectedTypeId),
       scores,
+      autoTypeId,
+      selectedTypeId,
     };
+  }
+
+  function buildTypeSelectOptions(autoTypeId, selectedTypeId) {
+    return TYPE_ORDER.map(id => {
+      const meta = TYPE_META[id];
+      const isAuto = id === autoTypeId;
+      const suffix = isAuto ? ' ★ 추천' : '';
+      return `<option value="${id}"${id === selectedTypeId ? ' selected' : ''}>${meta.icon} ${meta.label}${suffix}</option>`;
+    }).join('');
+  }
+
+  function setType(typeId) {
+    if (!TYPE_META[typeId]) return;
+    saveSelectedTypeId(typeId);
+    render();
   }
 
   function render() {
@@ -263,13 +314,20 @@ const WorkoutRecommendation = (() => {
 
     const exercisePreview = rec.exercises.slice(0, 4).map(ex => ex.name).join(' · ');
     const moreCount = Math.max(0, rec.exercises.length - 4);
+    const isAutoPick = rec.id === rec.autoTypeId;
 
     container.innerHTML = `
       <div class="recommend-card" style="border-color:${rec.accent}33">
         <div class="rec-top">
-          <div class="rec-badge" style="background:${rec.accent}18;color:${rec.accent}">${rec.icon} ${rec.label}</div>
+          <div class="rec-select-wrap">
+            <label class="rec-select-label" for="recTypeSelect">운동 유형</label>
+            <select id="recTypeSelect" class="rec-type-select" onchange="WorkoutRecommendation.setType(this.value)">
+              ${buildTypeSelectOptions(rec.autoTypeId, rec.selectedTypeId)}
+            </select>
+          </div>
           <div class="rec-meta">최근 ${LOOKBACK_DAYS}일 · ${rec.stats.historyDays}일 기록</div>
         </div>
+        ${!isAutoPick ? `<div class="rec-auto-hint">기록 분석 추천: ${TYPE_META[rec.autoTypeId].icon} ${TYPE_META[rec.autoTypeId].label}</div>` : ''}
         <div class="rec-reason">${rec.reason}</div>
         <div class="rec-tip">${rec.tip}</div>
         <div class="rec-exercises">${exercisePreview}${moreCount > 0 ? ` 외 ${moreCount}종목` : ''}</div>
@@ -292,5 +350,5 @@ const WorkoutRecommendation = (() => {
     });
   }
 
-  return { compute, render, apply };
+  return { compute, render, apply, setType };
 })();
