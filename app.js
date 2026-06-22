@@ -872,6 +872,13 @@ function renderHome() {
     console.warn('[RECOVR] 조언 카드 렌더 실패:', e);
   }
 
+  // AI 코치 상담 카드
+  try {
+    if (typeof AiCoach !== 'undefined') AiCoach.renderHomeCard();
+  } catch (e) {
+    console.warn('[RECOVR] AI 코치 카드 렌더 실패:', e);
+  }
+
   // muscle list
   const muscleList = document.getElementById('muscleList');
   muscleList.innerHTML = '';
@@ -1650,6 +1657,9 @@ function switchView(viewName) {
     document.getElementById('baseRecoveryHours').value = s.baseRecoveryHours || 48;
     updateBackupStatus();
     renderPwaInstallSection();
+    try {
+      if (typeof AiCoach !== 'undefined') AiCoach.renderSettings();
+    } catch (e) { /* ignore */ }
   }
 }
 
@@ -2336,8 +2346,9 @@ function saveWorkout() {
 // Settings / Import / Export
 // ============================================================
 function saveSettings() {
-  const baseRecoveryHours = parseInt(document.getElementById('baseRecoveryHours').value) || 48;
-  saveSettingsToStorage({ baseRecoveryHours });
+  const settings = loadSettings();
+  settings.baseRecoveryHours = parseInt(document.getElementById('baseRecoveryHours').value) || 48;
+  saveSettingsToStorage(settings);
   renderHome();
 }
 
@@ -2441,6 +2452,10 @@ function init() {
     el.textContent = el.id === 'appVersionLabel' ? `RECOVR ${versionText}` : versionText;
   });
   renderHome();
+
+  try {
+    if (typeof AiCoach !== 'undefined') AiCoach.init();
+  } catch (e) { /* ignore */ }
 
   // refresh recovery every 60s while app is open
   setInterval(() => {
