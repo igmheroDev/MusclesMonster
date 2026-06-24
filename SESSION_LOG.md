@@ -14,17 +14,19 @@ MusclesMonster/
 ├── index.html        # UI 전체 (뷰, 스타일, 모달, AI 채팅 포함)
 ├── app.js            # 메인 로직 (~2530줄)
 ├── durationTimer.js  # 시간 운동 스톱워치 모듈 (세트별 시작/정지)
+├── cardioTracker.js  # 유산소(심폐지구력) 추적 모듈 (프리셋·주간 통계)
 ├── recommendation.js # 운동 추천 모듈 (독립 모듈, 드롭다운 선택)
 ├── userProfile.js    # 사용자 프로필 모듈 (신체정보·목표·회복 보정)
 ├── workoutAdvice.js  # 운동 패턴 조언 모듈 (독립 모듈)
 ├── aiCoach.js        # AI 코치 상담 모듈 (Gemini Flash, BYOK)
 ├── backupStorage.js  # IndexedDB 백업 핸들 저장
 ├── backupWriter.js   # File System API 백업 쓰기
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v23)
+├── sw.js             # Service Worker (PWA 캐싱, 현재 v24)
 ├── manifest.json     # PWA 메타 정보
 ├── icon-192.png      # PWA 앱 아이콘
 ├── icon-512.png      # PWA 앱 아이콘
 ├── test-duration-timer.js      # DurationTimer 단위 테스트
+├── test-cardio-tracker.js      # CardioTracker 단위 테스트
 ├── test-profile-integration.js # 프로필 연동 검증
 ├── test-add-set-btn.js         # 세트 추가 버튼 5항목 크로스체크
 └── SESSION_LOG.md    # 이 파일
@@ -74,6 +76,18 @@ MusclesMonster/
 | `addSetRow()` | 무게 모드 세트 행 추가 |
 | `setRowMode()` | 무게 ↔ 시간 모드 전환 + 세트 추가 버튼 표시 |
 | `autoDetectMode()` | 운동명 기반 시간 모드 자동 전환 (유산소/모빌리티) |
+| `getWorkoutTypeMeta()` | 운동 타입 메타 (상체/하체/전신/유산소 라벨·색상) |
+| `openCardioModal()` | 유산소 타입으로 운동 기록 모달 열기 |
+
+### cardioTracker.js
+- `CardioTracker.isCardioExercise()` — 유산소 운동 판별 (키워드 + duration 모드)
+- `CardioTracker.getWorkoutCardioMinutes()` — 세션별 유산소 시간 합산
+- `CardioTracker.getWeeklyStats()` — 주간 유산소 시간·횟수·목표 달성률 (150분)
+- `CardioTracker.addPreset()` — 기구 프리셋으로 운동 행 추가 (천국의계단, 로잉머신 등)
+- `CardioTracker.renderHomeCard()` — 홈 유산소 요약 카드
+- `CardioTracker.renderTrendChart()` — 통계 탭 유산소 추세 그래프
+- `CardioTracker.renderMachineBreakdown()` — 기구별 주간 분석
+- 프리셋 8종: 천국의 계단, 로잉머신, 트레드밀, 실내자전거, 일립티컬, 스텝퍼, 수영, 줄넘기
 
 ### durationTimer.js
 - `DurationTimer.addSetRow()` — 시간 모드 세트별 스톱워치 행 추가
@@ -90,7 +104,7 @@ MusclesMonster/
 - 선택값 `localStorage` 키: `recovr_rec_selected_v1`
 
 ### workoutAdvice.js
-- `WorkoutAdvice.compute()` — 14일 패턴 분석 (푸시/풀, 상하체, 허리 주의 등)
+- `WorkoutAdvice.compute()` — 14일 패턴 분석 (푸시/풀, 상하체, 허리 주의, **유산소 빈도**)
 - `WorkoutAdvice.render()` — 홈 화면 조언 카드
 
 ### aiCoach.js
@@ -116,7 +130,7 @@ MusclesMonster/
   date: "2026-06-20",
   startTime: "10:00",
   duration: 100,           // 분
-  type: "upper",           // upper | lower | full
+  type: "upper",           // upper | lower | full | cardio
   fatigue: 3,              // 1~5
   exercises: [{
     name: "벤치 프레스",
@@ -317,6 +331,42 @@ MusclesMonster/
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v23`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 6 — 2026-06-24
+
+**유산소(심폐지구력) 추적 기능 (PR #16)**
+- `cardioTracker.js` 신규 독립 모듈 — 유산소 운동 측정·주간 통계·기구 프리셋
+- 운동 종류에 **유산소** 타입 추가 (상체/하체/전신/유산소 4종)
+- 유산소 선택 시 기구 프리셋 UI: 천국의 계단, 로잉머신, 트레드밀, 실내자전거, 일립티컬, 스텝퍼, 수영, 줄넘기
+- 빠른 시간 설정 버튼 (10/15/20/30/45분)
+- 홈 화면 유산소 요약 카드 — 주간 시간, WHO 권장 150분 목표 달성률
+- 통계 탭: 유산소 시간·횟수, 추세 그래프, 기구별 분석
+- 캘린더·주간 바·기록 목록에 유산소 색상(핑크) 구분
+- `workoutAdvice.js` — 유산소 부족/목표 달성 조언 추가
+- 키워드 확장: 스텝밀, 천국의계단, 어설트 바이크, 크로스트레이너 등
+- `test-cardio-tracker.js` 단위 테스트 추가
+- `sw.js` 캐시 `v23 → v24`, `cardioTracker.js` 캐시 목록 추가
+
+**머지된 PR 목록**
+| PR | 내용 |
+|----|------|
+| #16 | 유산소(심폐지구력) 추적 기능 추가 |
+
+**다음 세션 후보 작업**
+- [ ] 유산소 세부 지표 (거리 km, 칼로리, 심박수) 입력 옵션
+- [ ] AI 코치 답변 품질 실기기 테스트 및 프롬프트 미세 조정
+- [ ] 운동 목표 설정 (월별 목표 횟수·유산소 시간 등)
+- [ ] 세트 간 휴식 타이머
+- [ ] 근육 히트맵 다이어그램 (전면/후면 신체 실루엣)
+- [ ] 모빌리티 전용 운동 목록 확충
+- [ ] PWA 설치형 앱 업데이트 안내 UI (새 버전 있을 때 알림)
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v24`
 
 **현재 앱 버전**: `1.0.0`
 

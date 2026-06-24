@@ -29,6 +29,7 @@
     --orange: #ff6b35;
     --red: #ff3b5c;
     --violet: #a78bfa;
+    --cardio: #e879f9;
   }
 
   /* ===== Light mode ===== */
@@ -48,6 +49,7 @@
     --orange: #e6571f;
     --red: #e0234e;
     --violet: #8b6cd6;
+    --cardio: #c026d3;
   }
 
   body.light nav {
@@ -184,6 +186,8 @@
   }
   .week-day.workout-upper { background: rgba(0,229,255,0.10); border-color: rgba(0,229,255,0.25); color: var(--cyan); }
   .week-day.workout-lower { background: rgba(255,107,53,0.10); border-color: rgba(255,107,53,0.25); color: var(--orange); }
+  .week-day.workout-full { background: rgba(0,255,157,0.10); border-color: rgba(0,255,157,0.25); color: var(--green); }
+  .week-day.workout-cardio { background: rgba(232,121,249,0.10); border-color: rgba(232,121,249,0.25); color: var(--cardio); }
   .week-day.today { box-shadow: 0 0 0 1.5px var(--green) inset; }
 
   /* ===== Section title ===== */
@@ -282,6 +286,8 @@
   }
   .wi-type.upper { background: rgba(0,229,255,0.12); color: var(--cyan); }
   .wi-type.lower { background: rgba(255,107,53,0.12); color: var(--orange); }
+  .wi-type.full { background: rgba(0,255,157,0.12); color: var(--green); }
+  .wi-type.cardio { background: rgba(232,121,249,0.12); color: var(--cardio); }
 
   .wi-action {
     width: 26px; height: 26px;
@@ -385,15 +391,17 @@
   .form-group { margin-bottom: 14px; }
   .form-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; display: block; letter-spacing: 0.04em; }
 
-  .type-toggle { display: flex; gap: 8px; }
+  .type-toggle { display: flex; gap: 8px; flex-wrap: wrap; }
   .type-btn {
-    flex: 1; padding: 12px; border-radius: 10px;
+    flex: 1; min-width: calc(50% - 4px); padding: 12px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--card);
     color: var(--muted); font-size: 13px; font-weight: 600;
     cursor: pointer; transition: all 0.15s; text-align: center;
   }
   .type-btn.selected.upper { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,0.08); }
   .type-btn.selected.lower { border-color: var(--orange); color: var(--orange); background: rgba(255,107,53,0.08); }
+  .type-btn.selected.full { border-color: var(--green); color: var(--green); background: rgba(0,255,157,0.08); }
+  .type-btn.selected.cardio { border-color: var(--cardio); color: var(--cardio); background: rgba(232,121,249,0.08); }
 
   input[type="text"], input[type="number"], input[type="date"], input[type="time"] {
     width: 100%;
@@ -869,6 +877,7 @@
   .week-strip-day.has-workout.upper { border-color: rgba(0,229,255,0.3); background: rgba(0,229,255,0.06); }
   .week-strip-day.has-workout.lower { border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.06); }
   .week-strip-day.has-workout.full { border-color: rgba(0,255,157,0.3); background: rgba(0,255,157,0.06); }
+  .week-strip-day.has-workout.cardio { border-color: rgba(232,121,249,0.3); background: rgba(232,121,249,0.06); }
   .week-strip-day:active { background: var(--card-hover); }
 
   .cal-header {
@@ -935,6 +944,7 @@
   .cal-dot.upper { background: var(--cyan); }
   .cal-dot.lower { background: var(--orange); }
   .cal-dot.full { background: var(--green); }
+  .cal-dot.cardio { background: var(--cardio); }
 
   .cal-legend {
     display: flex; gap: 16px; justify-content: center;
@@ -945,6 +955,81 @@
   .legend-dot.upper { background: var(--cyan); }
   .legend-dot.lower { background: var(--orange); }
   .legend-dot.full { background: var(--green); }
+  .legend-dot.cardio { background: var(--cardio); }
+
+  /* ===== Cardio ===== */
+  .cardio-home-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .cardio-home-card:active { background: var(--card-hover); }
+  .cardio-home-card--empty { border-style: dashed; border-color: rgba(232,121,249,0.35); }
+  .cardio-home-icon { font-size: 28px; flex-shrink: 0; }
+  .cardio-home-body { flex: 1; min-width: 0; }
+  .cardio-home-title { font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+  .cardio-home-sub { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  .cardio-home-action { font-size: 22px; color: var(--cardio); font-weight: 300; }
+  .cardio-home-pct { font-size: 18px; font-weight: 800; color: var(--cardio); flex-shrink: 0; }
+  .cardio-progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .cardio-progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  .cardio-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .cardio-preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .cardio-preset-btn:active { background: var(--card-hover); border-color: var(--cardio); }
+  .cardio-preset-icon { font-size: 20px; }
+  .cardio-preset-name { font-size: 11px; font-weight: 600; }
+  .cardio-preset-min { font-size: 10px; color: var(--muted); }
+
+  .cardio-quick-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .cardio-quick-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(232,121,249,0.08);
+    border: 1px solid rgba(232,121,249,0.25);
+    border-radius: 8px;
+    color: var(--cardio);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .cardio-quick-btn:active { background: rgba(232,121,249,0.18); }
 
   /* ===== Workout recommendation ===== */
   .recommend-card {
@@ -1384,6 +1469,8 @@
       <div class="week-bar" id="weekBar"></div>
     </div>
 
+    <div id="cardioHomeCard"></div>
+
     <div id="recommendationCard"></div>
     <div id="workoutAdviceCard"></div>
     <div id="aiCoachCard"></div>
@@ -1426,6 +1513,7 @@
         <span><span class="legend-dot upper"></span> 상체</span>
         <span><span class="legend-dot lower"></span> 하체</span>
         <span><span class="legend-dot full"></span> 전신</span>
+        <span><span class="legend-dot cardio"></span> 유산소</span>
       </div>
       <div id="logDayDetail"></div>
     </div>
@@ -1445,6 +1533,7 @@
         <span><span class="legend-dot upper"></span> 상체</span>
         <span><span class="legend-dot lower"></span> 하체</span>
         <span><span class="legend-dot full"></span> 전신</span>
+        <span><span class="legend-dot cardio"></span> 유산소</span>
       </div>
       <div id="logMonthDayDetail"></div>
     </div>
@@ -1479,6 +1568,16 @@
         <div class="stat-val" id="statLowerCount" style="color:var(--orange)">—</div>
         <div class="stat-sub">회</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">유산소 시간</div>
+        <div class="stat-val" id="statCardioMin" style="color:var(--cardio)">—</div>
+        <div class="stat-sub">분 (이번 주)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">유산소 횟수</div>
+        <div class="stat-val" id="statCardioCount" style="color:var(--cardio)">—</div>
+        <div class="stat-sub">회</div>
+      </div>
     </div>
 
     <div class="section-title"><span>전체 누적</span></div>
@@ -1497,6 +1596,12 @@
 
     <div class="section-title"><span>최근 추세</span></div>
     <div id="trendChart" class="stat-card" style="padding:16px;"></div>
+
+    <div class="section-title"><span>유산소 추세</span></div>
+    <div id="cardioTrendChart" class="stat-card" style="padding:16px;"></div>
+
+    <div class="section-title"><span>이번 주 유산소 기구별</span></div>
+    <div id="cardioMachineList"></div>
 
     <div class="section-title"><span>주간 부위별 빈도</span></div>
     <div id="freqList"></div>
@@ -1710,6 +1815,20 @@
         <div class="type-btn selected upper" data-type="upper" onclick="selectType('upper')">상체</div>
         <div class="type-btn lower" data-type="lower" onclick="selectType('lower')">하체</div>
         <div class="type-btn" data-type="full" onclick="selectType('full')">전신</div>
+        <div class="type-btn cardio" data-type="cardio" onclick="selectType('cardio')">유산소</div>
+      </div>
+    </div>
+
+    <div class="form-group" id="cardioPresetArea" style="display:none">
+      <label class="form-label">유산소 기구 빠른 추가</label>
+      <div class="cardio-preset-grid" id="cardioPresetGrid"></div>
+      <label class="form-label" style="margin-top:8px">빠른 시간 설정 (마지막 항목)</label>
+      <div class="cardio-quick-row">
+        <button type="button" class="cardio-quick-btn" onclick="CardioTracker.applyQuickMinutes(10)">10분</button>
+        <button type="button" class="cardio-quick-btn" onclick="CardioTracker.applyQuickMinutes(15)">15분</button>
+        <button type="button" class="cardio-quick-btn" onclick="CardioTracker.applyQuickMinutes(20)">20분</button>
+        <button type="button" class="cardio-quick-btn" onclick="CardioTracker.applyQuickMinutes(30)">30분</button>
+        <button type="button" class="cardio-quick-btn" onclick="CardioTracker.applyQuickMinutes(45)">45분</button>
       </div>
     </div>
 
@@ -1766,6 +1885,7 @@
 <script src="app.js"></script>
 <script src="userProfile.js"></script>
 <script src="durationTimer.js"></script>
+<script src="cardioTracker.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>
 <script src="recommendation.js"></script>

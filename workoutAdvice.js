@@ -252,6 +252,34 @@ const WorkoutAdvice = (() => {
       });
     }
 
+    if (typeof CardioTracker !== 'undefined') {
+      const cardioStats = CardioTracker.getWeeklyStats(workouts, LOOKBACK_DAYS);
+      const strengthSessions = recent.filter(w => w.type !== 'cardio').length;
+
+      if (strengthSessions >= 2 && cardioStats.sessionCount === 0) {
+        advice.push({
+          type: 'suggest',
+          icon: '🏃',
+          title: '유산소 추가 추천',
+          message: `최근 ${LOOKBACK_DAYS}일간 근력 운동은 ${strengthSessions}회인데 유산소 기록이 없어요. 천국의계단, 로잉머신, 트레드밀 등 주 150분 유산소를 목표로 해보세요.`,
+        });
+      } else if (cardioStats.totalMinutes > 0 && cardioStats.totalMinutes < cardioStats.goalMinutes * 0.5) {
+        advice.push({
+          type: 'suggest',
+          icon: '⏱️',
+          title: '유산소 시간 부족',
+          message: `이번 주 유산소 ${cardioStats.totalMinutes}분이에요. WHO 권장 주 ${cardioStats.goalMinutes}분의 ${cardioStats.goalPct}%입니다. 20~30분 가벼운 유산소를 추가해보세요.`,
+        });
+      } else if (cardioStats.goalPct >= 100) {
+        advice.push({
+          type: 'info',
+          icon: '✅',
+          title: '유산소 목표 달성',
+          message: `이번 주 유산소 ${cardioStats.totalMinutes}분으로 주간 목표(${cardioStats.goalMinutes}분)를 달성했어요!`,
+        });
+      }
+    }
+
     if (advice.length === 0) {
       advice.push({
         type: 'info',
