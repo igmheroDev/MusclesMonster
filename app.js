@@ -2137,14 +2137,15 @@ function addExerciseRow(prefill) {
     setTimeout(() => { suggestBox.innerHTML = ''; }, 150);
   });
 
-  // if a prefill name is present, run auto-detect once (won't override explicit prefill.mode)
-  if (prefill?.name && prefill?.mode === undefined) {
-    autoDetectMode(row, prefill.name, true);
-  }
-
   // 세트별 입력 초기화: prefill.setDetails가 있으면 그대로, 없으면
   // weight/reps/sets(구버전 데이터 또는 신규 행)로부터 세트 생성
-  if (isDuration) {
+  let durationActive = row.querySelector('.exercise-row').classList.contains('duration-mode');
+  if (prefill?.name && prefill?.mode === undefined) {
+    autoDetectMode(row, prefill.name, true);
+    durationActive = row.querySelector('.exercise-row').classList.contains('duration-mode');
+  }
+
+  if (durationActive) {
     if (typeof DurationTimer !== 'undefined') {
       DurationTimer.populateWrap(row, prefill);
     }
@@ -2158,6 +2159,9 @@ function addExerciseRow(prefill) {
       }
     }
   }
+
+  // 초기 HTML과 setRowMode 표시 규칙을 맞춤 (세트 추가 버튼 항상 표시)
+  setRowMode(row, durationActive);
 }
 
 // 새 세트 행 추가. 값이 없으면 마지막 세트의 무게/횟수를 복사.
@@ -2486,7 +2490,9 @@ function init() {
   // PWA: register service worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        reg.update();
+      }).catch(() => {});
     });
   }
 
