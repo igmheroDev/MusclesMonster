@@ -2098,7 +2098,7 @@ function addExerciseRow(prefill) {
     <div class="set-checklist" style="${isDuration ? 'display:none' : ''}"></div>
     <div class="duration-checklist" style="${isDuration ? '' : 'display:none'}"></div>
     <div class="duration-total" style="${isDuration ? '' : 'display:none'}">합계 <span class="duration-total-val">0:00</span></div>
-    <button class="add-set-btn" style="${isDuration ? '' : 'display:none'}">${isDuration ? '+ 시간 세트 추가' : '+ 세트 추가'}</button>
+    <button class="add-set-btn">${isDuration ? '+ 시간 세트 추가' : '+ 세트 추가'}</button>
   `;
   container.appendChild(row);
 
