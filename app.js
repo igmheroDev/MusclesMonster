@@ -100,10 +100,24 @@ const MUSCLE_KEYWORDS = {
   ],
   cardio: [
     '러닝', '조깅', '달리기', '트레드밀', '사이클', '싸이클', '자전거', '로잉머신',
-    '로잉 머신', '일립티컬', '스텝퍼', '계단', '줄넘기', '점핑로프', '수영',
-    '유산소', '인터벌', 'hiit', '버피', '클라이밍', '등산', '걷기', '파워워킹'
+    '로잉 머신', '일립티컬', '스텝퍼', '계단', '천국의계단', '천국의 계단', '스텝밀',
+    '스텝 클라이머', '스텝클라이머', 'stairmaster', 'stair climber', '줄넘기', '점핑로프',
+    '수영', '유산소', '인터벌', 'hiit', '버피', '클라이밍', '등산', '걷기', '파워워킹',
+    '어설트 바이크', 'assault bike', '에어로우', 'concept2', '콘셉트2', '스핀', 'spin',
+    '크로스트레이너', 'arc trainer', '워킹', '인클라인 워킹', '사이클링',
   ],
 };
+
+const WORKOUT_TYPE_META = {
+  upper:  { label: '상체', cls: 'upper',  color: 'var(--cyan)' },
+  lower:  { label: '하체', cls: 'lower',  color: 'var(--orange)' },
+  full:   { label: '전신', cls: 'full',   color: 'var(--green)' },
+  cardio: { label: '유산소', cls: 'cardio', color: 'var(--cardio)' },
+};
+
+function getWorkoutTypeMeta(type) {
+  return WORKOUT_TYPE_META[type] || WORKOUT_TYPE_META.full;
+}
 
 // 회복도 계산에 포함되는 부위 (근력 운동)
 const MUSCLE_ORDER = ['chest','back','shoulder','biceps','triceps','quads','hamstrings','adductors','calves','core','forearms'];
@@ -183,7 +197,9 @@ const COMMON_EXERCISES = [
   '케틀벨 스내치','터키시 겟업',
   // 유산소
   '러닝','트레드밀 러닝','사이클','실내자전거','로잉머신',
+  '천국의 계단','스텝퍼','일립티컬','크로스트레이너',
   '줄넘기','수영','계단 오르기','걷기','버피','인터벌 러닝',
+  '어설트 바이크','스핀','인클라인 워킹',
   // 모빌리티
   '스트레칭','모빌리티','동적 스트레칭','정적 스트레칭',
   '폼롤러','요가','필라테스','워밍업','쿨다운',
@@ -886,6 +902,13 @@ function renderHome() {
     console.warn('[RECOVR] 조언 카드 렌더 실패:', e);
   }
 
+  // 유산소 요약 카드
+  try {
+    if (typeof CardioTracker !== 'undefined') CardioTracker.renderHomeCard();
+  } catch (e) {
+    console.warn('[RECOVR] 유산소 카드 렌더 실패:', e);
+  }
+
   // AI 코치 상담 카드
   try {
     if (typeof AiCoach !== 'undefined') AiCoach.renderHomeCard();
@@ -967,7 +990,8 @@ function renderWeekBar(workouts) {
     let content = dayLabels[dow];
     if (type === 'upper') { cls += ' workout-upper'; content = '상'; }
     else if (type === 'lower') { cls += ' workout-lower'; content = '하'; }
-    else if (type === 'full') { cls += ' workout-upper'; content = '전'; }
+    else if (type === 'full') { cls += ' workout-full'; content = '전'; }
+    else if (type === 'cardio') { cls += ' workout-cardio'; content = '유'; }
     if (i === 0) cls += ' today';
     weekBar.innerHTML += `<div class="${cls}">${content}</div>`;
   }
@@ -1032,8 +1056,10 @@ function renderLog() {
   sorted.forEach((w) => {
     const realIdx = workouts.indexOf(w);
     const totalVolume = (w.exercises || []).reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
-    const typeLabel = w.type === 'upper' ? '상체' : w.type === 'lower' ? '하체' : '전신';
-    const typeCls = w.type === 'lower' ? 'lower' : 'upper';
+    const typeMeta = getWorkoutTypeMeta(w.type);
+    const typeLabel = typeMeta.label;
+    const typeCls = typeMeta.cls;
+    const cardioMin = (typeof CardioTracker !== 'undefined') ? CardioTracker.getWorkoutCardioMinutes(w) : 0;
     const dateObj = new Date(w.date + 'T12:00:00');
     const dowLabels = ['일','월','화','수','목','금','토'];
     const dateStr = `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${dowLabels[dateObj.getDay()]})`;
@@ -1065,7 +1091,9 @@ function renderLog() {
           <div class="wi-meta" style="margin-top:4px">
             <span><span class="wi-type ${typeCls}" style="padding:1px 6px;font-size:9px">${typeLabel}</span></span>
             ${progressBadge}
-            <span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>
+            ${w.type === 'cardio' || cardioMin > 0
+              ? `<span>유산소 <b>${cardioMin || w.duration || '-'}</b>분</span>`
+              : `<span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>`}
             <span>${w.duration || '-'}분</span>
             ${w.fatigue ? `<span>${FATIGUE_EMOJI[w.fatigue]}</span>` : ''}
           </div>
@@ -1123,6 +1151,10 @@ function renderStats() {
   const weekVolume = thisWeek.reduce((sum, w) => sum + (w.exercises||[]).reduce((s,ex)=>s+getExerciseVolume(ex),0), 0);
   const upperCount = thisWeek.filter(w => w.type === 'upper').length;
   const lowerCount = thisWeek.filter(w => w.type === 'lower').length;
+  const cardioCount = thisWeek.filter(w => w.type === 'cardio' || (typeof CardioTracker !== 'undefined' && CardioTracker.isCardioWorkout(w))).length;
+  const weekCardioMin = (typeof CardioTracker !== 'undefined')
+    ? CardioTracker.getWeeklyStats(thisWeek, 7).totalMinutes
+    : 0;
 
   const totalVolume = workouts.reduce((sum, w) => sum + (w.exercises||[]).reduce((s,ex)=>s+getExerciseVolume(ex),0), 0);
 
@@ -1130,12 +1162,22 @@ function renderStats() {
   document.getElementById('statWeekCount').textContent = thisWeek.length;
   document.getElementById('statUpperCount').textContent = upperCount;
   document.getElementById('statLowerCount').textContent = lowerCount;
+  if (document.getElementById('statCardioMin')) {
+    document.getElementById('statCardioMin').textContent = weekCardioMin;
+  }
+  if (document.getElementById('statCardioCount')) {
+    document.getElementById('statCardioCount').textContent = cardioCount;
+  }
   document.getElementById('statTotalVolume').textContent = totalVolume.toLocaleString();
   document.getElementById('statTotalCount').textContent = workouts.length;
 
   renderTrendChart(workouts);
   renderWeeklyFrequency(workouts);
   renderPRList(workouts);
+  if (typeof CardioTracker !== 'undefined') {
+    CardioTracker.renderTrendChart(workouts);
+    CardioTracker.renderMachineBreakdown(workouts);
+  }
 }
 
 // e1RM (Epley formula): weight x (1 + reps/30)
@@ -1296,7 +1338,7 @@ function renderTrendChart(workouts) {
   sorted.forEach(w => {
     const vol = (w.exercises||[]).reduce((s,ex)=>s+getExerciseVolume(ex),0);
     const h = Math.max(4, Math.round((vol / maxVol) * 100));
-    const color = w.type === 'lower' ? 'var(--orange)' : 'var(--cyan)';
+    const color = w.type === 'lower' ? 'var(--orange)' : w.type === 'cardio' ? 'var(--cardio)' : w.type === 'full' ? 'var(--green)' : 'var(--cyan)';
     const d = new Date(w.date + 'T12:00:00');
     html += `
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end">
@@ -1369,7 +1411,7 @@ function changeCalWeek(delta) {
   renderCalendar();
 }
 
-const ACTIVITY_ICONS = { upper: '💪', lower: '🦵', full: '🔥' };
+const ACTIVITY_ICONS = { upper: '💪', lower: '🦵', full: '🔥', cardio: '🏃' };
 
 function renderWeekStrip(byDate) {
   const grid = document.getElementById('weekStrip');
@@ -1401,7 +1443,10 @@ function renderWeekStrip(byDate) {
     let icon = '';
     if (dayWorkouts.length > 0) {
       const types = new Set(dayWorkouts.map(w => w.type));
-      const primaryType = types.has('lower') && types.has('upper') ? 'full' : [...types][0];
+      let primaryType;
+      if (types.has('cardio') && types.size === 1) primaryType = 'cardio';
+      else if (types.has('lower') && types.has('upper')) primaryType = 'full';
+      else primaryType = [...types][0];
       cls += ` has-workout ${primaryType}`;
       icon = ACTIVITY_ICONS[primaryType] || '🏋️';
     }
@@ -1517,9 +1562,10 @@ function renderCalDayDetail(dateStr) {
 
   dayWorkouts.forEach(w => {
     const realIdx = allWorkouts.indexOf(w);
+    const typeMeta = getWorkoutTypeMeta(w.type);
+    const typeLabel = typeMeta.label;
     const totalVolume = (w.exercises || []).reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
-    const typeLabel = w.type === 'upper' ? '상체' : w.type === 'lower' ? '하체' : '전신';
-    const typeCls = w.type === 'lower' ? 'lower' : 'upper';
+    const cardioMin = (typeof CardioTracker !== 'undefined') ? CardioTracker.getWorkoutCardioMinutes(w) : 0;
     const exDetailHTML = buildExerciseDetailHTML(w, realIdx);
     const progressBadge = w.inProgress
       ? '<span style="font-size:9px;color:var(--cyan);margin-left:4px">진행 중</span>'
@@ -1531,7 +1577,9 @@ function renderCalDayDetail(dateStr) {
           <div>
             <div class="wi-date">${typeLabel} 운동${progressBadge}</div>
             <div class="wi-meta" style="margin-top:3px">
-              <span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>
+              ${w.type === 'cardio' || cardioMin > 0
+                ? `<span>유산소 <b>${cardioMin || w.duration || '-'}</b>분</span>`
+                : `<span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>`}
               <span>${w.duration || '-'}분</span>
             </div>
           </div>
@@ -1573,7 +1621,7 @@ function exportICS() {
 
   workouts.forEach((w, idx) => {
     const totalVolume = (w.exercises || []).reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
-    const typeLabel = w.type === 'upper' ? '상체' : w.type === 'lower' ? '하체' : '전신';
+    const typeLabel = getWorkoutTypeMeta(w.type).label;
 
     const [y, m, d] = w.date.split('-');
     const startDate = `${y}${m}${d}`;
@@ -2012,6 +2060,7 @@ function openModal() {
   addExerciseRow();
   selectType('upper');
   selectFatigue(3);
+  if (typeof CardioTracker !== 'undefined') CardioTracker.togglePresetArea(false);
   activeSessionId = generateSessionId();
   populateTemplateSelect();
   attachDraftListeners();
@@ -2078,6 +2127,17 @@ function selectType(type) {
     btn.classList.remove('selected');
     if (btn.dataset.type === type) btn.classList.add('selected');
   });
+
+  const isCardio = type === 'cardio';
+  if (typeof CardioTracker !== 'undefined') {
+    CardioTracker.togglePresetArea(isCardio);
+    if (isCardio) CardioTracker.renderPresetButtons();
+  }
+
+  const durationInput = document.getElementById('workoutDuration');
+  if (isCardio && durationInput && (!durationInput.value || durationInput.value === '100')) {
+    durationInput.value = 30;
+  }
 }
 
 function addExerciseRow(prefill) {
