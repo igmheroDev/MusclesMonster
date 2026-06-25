@@ -28,9 +28,11 @@ assert(UserProfile.calcBmi(175, 70) === 22.9, 'BMI 22.9');
 
 const complete = UserProfile.normalize({
   gender: 'male', age: 45, heightCm: 175, weightKg: 80,
-  goal: 'hypertrophy', experience: 'beginner', daysPerWeek: 3,
+  goal: 'hypertrophy', condition: 'lumbar_disc', experience: 'beginner', daysPerWeek: 3,
 });
 assert(UserProfile.isComplete(complete), '완전 프로필');
+assert(complete.condition === 'lumbar_disc', '현재 상태 normalize');
+assert(UserProfile.getConditionLabel('lumbar_disc').includes('허리디스크'), '현재 상태 라벨');
 const scale = UserProfile.getRecoveryScale({ baseRecoveryHours: 48, profile: complete });
 assert(scale > 1 && scale < 2, `회복 스케일 범위 (${scale.toFixed(3)})`);
 
@@ -47,9 +49,13 @@ assert(
   UserProfile.formatForAI(complete).includes('근비대'),
   '완성 프로필 AI 포맷'
 );
+assert(
+  UserProfile.formatForAI(complete).includes('허리디스크'),
+  '완성 프로필 AI 포맷 현재 상태'
+);
 
-const bad = UserProfile.normalize({ gender: 'hack', goal: 'evil', age: 'x' });
-assert(bad.gender === '' && bad.goal === '' && bad.age === null, 'sanitize');
+const bad = UserProfile.normalize({ gender: 'hack', goal: 'evil', condition: 'bad', age: 'x' });
+assert(bad.gender === '' && bad.goal === '' && bad.condition === 'none' && bad.age === null, 'sanitize');
 
 console.log('\n=== 2. saveSettings 프로필 유지 (버그 재현/수정 검증) ===');
 const storage = {};

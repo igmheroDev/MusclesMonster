@@ -12,6 +12,14 @@ const UserProfile = (() => {
     rehab:       { label: '재활·통증 관리', icon: '🩹' },
   };
 
+  const CONDITION_OPTIONS = {
+    none:          { label: '특별한 주의 없음', icon: '✅' },
+    cervical_disc: { label: '목디스크·목 통증 주의', icon: '🧣' },
+    lumbar_disc:   { label: '허리디스크·허리 통증 주의', icon: '🧘' },
+    rehab_general: { label: '재활·회복 운동 필요', icon: '🩹' },
+    fat_loss:      { label: '체중감량·저충격 운동 선호', icon: '🔥' },
+  };
+
   const EXPERIENCE_OPTIONS = {
     beginner:    { label: '초보 (6개월 미만)' },
     under1year:{ label: '1년 미만' },
@@ -31,6 +39,7 @@ const UserProfile = (() => {
     heightCm: null,
     weightKg: null,
     goal: '',
+    condition: 'none',
     experience: '',
     daysPerWeek: null,
     injuryNotes: '',
@@ -73,6 +82,7 @@ const UserProfile = (() => {
       heightCm: clampNumber(src.heightCm, 100, 250),
       weightKg: clampNumber(src.weightKg, 30, 300),
       goal: GOAL_OPTIONS[src.goal] ? src.goal : '',
+      condition: CONDITION_OPTIONS[src.condition] ? src.condition : 'none',
       experience: EXPERIENCE_OPTIONS[src.experience] ? src.experience : '',
       daysPerWeek: clampNumber(src.daysPerWeek, 1, 7),
       injuryNotes: typeof src.injuryNotes === 'string' ? src.injuryNotes.trim().slice(0, 200) : '',
@@ -205,6 +215,10 @@ const UserProfile = (() => {
     return GOAL_OPTIONS[goal]?.label || '';
   }
 
+  function getConditionLabel(condition) {
+    return CONDITION_OPTIONS[condition]?.label || '';
+  }
+
   function getExperienceLabel(experience) {
     return EXPERIENCE_OPTIONS[experience]?.label || '';
   }
@@ -224,6 +238,7 @@ const UserProfile = (() => {
       `키/몸무게: ${p.heightCm}cm / ${p.weightKg}kg`,
       `BMI: ${bmi != null ? bmi : '—'}`,
       `목표: ${getGoalLabel(p.goal)}`,
+      `현재 상태: ${getConditionLabel(p.condition) || '특별한 주의 없음'}`,
       `경력: ${getExperienceLabel(p.experience)}`,
     ];
     if (p.daysPerWeek) lines.push(`주당 운동 가능: ${p.daysPerWeek}일`);
@@ -245,7 +260,10 @@ const UserProfile = (() => {
         ? `회복 ${factorPct}% 여유 필요`
         : `회복 ${Math.abs(factorPct)}% 빠른 편`;
 
-    return `${p.age}세 · BMI ${bmi} · ${goalLabel} · ${factorText}`;
+    const conditionLabel = p.condition && p.condition !== 'none'
+      ? ` · ${getConditionLabel(p.condition)}`
+      : '';
+    return `${p.age}세 · BMI ${bmi} · ${goalLabel}${conditionLabel} · ${factorText}`;
   }
 
   function readFromForm() {
@@ -265,6 +283,7 @@ const UserProfile = (() => {
       heightCm: heightCm === '' ? null : heightCm,
       weightKg: weightKg === '' ? null : weightKg,
       goal: getVal('profileGoal'),
+      condition: getVal('profileCondition') || 'none',
       experience: getVal('profileExperience'),
       daysPerWeek: daysPerWeek === '' ? null : daysPerWeek,
       injuryNotes: getVal('profileInjuryNotes'),
@@ -283,6 +302,7 @@ const UserProfile = (() => {
     setVal('profileHeight', p.heightCm);
     setVal('profileWeight', p.weightKg);
     setVal('profileGoal', p.goal);
+    setVal('profileCondition', p.condition);
     setVal('profileExperience', p.experience);
     setVal('profileDaysPerWeek', p.daysPerWeek);
     setVal('profileInjuryNotes', p.injuryNotes);
@@ -346,6 +366,7 @@ const UserProfile = (() => {
 
   return {
     GOAL_OPTIONS,
+    CONDITION_OPTIONS,
     EXPERIENCE_OPTIONS,
     GENDER_OPTIONS,
     DEFAULT_PROFILE,
@@ -355,6 +376,7 @@ const UserProfile = (() => {
     getProfileRecoveryFactor,
     getRecoveryScale,
     getSuggestedBaseRecoveryHours,
+    getConditionLabel,
     applyGoalToScores,
     formatForAI,
     getHomeSummary,
