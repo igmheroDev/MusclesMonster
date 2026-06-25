@@ -212,12 +212,13 @@ const ExercisePicker = (() => {
     el.innerHTML = items.map(item => {
       const lastLabel = item.lastDate ? formatLastPerformed(item.lastDate) : '';
       const meta = [item.categoryLabel, lastLabel].filter(Boolean).join(' · ');
+      const encodedName = encodeURIComponent(item.name);
       return `
-        <button type="button" class="ex-picker-item" onclick="ExercisePicker.select('${item.name.replace(/'/g, "\\'")}')">
-          <div class="ex-picker-item-icon">${item.icon}</div>
+        <button type="button" class="ex-picker-item" onclick="ExercisePicker.select(decodeURIComponent('${encodedName}'))">
+          <div class="ex-picker-item-icon">${escapeHtml(item.icon)}</div>
           <div class="ex-picker-item-body">
-            <div class="ex-picker-item-name">${item.name}</div>
-            ${meta ? `<div class="ex-picker-item-meta">${meta}</div>` : ''}
+            <div class="ex-picker-item-name">${escapeHtml(item.name)}</div>
+            ${meta ? `<div class="ex-picker-item-meta">${escapeHtml(meta)}</div>` : ''}
           </div>
         </button>`;
     }).join('');
@@ -237,6 +238,8 @@ const ExercisePicker = (() => {
       nameInput.value = name;
       nameInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
+    const suggestBox = row.querySelector('.ex-suggest');
+    if (suggestBox) suggestBox.innerHTML = '';
 
     if (typeof autoDetectMode === 'function') {
       autoDetectMode(row, name);
@@ -246,17 +249,36 @@ const ExercisePicker = (() => {
     }
   }
 
+  function findReusableEmptyRow() {
+    const rows = Array.from(document.querySelectorAll('#exerciseRows .exercise-row-wrap'));
+    return rows.find(row => {
+      const nameInput = row.querySelector('.ex-name');
+      if (!nameInput || nameInput.value.trim()) return false;
+      const hasCompletedSet = row.querySelector('.set-check.checked, .duration-check.checked');
+      const hasDurationSeconds = Array.from(row.querySelectorAll('.duration-set-row'))
+        .some(durationRow => Number(durationRow.dataset.seconds) > 0);
+      const hasWeightOrReps = Array.from(row.querySelectorAll('.set-weight, .set-reps'))
+        .some(input => Number(input.value) > 0);
+      return !hasCompletedSet && !hasDurationSeconds && !hasWeightOrReps;
+    }) || null;
+  }
+
   function select(name) {
     let row = targetRow;
 
     if (createNewRow && typeof addExerciseRow === 'function') {
-      addExerciseRow({ name });
-      const wraps = document.querySelectorAll('#exerciseRows .exercise-row-wrap');
-      row = wraps[wraps.length - 1];
+      row = findReusableEmptyRow();
+      if (row) {
+        applyToRow(row, name);
+      } else {
+        addExerciseRow({ name });
+        if (typeof saveWorkoutProgress === 'function') saveWorkoutProgress(true);
+      }
     } else if (row) {
       applyToRow(row, name);
     } else if (typeof addExerciseRow === 'function') {
       addExerciseRow({ name });
+      if (typeof saveWorkoutProgress === 'function') saveWorkoutProgress(true);
     }
 
     close();
@@ -325,6 +347,16 @@ const ExercisePicker = (() => {
     if (equipEl) {
       equipEl.addEventListener('change', () => setEquipment(equipEl.value));
     }
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[ch]));
   }
 
   return {
