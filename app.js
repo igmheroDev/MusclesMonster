@@ -1479,6 +1479,7 @@ function renderWeekStrip(byDate) {
     let cls = 'week-strip-day';
     if (dateStr === today) cls += ' today';
     if (dateStr === calSelectedDate) cls += ' selected';
+    if (hasStamp) cls += ' mission-stamp';
 
     let icon = '';
     if (dayWorkouts.length > 0) {
@@ -1491,15 +1492,11 @@ function renderWeekStrip(byDate) {
       icon = ACTIVITY_ICONS[primaryType] || '🏋️';
     }
 
-    // 미션 완료 표시 (아이콘 아래 작은 도장)
-    const missionBadge = hasStamp ? `<div class="wsd-mission">🎯</div>` : `<div class="wsd-mission"></div>`;
-
     grid.innerHTML += `
       <div class="${cls}" onclick="selectCalDay('${dateStr}')">
         <div class="wsd-dow">${dowLabels[i]}</div>
         <div class="wsd-date">${d.getDate()}</div>
         <div class="wsd-icon">${icon}</div>
-        ${missionBadge}
       </div>`;
   }
 }
@@ -1561,11 +1558,8 @@ function renderMonthGrid(byDate) {
       dots += `<div class="cal-dot ${w.type}"></div>`;
     });
 
-    const stampBadge = hasStamp ? `<span class="cal-stamp-badge">🎯</span>` : '';
-
     grid.innerHTML += `
       <div class="${cls}" onclick="selectCalDay('${dateStr}')">
-        ${stampBadge}
         <div>${day}</div>
         <div style="display:flex;gap:2px">${dots}</div>
       </div>`;

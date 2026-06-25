@@ -30,6 +30,10 @@
     --red: #ff3b5c;
     --violet: #a78bfa;
     --cardio: #e879f9;
+
+    --mission-lemon-fill: rgba(255, 241, 118, 0.48);
+    --mission-lemon-border: #ffeb3b;
+    --mission-lemon-text: #2e2800;
   }
 
   /* ===== Light mode ===== */
@@ -50,6 +54,10 @@
     --red: #e0234e;
     --violet: #8b6cd6;
     --cardio: #c026d3;
+
+    --mission-lemon-fill: #fff59d;
+    --mission-lemon-border: #f9d71c;
+    --mission-lemon-text: #3d3500;
   }
 
   body.light nav {
@@ -985,6 +993,41 @@
   .legend-dot.lower { background: var(--orange); }
   .legend-dot.full { background: var(--green); }
   .legend-dot.cardio { background: var(--cardio); }
+  .legend-dot.mission {
+    background: var(--mission-lemon-fill);
+    border: 1px solid var(--mission-lemon-border);
+    border-radius: 3px;
+  }
+
+  .cal-day.mission-stamp,
+  .week-strip-day.mission-stamp {
+    background: var(--mission-lemon-fill);
+    border-color: var(--mission-lemon-border);
+    box-shadow: inset 0 0 0 1px rgba(255, 235, 59, 0.28);
+  }
+  .cal-day.mission-stamp {
+    color: var(--mission-lemon-text);
+    font-weight: 700;
+  }
+  .cal-day.mission-stamp.today {
+    box-shadow: 0 0 0 2px var(--green) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
+  }
+  .cal-day.mission-stamp.selected {
+    box-shadow: 0 0 0 2px var(--cyan) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
+  }
+  .cal-day.mission-stamp:active {
+    filter: brightness(0.96);
+  }
+  .week-strip-day.mission-stamp .wsd-date {
+    color: var(--mission-lemon-text);
+    font-weight: 800;
+  }
+  .week-strip-day.mission-stamp.today {
+    box-shadow: 0 0 0 2px var(--green) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
+  }
+  .week-strip-day.mission-stamp.selected {
+    box-shadow: 0 0 0 2px var(--cyan) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
+  }
 
   /* ===== Cardio ===== */
   .cardio-home-card {
@@ -1644,26 +1687,6 @@
     text-align: right;
   }
 
-  /* ===== 캘린더 미션 스탬프 ===== */
-  .cal-day.mission-stamp {
-    position: relative;
-  }
-  .cal-stamp-badge {
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    font-size: 9px;
-    line-height: 1;
-  }
-  .week-strip-day .wsd-mission {
-    font-size: 10px;
-    line-height: 1;
-    height: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   /* ===== Exercise Picker (종목 추가) ===== */
   .ex-picker-overlay {
     position: fixed; inset: 0;
@@ -1915,6 +1938,7 @@
         <span><span class="legend-dot lower"></span> 하체</span>
         <span><span class="legend-dot full"></span> 전신</span>
         <span><span class="legend-dot cardio"></span> 유산소</span>
+        <span><span class="legend-dot mission"></span> 미션 완료</span>
       </div>
       <div id="logDayDetail"></div>
     </div>
@@ -1935,6 +1959,7 @@
         <span><span class="legend-dot lower"></span> 하체</span>
         <span><span class="legend-dot full"></span> 전신</span>
         <span><span class="legend-dot cardio"></span> 유산소</span>
+        <span><span class="legend-dot mission"></span> 미션 완료</span>
       </div>
       <div id="logMonthDayDetail"></div>
     </div>
