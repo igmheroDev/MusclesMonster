@@ -43,7 +43,7 @@ const addExerciseBlock = appJs.slice(appJs.indexOf('function addExerciseRow'), a
 assert(addExerciseBlock.includes('setRowMode(row, durationActive);'), 'addExerciseRow 끝에서 setRowMode 미호출');
 
 console.log('=== 5. Service Worker: 캐시 갱신 + app.js 네트워크 우선 ===');
-assert(swJs.includes('recovr-cache-v27'), 'SW 캐시 버전이 v27이 아님');
+assert(swJs.includes('recovr-cache-v29'), 'SW 캐시 버전이 v29가 아님');
 assert(swJs.includes('NETWORK_FIRST_PATHS'), 'SW 네트워크 우선 목록 없음');
 assert(swJs.includes('/app.js'), 'SW가 app.js를 네트워크 우선 대상으로 포함하지 않음');
 assert(appJs.includes('reg.update()'), '앱 로드 시 SW update() 호출 없음');
