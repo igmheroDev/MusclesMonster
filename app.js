@@ -234,6 +234,27 @@ function getExerciseSuggestions(query) {
   return results;
 }
 
+// 종목 피커용 전체 운동명 목록 (최근 사용 우선 + 사전)
+function getAllExerciseNames() {
+  const workouts = loadWorkouts();
+  const usedNames = [];
+  [...workouts].reverse().forEach(w => {
+    (w.exercises || []).forEach(ex => {
+      if (ex.name && !usedNames.includes(ex.name)) usedNames.push(ex.name);
+    });
+  });
+
+  const seen = new Set();
+  const results = [];
+  for (const name of [...usedNames, ...COMMON_EXERCISES]) {
+    if (!seen.has(name)) {
+      seen.add(name);
+      results.push(name);
+    }
+  }
+  return results;
+}
+
 
 function loadWorkouts() {
   try {
@@ -2183,6 +2204,7 @@ function addExerciseRow(prefill) {
   row.innerHTML = `
     <div class="exercise-row ${isDuration ? 'duration-mode' : ''}">
       <input type="text" placeholder="예: 스쿼트" class="ex-name" value="${prefill?.name || ''}" autocomplete="off">
+      <button type="button" class="row-pick-btn" title="종목에서 선택">📋</button>
       <button class="row-mode-toggle" title="시간 입력으로 전환" style="${isDuration ? 'display:none' : ''}">⏱</button>
       <button class="row-mode-toggle" title="세트 입력으로 전환" style="${isDuration ? '' : 'display:none'}">🏋️</button>
       <button class="row-del" onclick="this.closest('.exercise-row-wrap').remove()">✕</button>
@@ -2197,9 +2219,17 @@ function addExerciseRow(prefill) {
 
   const nameInput = row.querySelector('.ex-name');
   const suggestBox = row.querySelector('.ex-suggest');
+  const pickBtn = row.querySelector('.row-pick-btn');
   const toggleBtns = row.querySelectorAll('.row-mode-toggle');
   const checklist = row.querySelector('.set-checklist');
   const addSetBtn = row.querySelector('.add-set-btn');
+
+  if (pickBtn) {
+    pickBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (typeof ExercisePicker !== 'undefined') ExercisePicker.open(row);
+    });
+  }
 
   toggleBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
