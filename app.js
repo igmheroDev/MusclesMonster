@@ -265,12 +265,18 @@ function triggerAutoBackup() {
 }
 
 function buildBackupPayload() {
-  return {
+  const payload = {
     workouts: loadWorkouts(),
     settings: loadSettings(),
     templates: loadTemplates(),
     exportedAt: new Date().toISOString(),
   };
+  // 데일리 미션 완료 기록도 백업에 포함
+  try {
+    const missionRaw = localStorage.getItem('recovr_daily_missions_v1');
+    if (missionRaw) payload.dailyMissions = JSON.parse(missionRaw);
+  } catch (_) {}
+  return payload;
 }
 
 // ============================================================
@@ -916,6 +922,13 @@ function renderHome() {
     console.warn('[RECOVR] AI 코치 카드 렌더 실패:', e);
   }
 
+  // 데일리 미션 카드
+  try {
+    if (typeof DailyMission !== 'undefined') DailyMission.renderHomeCard();
+  } catch (e) {
+    console.warn('[RECOVR] 데일리 미션 카드 렌더 실패:', e);
+  }
+
   // muscle list
   const muscleList = document.getElementById('muscleList');
   muscleList.innerHTML = '';
@@ -1430,11 +1443,17 @@ function renderWeekStrip(byDate) {
   mid.setDate(mid.getDate() + 3);
   document.getElementById('weekLabel').textContent = `${mid.getFullYear()}년 ${mid.getMonth()+1}월`;
 
+  // 미션 스탬프 날짜 세트 (DailyMission 모듈 연동)
+  const stampedSet = (typeof DailyMission !== 'undefined')
+    ? new Set(DailyMission.getStampedDates())
+    : new Set();
+
   for (let i = 0; i < 7; i++) {
     const d = new Date(ref);
     d.setDate(d.getDate() + i);
     const dateStr = formatDate(d);
     const dayWorkouts = byDate[dateStr] || [];
+    const hasStamp = stampedSet.has(dateStr);
 
     let cls = 'week-strip-day';
     if (dateStr === today) cls += ' today';
@@ -1451,11 +1470,15 @@ function renderWeekStrip(byDate) {
       icon = ACTIVITY_ICONS[primaryType] || '🏋️';
     }
 
+    // 미션 완료 표시 (아이콘 아래 작은 도장)
+    const missionBadge = hasStamp ? `<div class="wsd-mission">🎯</div>` : `<div class="wsd-mission"></div>`;
+
     grid.innerHTML += `
       <div class="${cls}" onclick="selectCalDay('${dateStr}')">
         <div class="wsd-dow">${dowLabels[i]}</div>
         <div class="wsd-date">${d.getDate()}</div>
         <div class="wsd-icon">${icon}</div>
+        ${missionBadge}
       </div>`;
   }
 }
@@ -1490,6 +1513,11 @@ function renderMonthGrid(byDate) {
 
   const today = formatDate(new Date());
 
+  // 미션 스탬프 날짜 세트 (DailyMission 모듈 연동)
+  const stampedSet = (typeof DailyMission !== 'undefined')
+    ? new Set(DailyMission.getStampedDates())
+    : new Set();
+
   const grid = document.getElementById('calGrid');
   grid.innerHTML = '';
 
@@ -1501,17 +1529,22 @@ function renderMonthGrid(byDate) {
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = formatDate(new Date(year, month, day));
     const dayWorkouts = byDate[dateStr] || [];
+    const hasStamp = stampedSet.has(dateStr);
     let cls = 'cal-day';
     if (dateStr === today) cls += ' today';
     if (dateStr === calSelectedDate) cls += ' selected';
+    if (hasStamp) cls += ' mission-stamp';
 
     let dots = '';
     dayWorkouts.forEach(w => {
       dots += `<div class="cal-dot ${w.type}"></div>`;
     });
 
+    const stampBadge = hasStamp ? `<span class="cal-stamp-badge">🎯</span>` : '';
+
     grid.innerHTML += `
       <div class="${cls}" onclick="selectCalDay('${dateStr}')">
+        ${stampBadge}
         <div>${day}</div>
         <div style="display:flex;gap:2px">${dots}</div>
       </div>`;
@@ -2492,6 +2525,9 @@ function importData(event) {
       if (data.workouts) saveWorkouts(data.workouts);
       if (data.settings) saveSettingsToStorage(data.settings);
       if (data.templates) saveTemplates(data.templates);
+      if (data.dailyMissions) {
+        localStorage.setItem('recovr_daily_missions_v1', JSON.stringify(data.dailyMissions));
+      }
       if (typeof UserProfile !== 'undefined') UserProfile.fillForm(loadSettings());
       alert('데이터를 불러왔어요.');
       renderHome(); renderLog(); renderStats();
