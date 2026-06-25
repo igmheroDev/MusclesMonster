@@ -1438,6 +1438,177 @@
     background: rgba(255,59,92,0.15);
     color: var(--red);
   }
+
+  /* ===== Daily Mission ===== */
+  .dm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .dm-card.completed {
+    border-color: rgba(255,214,0,0.35);
+    background: rgba(255,214,0,0.03);
+  }
+
+  .dm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+  .dm-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dm-header-icon { font-size: 26px; }
+  .dm-title { font-size: 14px; font-weight: 700; }
+  .dm-set-name { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .dm-progress-badge {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--yellow);
+    flex-shrink: 0;
+  }
+
+  .dm-completed-banner {
+    background: rgba(255,214,0,0.08);
+    border: 1px solid rgba(255,214,0,0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--yellow);
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .dm-streak-pill {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: rgba(255,107,53,0.15);
+    color: var(--orange);
+    border-radius: 20px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .dm-total-pill {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: rgba(0,229,255,0.1);
+    color: var(--cyan);
+    border-radius: 20px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .dm-missions-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .dm-mission-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dm-mission-item:active { transform: scale(0.97); }
+  .dm-mission-item.done {
+    background: rgba(0,255,157,0.05);
+    border-color: rgba(0,255,157,0.18);
+  }
+  .dm-mission-item.done .dm-mission-name {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .dm-mission-check {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--muted2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    color: transparent;
+    flex-shrink: 0;
+    transition: all 0.18s;
+  }
+  .dm-mission-check.checked {
+    background: var(--green);
+    border-color: var(--green);
+    color: var(--bg);
+  }
+
+  .dm-mission-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .dm-mission-icon { font-size: 18px; flex-shrink: 0; }
+  .dm-mission-name { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; }
+  .dm-mission-target {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cyan);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .dm-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 14px;
+  }
+  .dm-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+    min-width: 0;
+  }
+  .dm-bar-label {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: right;
+  }
+
+  /* ===== 캘린더 미션 스탬프 ===== */
+  .cal-day.mission-stamp {
+    position: relative;
+  }
+  .cal-stamp-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 9px;
+    line-height: 1;
+  }
+  .week-strip-day .wsd-mission {
+    font-size: 10px;
+    line-height: 1;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 </style>
 </head>
 <body>
@@ -1468,6 +1639,8 @@
 
       <div class="week-bar" id="weekBar"></div>
     </div>
+
+    <div id="dailyMissionCard"></div>
 
     <div id="cardioHomeCard"></div>
 
@@ -1891,6 +2064,7 @@
 <script src="recommendation.js"></script>
 <script src="workoutAdvice.js"></script>
 <script src="aiCoach.js"></script>
+<script src="dailyMission.js"></script>
 <script>init();</script>
 </body>
 </html>
