@@ -31,9 +31,13 @@
     --violet: #a78bfa;
     --cardio: #e879f9;
 
-    --mission-lemon-fill: rgba(255, 241, 118, 0.48);
-    --mission-lemon-border: #ffeb3b;
-    --mission-lemon-text: #2e2800;
+    --cal-workout-fill: rgba(100, 181, 246, 0.34);
+    --cal-workout-border: rgba(100, 181, 246, 0.62);
+    --cal-mission-fill: rgba(129, 199, 132, 0.34);
+    --cal-mission-border: rgba(129, 199, 132, 0.62);
+    --cal-both-fill: rgba(255, 213, 79, 0.46);
+    --cal-both-border: rgba(255, 193, 7, 0.82);
+    --cal-both-text: #2e2800;
   }
 
   /* ===== Light mode ===== */
@@ -55,9 +59,13 @@
     --violet: #8b6cd6;
     --cardio: #c026d3;
 
-    --mission-lemon-fill: #fff59d;
-    --mission-lemon-border: #f9d71c;
-    --mission-lemon-text: #3d3500;
+    --cal-workout-fill: #e3f2fd;
+    --cal-workout-border: #90caf9;
+    --cal-mission-fill: #e8f5e9;
+    --cal-mission-border: #a5d6a7;
+    --cal-both-fill: #fff8e1;
+    --cal-both-border: #ffca28;
+    --cal-both-text: #4a3f00;
   }
 
   body.light nav {
@@ -910,12 +918,46 @@
     height: 16px;
   }
   .week-strip-day.today { box-shadow: 0 0 0 1.5px var(--green) inset; }
-  .week-strip-day.selected { background: var(--card-hover); box-shadow: 0 0 0 1.5px var(--cyan) inset; }
-  .week-strip-day.has-workout.upper { border-color: rgba(0,229,255,0.3); background: rgba(0,229,255,0.06); }
-  .week-strip-day.has-workout.lower { border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.06); }
-  .week-strip-day.has-workout.full { border-color: rgba(0,255,157,0.3); background: rgba(0,255,157,0.06); }
-  .week-strip-day.has-workout.cardio { border-color: rgba(232,121,249,0.3); background: rgba(232,121,249,0.06); }
+  .week-strip-day.selected { box-shadow: 0 0 0 1.5px var(--cyan) inset; }
   .week-strip-day:active { background: var(--card-hover); }
+
+  .cal-day.cal-status-workout,
+  .week-strip-day.cal-status-workout {
+    background: var(--cal-workout-fill);
+    border-color: var(--cal-workout-border);
+  }
+  .cal-day.cal-status-mission,
+  .week-strip-day.cal-status-mission {
+    background: var(--cal-mission-fill);
+    border-color: var(--cal-mission-border);
+  }
+  .cal-day.cal-status-both,
+  .week-strip-day.cal-status-both {
+    background: var(--cal-both-fill);
+    border-color: var(--cal-both-border);
+    color: var(--cal-both-text);
+  }
+  .week-strip-day.cal-status-both .wsd-date {
+    color: var(--cal-both-text);
+    font-weight: 800;
+  }
+  .cal-day.cal-status-both { font-weight: 700; }
+  .cal-day.cal-status-workout.today,
+  .cal-day.cal-status-mission.today,
+  .cal-day.cal-status-both.today,
+  .week-strip-day.cal-status-workout.today,
+  .week-strip-day.cal-status-mission.today,
+  .week-strip-day.cal-status-both.today {
+    box-shadow: 0 0 0 2px var(--green) inset;
+  }
+  .cal-day.cal-status-workout.selected,
+  .cal-day.cal-status-mission.selected,
+  .cal-day.cal-status-both.selected,
+  .week-strip-day.cal-status-workout.selected,
+  .week-strip-day.cal-status-mission.selected,
+  .week-strip-day.cal-status-both.selected {
+    box-shadow: 0 0 0 2px var(--cyan) inset;
+  }
 
   .cal-header {
     display: flex;
@@ -984,7 +1026,7 @@
   .cal-dot.cardio { background: var(--cardio); }
 
   .cal-legend {
-    display: flex; gap: 16px; justify-content: center;
+    display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: center;
     font-size: 11px; color: var(--muted);
   }
   .cal-legend span { display: flex; align-items: center; gap: 5px; }
@@ -993,40 +1035,25 @@
   .legend-dot.lower { background: var(--orange); }
   .legend-dot.full { background: var(--green); }
   .legend-dot.cardio { background: var(--cardio); }
-  .legend-dot.mission {
-    background: var(--mission-lemon-fill);
-    border: 1px solid var(--mission-lemon-border);
+  .legend-swatch {
+    width: 10px;
+    height: 10px;
     border-radius: 3px;
+    display: inline-block;
+    border: 1px solid var(--border);
+    background: var(--surface);
   }
-
-  .cal-day.mission-stamp,
-  .week-strip-day.mission-stamp {
-    background: var(--mission-lemon-fill);
-    border-color: var(--mission-lemon-border);
-    box-shadow: inset 0 0 0 1px rgba(255, 235, 59, 0.28);
+  .legend-swatch.cal-status-workout {
+    background: var(--cal-workout-fill);
+    border-color: var(--cal-workout-border);
   }
-  .cal-day.mission-stamp {
-    color: var(--mission-lemon-text);
-    font-weight: 700;
+  .legend-swatch.cal-status-mission {
+    background: var(--cal-mission-fill);
+    border-color: var(--cal-mission-border);
   }
-  .cal-day.mission-stamp.today {
-    box-shadow: 0 0 0 2px var(--green) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
-  }
-  .cal-day.mission-stamp.selected {
-    box-shadow: 0 0 0 2px var(--cyan) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
-  }
-  .cal-day.mission-stamp:active {
-    filter: brightness(0.96);
-  }
-  .week-strip-day.mission-stamp .wsd-date {
-    color: var(--mission-lemon-text);
-    font-weight: 800;
-  }
-  .week-strip-day.mission-stamp.today {
-    box-shadow: 0 0 0 2px var(--green) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
-  }
-  .week-strip-day.mission-stamp.selected {
-    box-shadow: 0 0 0 2px var(--cyan) inset, inset 0 0 0 1px rgba(255, 235, 59, 0.28);
+  .legend-swatch.cal-status-both {
+    background: var(--cal-both-fill);
+    border-color: var(--cal-both-border);
   }
 
   /* ===== Cardio ===== */
@@ -1934,11 +1961,16 @@
       </div>
       <div class="week-strip" id="weekStrip"></div>
       <div class="cal-legend" style="margin-top:8px;margin-bottom:0">
+        <span><span class="legend-swatch"></span> 일반</span>
+        <span><span class="legend-swatch cal-status-workout"></span> 운동</span>
+        <span><span class="legend-swatch cal-status-mission"></span> 미션</span>
+        <span><span class="legend-swatch cal-status-both"></span> 둘 다</span>
+      </div>
+      <div class="cal-legend" style="margin-top:6px;margin-bottom:0">
         <span><span class="legend-dot upper"></span> 상체</span>
         <span><span class="legend-dot lower"></span> 하체</span>
         <span><span class="legend-dot full"></span> 전신</span>
         <span><span class="legend-dot cardio"></span> 유산소</span>
-        <span><span class="legend-dot mission"></span> 미션 완료</span>
       </div>
       <div id="logDayDetail"></div>
     </div>
@@ -1955,11 +1987,16 @@
       </div>
       <div class="cal-grid" id="calGrid"></div>
       <div class="cal-legend" style="margin-top:8px;margin-bottom:0">
+        <span><span class="legend-swatch"></span> 일반</span>
+        <span><span class="legend-swatch cal-status-workout"></span> 운동</span>
+        <span><span class="legend-swatch cal-status-mission"></span> 미션</span>
+        <span><span class="legend-swatch cal-status-both"></span> 둘 다</span>
+      </div>
+      <div class="cal-legend" style="margin-top:6px;margin-bottom:0">
         <span><span class="legend-dot upper"></span> 상체</span>
         <span><span class="legend-dot lower"></span> 하체</span>
         <span><span class="legend-dot full"></span> 전신</span>
         <span><span class="legend-dot cardio"></span> 유산소</span>
-        <span><span class="legend-dot mission"></span> 미션 완료</span>
       </div>
       <div id="logMonthDayDetail"></div>
     </div>

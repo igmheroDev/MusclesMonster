@@ -1447,6 +1447,22 @@ function changeCalWeek(delta) {
 
 const ACTIVITY_ICONS = { upper: '💪', lower: '🦵', full: '🔥', cardio: '🏃' };
 
+function buildCalendarByDate() {
+  const byDate = {};
+  getCompletedWorkouts().forEach(w => {
+    if (!byDate[w.date]) byDate[w.date] = [];
+    byDate[w.date].push(w);
+  });
+  return byDate;
+}
+
+function getCalStatusClass(hasWorkout, hasMission) {
+  if (hasWorkout && hasMission) return 'cal-status-both';
+  if (hasWorkout) return 'cal-status-workout';
+  if (hasMission) return 'cal-status-mission';
+  return '';
+}
+
 function renderWeekStrip(byDate) {
   const grid = document.getElementById('weekStrip');
   grid.innerHTML = '';
@@ -1474,21 +1490,22 @@ function renderWeekStrip(byDate) {
     d.setDate(d.getDate() + i);
     const dateStr = formatDate(d);
     const dayWorkouts = byDate[dateStr] || [];
-    const hasStamp = stampedSet.has(dateStr);
+    const hasWorkout = dayWorkouts.length > 0;
+    const hasMission = stampedSet.has(dateStr);
 
     let cls = 'week-strip-day';
     if (dateStr === today) cls += ' today';
     if (dateStr === calSelectedDate) cls += ' selected';
-    if (hasStamp) cls += ' mission-stamp';
+    const statusCls = getCalStatusClass(hasWorkout, hasMission);
+    if (statusCls) cls += ` ${statusCls}`;
 
     let icon = '';
-    if (dayWorkouts.length > 0) {
+    if (hasWorkout) {
       const types = new Set(dayWorkouts.map(w => w.type));
       let primaryType;
       if (types.has('cardio') && types.size === 1) primaryType = 'cardio';
       else if (types.has('lower') && types.has('upper')) primaryType = 'full';
       else primaryType = [...types][0];
-      cls += ` has-workout ${primaryType}`;
       icon = ACTIVITY_ICONS[primaryType] || '🏋️';
     }
 
@@ -1502,12 +1519,7 @@ function renderWeekStrip(byDate) {
 }
 
 function renderCalendar() {
-  const workouts = loadWorkouts();
-  const byDate = {};
-  workouts.forEach(w => {
-    if (!byDate[w.date]) byDate[w.date] = [];
-    byDate[w.date].push(w);
-  });
+  const byDate = buildCalendarByDate();
 
   if (logTabMode === 'week') {
     renderWeekStrip(byDate);
@@ -1547,11 +1559,13 @@ function renderMonthGrid(byDate) {
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = formatDate(new Date(year, month, day));
     const dayWorkouts = byDate[dateStr] || [];
-    const hasStamp = stampedSet.has(dateStr);
+    const hasWorkout = dayWorkouts.length > 0;
+    const hasMission = stampedSet.has(dateStr);
     let cls = 'cal-day';
     if (dateStr === today) cls += ' today';
     if (dateStr === calSelectedDate) cls += ' selected';
-    if (hasStamp) cls += ' mission-stamp';
+    const statusCls = getCalStatusClass(hasWorkout, hasMission);
+    if (statusCls) cls += ` ${statusCls}`;
 
     let dots = '';
     dayWorkouts.forEach(w => {
