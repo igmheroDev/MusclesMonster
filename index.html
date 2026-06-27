@@ -1019,22 +1019,22 @@
   .cal-day.selected { box-shadow: 0 0 0 1.5px var(--cyan) inset; }
   .cal-day:active { background: var(--card-hover); }
 
-  .cal-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .cal-dot.upper { background: var(--cyan); }
-  .cal-dot.lower { background: var(--orange); }
-  .cal-dot.full { background: var(--green); }
-  .cal-dot.cardio { background: var(--cardio); }
+  .cal-dot { width: 6px; height: 6px; flex-shrink: 0; }
+  .cal-dot.upper { background: var(--cyan); clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+  .cal-dot.lower { background: var(--orange); clip-path: polygon(0% 0%, 100% 0%, 50% 100%); }
+  .cal-dot.full { background: var(--green); border-radius: 1px; }
+  .cal-dot.cardio { background: var(--cardio); border-radius: 50%; }
 
   .cal-legend {
     display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: center;
     font-size: 11px; color: var(--muted);
   }
   .cal-legend span { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-  .legend-dot.upper { background: var(--cyan); }
-  .legend-dot.lower { background: var(--orange); }
-  .legend-dot.full { background: var(--green); }
-  .legend-dot.cardio { background: var(--cardio); }
+  .legend-dot { width: 8px; height: 8px; display: inline-block; flex-shrink: 0; }
+  .legend-dot.upper { background: var(--cyan); clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+  .legend-dot.lower { background: var(--orange); clip-path: polygon(0% 0%, 100% 0%, 50% 100%); }
+  .legend-dot.full { background: var(--green); border-radius: 1px; }
+  .legend-dot.cardio { background: var(--cardio); border-radius: 50%; }
   .legend-swatch {
     width: 10px;
     height: 10px;
