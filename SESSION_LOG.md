@@ -12,16 +12,18 @@
 ```
 MusclesMonster/
 ├── index.html        # UI 전체 (뷰, 스타일, 모달, AI 채팅 포함)
-├── app.js            # 메인 로직 (~2530줄)
+├── app.js            # 메인 로직 (~2665줄)
 ├── durationTimer.js  # 시간 운동 스톱워치 모듈 (세트별 시작/정지)
 ├── cardioTracker.js  # 유산소(심폐지구력) 추적 모듈 (프리셋·주간 통계)
-├── recommendation.js # 운동 추천 모듈 (독립 모듈, 드롭다운 선택)
+├── dailyMission.js   # 데일리 미션 시스템 (홈트·재활·체중감량, 캘린더 연동)
+├── exercisePicker.js # 운동 종목 목록 피커 (카테고리·검색·최근 수행)
+├── recommendation.js # 운동 추천 모듈 (12종 유형, 드롭다운 선택)
 ├── userProfile.js    # 사용자 프로필 모듈 (신체정보·목표·회복 보정)
 ├── workoutAdvice.js  # 운동 패턴 조언 모듈 (독립 모듈)
 ├── aiCoach.js        # AI 코치 상담 모듈 (Gemini Flash, BYOK)
 ├── backupStorage.js  # IndexedDB 백업 핸들 저장
 ├── backupWriter.js   # File System API 백업 쓰기
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v24)
+├── sw.js             # Service Worker (PWA 캐싱, 현재 v30)
 ├── manifest.json     # PWA 메타 정보
 ├── icon-192.png      # PWA 앱 아이콘
 ├── icon-512.png      # PWA 앱 아이콘
@@ -29,6 +31,8 @@ MusclesMonster/
 ├── test-cardio-tracker.js      # CardioTracker 단위 테스트
 ├── test-profile-integration.js # 프로필 연동 검증
 ├── test-add-set-btn.js         # 세트 추가 버튼 5항목 크로스체크
+├── test-daily-mission-profile.js # 데일리 미션 프로필·완료 도장 검증
+├── test-recommendation-types.js  # 추천 12종 유형 검증
 └── SESSION_LOG.md    # 이 파일
 ```
 
@@ -78,6 +82,22 @@ MusclesMonster/
 | `autoDetectMode()` | 운동명 기반 시간 모드 자동 전환 (유산소/모빌리티) |
 | `getWorkoutTypeMeta()` | 운동 타입 메타 (상체/하체/전신/유산소 라벨·색상) |
 | `openCardioModal()` | 유산소 타입으로 운동 기록 모달 열기 |
+| `buildCalendarByDate()` | 완료 운동만 날짜별 그룹 (캘린더 색상용) |
+| `getCalStatusClass()` | 캘린더 칸 상태 클래스 (운동/미션/둘다) |
+
+### dailyMission.js
+- `DailyMission.getMissionsForDate()` — 날짜별 미션 3개 (프로필·상태 기반 시드)
+- `DailyMission.toggleMission()` — 미션 완료 토글 + 도장(stamp) 기록
+- `DailyMission.isDayCompleted()` / `getStampedDates()` — 완료일·캘린더 연동
+- `DailyMission.getMissionContext()` — 목디스크/허리디스크/체중감량/재활 등 상태 감지
+- `DailyMission.renderHomeCard()` — 홈 `오늘의 데일리 미션` 카드
+- 저장 키: `recovr_daily_missions_v1` (백업·import 포함)
+
+### exercisePicker.js
+- `ExercisePicker.open()` — 운동 종목 목록 모달 (카테고리·기구·검색)
+- `ExercisePicker.select()` — 선택 종목을 운동 행에 적용 (빈 행 재사용)
+- `ExercisePicker.getCatalog()` — COMMON_EXERCISES 기반 카탈로그 + 최근 수행일
+- 초성 검색·카테고리 칩(상체/하체/코어/유산소 등) 지원
 
 ### cardioTracker.js
 - `CardioTracker.isCardioExercise()` — 유산소 운동 판별 (키워드 + duration 모드)
@@ -97,11 +117,21 @@ MusclesMonster/
 - `DurationTimer.formatExerciseSummary()` — 기록 표시용 시간 요약
 
 ### recommendation.js
-- `WorkoutRecommendation.compute()` — 10일치 기록 분석 → 4가지 추천 중 1개 선택 (자동)
-- `WorkoutRecommendation.setType()` — 드롭다운으로 상·하체 × 유지/성장 직접 선택
+- `WorkoutRecommendation.compute()` — 10일치 기록 분석 → **12종 유형** 중 1개 자동 추천
+- `WorkoutRecommendation.setType()` — 드롭다운으로 유형 직접 선택 (3그룹 optgroup)
 - `WorkoutRecommendation.render()` — 홈 화면 추천 카드 + select 드롭다운
 - `WorkoutRecommendation.apply()` — 추천 내용으로 운동 모달 열기
+- **12종 유형**: 상·하체 유지/성장, 전신 유지, 체중감소, 기능성 유산소, 목·허리 재활, 재활·회복, 가동성, 코어 안정화
+- 유형별 `EXERCISE_PRESETS` 프리셋 운동 목록
 - 선택값 `localStorage` 키: `recovr_rec_selected_v1`
+
+### 캘린더 날짜 색상 규칙 (주간·월간)
+| 상태 | CSS 클래스 | 색상 |
+|------|-----------|------|
+| 일반 | (없음) | 기존 surface |
+| 운동 기록 있음 | `cal-status-workout` | 옅은 파랑 |
+| 데일리 미션 완료 | `cal-status-mission` | 옅은 초록 |
+| 둘 다 완료 | `cal-status-both` | 황금 |
 
 ### workoutAdvice.js
 - `WorkoutAdvice.compute()` — 14일 패턴 분석 (푸시/풀, 상하체, 허리 주의, **유산소 빈도**)
@@ -114,6 +144,8 @@ MusclesMonster/
 - API 키 설정: `settings.geminiApiKey` (localStorage)
 - 대화 기록 키: `recovr_ai_chat_v1`
 - thinkingBudget: 0, maxOutputTokens: 8192, MAX_TOKENS 시 자동 이어쓰기
+- **무료 티어 한도**: 약 15회/분, 1,500회/일 (Google 정책, 변경 가능) — 무제한 아님
+- 서버 없음(BYOK) → 앱 운영 비용 0, 한도는 사용자 API 키 기준
 
 ### 회복 시간 로직
 ```
@@ -367,6 +399,68 @@ MusclesMonster/
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v24`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 7 — 2026-06-24
+
+**데일리 미션 시스템 (PR #17, #19)**
+- `dailyMission.js` 신규 독립 모듈 — 홈트·재활·체중감량 미션 3개/일
+- 홈 `오늘의 데일리 미션` 카드 + 탭으로 완료 체크
+- 프로필 목표·부상 메모 기반 상태 감지 (목디스크/허리디스크/재활/체중감량 등)
+- 완료 시 `stamp: true` 저장 → 캘린더 연동
+- **PR #19**: 상태별 미션 풀 분리 (고충격 동작 제외, 재활 맞춤 운동)
+- `test-daily-mission-profile.js` 검증 스크립트 추가
+- 백업·import 시 `dailyMissions` 포함
+
+**운동 종목 피커 (PR #18)**
+- `exercisePicker.js` 신규 독립 모듈 — 종목 목록에서 선택
+- 카테고리 칩·기구 필터·초성 검색·최근 수행일 표시
+- 빈 운동 행 재사용 (중복 행 방지)
+
+**홈 추천 12종 확장 (PR #20)**
+- `recommendation.js` 4종 → **12종** (근력 5 + 체형·유산소 2 + 재활·웰니스 5)
+- 드롭다운 optgroup 3그룹 UI
+- 유형별 프리셋 운동·팁·점수 보정 로직 확장
+- `test-recommendation-types.js` 추가
+
+**캘린더 미션·운동 색상 (PR #21 → #22)**
+- **PR #21**: 미션 완료일 레몬색 채우기 (이후 #22로 대체)
+- **PR #22**: 날짜 상태별 4색 체계 확정
+  - 일반: 기존 흰색/서피스
+  - 운동: 옅은 파랑 (`cal-status-workout`)
+  - 미션: 옅은 초록 (`cal-status-mission`)
+  - 둘 다: 황금 (`cal-status-both`)
+- `buildCalendarByDate()` / `getCalStatusClass()` 추가 (완료 운동만 색상 판단)
+- 범례 2줄: 상태 색상 + 운동 종류 점(상체/하체/전신/유산소)
+
+**논의·정리 (코드 변경 없음)**
+- AI 코치: 클라우드 API 무료 **무제한은 없음** (Gemini 무료 티어 한도). 규칙 기반 추천·미션·조언은 토큰 0
+- PWA 설치 앱: 머지 후 **온라인 + 앱 재실행** 시 반영, 오프라인은 캐시 버전으로 동작
+
+**머지된 PR 목록**
+| PR | 내용 |
+|----|------|
+| #17 | 데일리 미션 시스템 |
+| #18 | ExercisePicker 종목 선택 |
+| #19 | 상태 맞춤형 재활 데일리 미션 |
+| #20 | 홈 추천 12종 확장 |
+| #21 | 미션 완료일 레몬색 (→ #22로 대체) |
+| #22 | 캘린더 상태별 색상 (파랑·초록·황금) |
+
+**다음 세션 후보 작업**
+- [ ] AI 한도 초과 시 규칙 기반 답변 폴백 (하이브리드)
+- [ ] PWA 설치형 앱 업데이트 안내 UI
+- [ ] 미션 완료 시 캘린더 즉시 갱신 (현재 탭 전환 시 반영)
+- [ ] 유산소 세부 지표 (거리 km, 칼로리, 심박수) 입력 옵션
+- [ ] 운동 목표 설정 (월별 목표 횟수·유산소 시간 등)
+- [ ] 세트 간 휴식 타이머
+- [ ] 근육 히트맵 다이어그램 (전면/후면 신체 실루엣)
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v30`
 
 **현재 앱 버전**: `1.0.0`
 
