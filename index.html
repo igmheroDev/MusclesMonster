@@ -469,20 +469,28 @@
     margin-top: 4px;
   }
   .add-exercise-actions .add-exercise-btn { flex: 1; margin-top: 0; }
-  .pick-exercise-btn {
-    flex: 1;
-    padding: 10px;
+  .exercise-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .exercise-section-head .form-label { margin-bottom: 0; }
+  .pick-exercise-top-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
     border: 1px solid rgba(0,229,255,0.25);
     background: rgba(0,229,255,0.06);
     color: var(--cyan);
-    border-radius: 10px;
-    font-size: 12px;
+    border-radius: 20px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    margin-top: 0;
     font-family: 'Inter', sans-serif;
+    white-space: nowrap;
   }
-  .pick-exercise-btn:active { background: rgba(0,229,255,0.12); }
+  .pick-exercise-top-btn:active { background: rgba(0,229,255,0.12); }
 
   .exercise-row-wrap {
     position: relative;
@@ -2328,12 +2336,12 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">운동 항목</label>
-      <div id="exerciseRows"></div>
-      <div class="add-exercise-actions">
-        <button class="add-exercise-btn" onclick="addExerciseRow()">+ 운동 추가</button>
-        <button type="button" class="pick-exercise-btn" onclick="ExercisePicker.open()">📋 종목에서 선택</button>
+      <div class="exercise-section-head">
+        <label class="form-label">운동 항목</label>
+        <button type="button" class="pick-exercise-top-btn" onclick="openExercisePickerTop()">📋 종목에서 선택</button>
       </div>
+      <div id="exerciseRows"></div>
+      <button class="add-exercise-btn" onclick="addExerciseRowAndPick()">+ 운동 추가</button>
     </div>
 
     <button class="save-btn" id="saveBtn" onclick="saveWorkout()">저장하기</button>
