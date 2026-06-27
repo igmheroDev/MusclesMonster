@@ -2119,7 +2119,7 @@ function openModal() {
   document.getElementById('workoutTime').value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   document.getElementById('workoutDuration').value = 100;
   document.getElementById('exerciseRows').innerHTML = '';
-  addExerciseRow();
+  addExerciseRowAndPick();
   selectType('upper');
   selectFatigue(3);
   if (typeof CardioTracker !== 'undefined') CardioTracker.togglePresetArea(false);
@@ -2143,7 +2143,7 @@ function openModalWithPrefill({ type, exercises, title }) {
   document.getElementById('exerciseRows').innerHTML = '';
 
   (exercises || []).forEach(ex => addExerciseRow(ex));
-  if (!exercises || exercises.length === 0) addExerciseRow();
+  if (!exercises || exercises.length === 0) addExerciseRowAndPick();
 
   selectType(type || 'upper');
   populateTemplateSelect();
@@ -2200,6 +2200,34 @@ function selectType(type) {
   if (isCardio && durationInput && (!durationInput.value || durationInput.value === '100')) {
     durationInput.value = 30;
   }
+}
+
+function getLastExerciseRow() {
+  const rows = document.querySelectorAll('#exerciseRows .exercise-row-wrap');
+  return rows.length ? rows[rows.length - 1] : null;
+}
+
+function openExercisePickerForRow(row) {
+  if (typeof ExercisePicker === 'undefined' || !row) return;
+  setTimeout(() => ExercisePicker.open(row), 120);
+}
+
+function addExerciseRowAndPick(prefill) {
+  addExerciseRow(prefill);
+  if (!prefill?.name) {
+    openExercisePickerForRow(getLastExerciseRow());
+  }
+}
+
+function openExercisePickerTop() {
+  if (typeof ExercisePicker === 'undefined') return;
+  const emptyRow = getLastExerciseRow();
+  const nameInput = emptyRow?.querySelector('.ex-name');
+  if (emptyRow && nameInput && !nameInput.value.trim()) {
+    openExercisePickerForRow(emptyRow);
+    return;
+  }
+  ExercisePicker.open();
 }
 
 function addExerciseRow(prefill) {
