@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v31';
+const CACHE_NAME = 'recovr-cache-v32';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,9 @@ const ASSETS = [
   './userProfile.js',
   './workoutUtils.js',
   './durationTimer.js',
+  './durationAutoSave.js',
   './restTimer.js',
+  './pwaUpdate.js',
   './cardioTracker.js',
   './backupStorage.js',
   './backupWriter.js',
@@ -26,7 +28,9 @@ const NETWORK_FIRST_PATHS = [
   '/app.js',
   '/workoutUtils.js',
   '/durationTimer.js',
+  '/durationAutoSave.js',
   '/restTimer.js',
+  '/pwaUpdate.js',
   '/cardioTracker.js',
   '/userProfile.js',
   '/backupStorage.js',
@@ -49,7 +53,12 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
-  self.skipWaiting();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {

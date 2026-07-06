@@ -2658,6 +2658,9 @@ function init() {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').then((reg) => {
         reg.update();
+        try {
+          if (typeof PwaUpdate !== 'undefined') PwaUpdate.init(reg);
+        } catch (e) { /* ignore */ }
       }).catch(() => {});
     });
   }
@@ -2691,6 +2694,10 @@ function init() {
 
   try {
     if (typeof RestTimer !== 'undefined') RestTimer.init();
+  } catch (e) { /* ignore */ }
+
+  try {
+    if (typeof DurationAutoSave !== 'undefined') DurationAutoSave.init();
   } catch (e) { /* ignore */ }
 
   // refresh recovery every 60s while app is open
