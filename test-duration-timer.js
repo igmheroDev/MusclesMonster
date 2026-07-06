@@ -37,5 +37,10 @@ assert(
 assert(typeof DurationTimer.readFromWrap === 'function', 'readFromWrap exists');
 assert(typeof DurationTimer.freezeActiveTimer === 'function', 'freezeActiveTimer exists');
 
+assert(DurationTimer.secondsFromParts(15, 30) === 930, 'manual parts min+sec');
+assert(DurationTimer.secondsFromParts(0, 45) === 45, 'manual parts sec only');
+assert(DurationTimer.secondsFromParts(10, 99) === 659, 'manual parts sec capped at 59');
+assert(typeof DurationTimer.applyManualSeconds === 'function', 'applyManualSeconds exists');
+
 console.log(failures === 0 ? 'DurationTimer tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);
