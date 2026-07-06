@@ -13,8 +13,8 @@ const WorkoutRecommendation = (() => {
   const GROWTH_WEIGHT_BUMP_MIN_KG = 2.5;
   const WEEKLY_CARDIO_GOAL_MINUTES = 150;
 
-  const UPPER_MUSCLES = ['chest', 'back', 'shoulder', 'biceps', 'triceps'];
-  const LOWER_MUSCLES = ['quads', 'hamstrings', 'adductors', 'calves'];
+  const UPPER_MUSCLES = WorkoutUtils.UPPER_MUSCLES;
+  const LOWER_MUSCLES = WorkoutUtils.LOWER_MUSCLES;
 
   const TYPE_META = {
     upper_maintain:   { label: '상체 유지',       icon: '🔄', workoutType: 'upper',  mode: 'maintain',   accent: 'var(--cyan)',   category: 'strength' },
@@ -139,13 +139,6 @@ const WorkoutRecommendation = (() => {
 
   function getBestTypeId(scores) {
     return Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
-  }
-
-  function getWorkoutsInLookback(workouts, days) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    cutoff.setHours(0, 0, 0, 0);
-    return workouts.filter(w => new Date(`${w.date}T12:00:00`) >= cutoff);
   }
 
   function getHistorySpanDays(workouts) {
@@ -545,8 +538,8 @@ const WorkoutRecommendation = (() => {
 
   function buildStats(workouts, settings) {
     const recovery = calcMuscleRecovery(workouts, settings);
-    const recent = getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
-    const weekRecent = getWorkoutsInLookback(workouts, 7);
+    const recent = WorkoutUtils.getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
+    const weekRecent = WorkoutUtils.getWorkoutsInLookback(workouts, 7);
     const weekSessionCount = countWeekSessions(workouts);
 
     const allMuscles = [...UPPER_MUSCLES, ...LOWER_MUSCLES];

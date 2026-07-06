@@ -22,6 +22,8 @@ function loadModule(file, exportName) {
 const UserProfile = loadModule('userProfile.js', 'UserProfile');
 global.UserProfile = UserProfile;
 
+global.WorkoutUtils = loadModule('workoutUtils.js', 'WorkoutUtils');
+
 global.calcMuscleRecovery = () => ({});
 global.getMusclesFromExerciseName = () => [];
 global.getExerciseVolume = () => 0;

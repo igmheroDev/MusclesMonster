@@ -14,6 +14,8 @@ MusclesMonster/
 ├── index.html        # UI 전체 (뷰, 스타일, 모달, AI 채팅 포함)
 ├── app.js            # 메인 로직 (~2665줄)
 ├── durationTimer.js  # 시간 운동 스톱워치 모듈 (세트별 시작/정지)
+├── restTimer.js      # 세트 간 휴식 타이머 (카운트다운·진동·설정)
+├── workoutUtils.js   # 운동 분석 공통 유틸 (lookback·근육 그룹 상수)
 ├── cardioTracker.js  # 유산소(심폐지구력) 추적 모듈 (프리셋·주간 통계)
 ├── dailyMission.js   # 데일리 미션 시스템 (홈트·재활·체중감량, 캘린더 연동)
 ├── exercisePicker.js # 운동 종목 목록 피커 (카테고리·검색·최근 수행)
@@ -23,11 +25,13 @@ MusclesMonster/
 ├── aiCoach.js        # AI 코치 상담 모듈 (Gemini Flash, BYOK)
 ├── backupStorage.js  # IndexedDB 백업 핸들 저장
 ├── backupWriter.js   # File System API 백업 쓰기
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v30)
+├── sw.js             # Service Worker (PWA 캐싱, 현재 v31)
 ├── manifest.json     # PWA 메타 정보
 ├── icon-192.png      # PWA 앱 아이콘
 ├── icon-512.png      # PWA 앱 아이콘
 ├── test-duration-timer.js      # DurationTimer 단위 테스트
+├── test-rest-timer.js          # RestTimer 단위 테스트
+├── test-workout-utils.js       # WorkoutUtils 단위 테스트
 ├── test-cardio-tracker.js      # CardioTracker 단위 테스트
 ├── test-profile-integration.js # 프로필 연동 검증
 ├── test-add-set-btn.js         # 세트 추가 버튼 5항목 크로스체크
@@ -511,6 +515,37 @@ MusclesMonster/
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v30`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 9 — 2026-07-06
+
+**세트 간 휴식 타이머**
+- `restTimer.js` 신규 독립 모듈 — 세트 완료 시 카운트다운 · 진동 알림
+- 무게 모드(✓ 체크) · 시간 모드(✓ 체크·스톱워치 정지) 모두 연동
+- 설정 탭: 사용 on/off, 기본 휴식 60/90/120/180초 프리셋 · 직접 입력(10~600초)
+- 운동 모달 하단 sticky 오버레이: 카운트다운 · 진행 바 · +30초 · 건너뛰기
+- `settings.restTimer` localStorage 저장 (백업·import 자동 포함)
+- `test-rest-timer.js` 단위 테스트 추가
+
+**중복 로직 정리**
+- `workoutUtils.js` 신규 — `getWorkoutsInLookback()`, `UPPER_MUSCLES`, `LOWER_MUSCLES` 일원화
+- `recommendation.js` · `workoutAdvice.js` · `aiCoach.js` 중복 함수·상수 제거
+- `UPPER_MUSCLES`에 `forearms` 포함으로 통일 (기존 recommendation.js 누락 수정)
+- `test-workout-utils.js` 단위 테스트 추가
+
+**다음 세션 후보 작업**
+- [ ] 스톱워치 실행 중 주기적 자동 저장 (크래시 복구 강화)
+- [ ] AI 한도 초과 시 규칙 기반 답변 폴백 (하이브리드)
+- [ ] PWA 설치형 앱 업데이트 안내 UI
+- [ ] 유산소 세부 지표 (거리 km, 칼로리, 심박수) 입력 옵션
+- [ ] 운동 목표 설정 (월별 목표 횟수·유산소 시간 등)
+- [ ] 근육 히트맵 다이어그램 (전면/후면 신체 실루엣)
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v31`
 
 **현재 앱 버전**: `1.0.0`
 

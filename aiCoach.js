@@ -65,13 +65,6 @@ const AiCoach = (() => {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory.slice(-MAX_HISTORY)));
   }
 
-  function getWorkoutsInLookback(workouts, days) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    cutoff.setHours(0, 0, 0, 0);
-    return workouts.filter(w => new Date(`${w.date}T12:00:00`) >= cutoff);
-  }
-
   function summarizeExercise(ex) {
     if (!ex.name) return null;
     if (ex.mode === 'duration') {
@@ -113,7 +106,7 @@ const AiCoach = (() => {
     const workouts = getCompletedWorkouts();
     const settings = loadSettings();
     const recovery = calcMuscleRecovery(workouts, settings);
-    const recent = getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
+    const recent = WorkoutUtils.getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
 
     const active = MUSCLE_ORDER.filter(m => recovery[m]?.lastDate);
     let overallPct = 100;

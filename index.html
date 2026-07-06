@@ -741,6 +741,113 @@
     border-color: rgba(0, 255, 157, 0.35);
     color: var(--green);
   }
+
+  /* rest timer */
+  .rest-timer-overlay {
+    display: none;
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 12px -20px -20px;
+    padding: 14px 16px 16px;
+    background: linear-gradient(180deg, rgba(10, 14, 20, 0) 0%, rgba(10, 14, 20, 0.92) 18%, var(--surface) 100%);
+    border-top: 1px solid var(--border);
+    z-index: 5;
+  }
+  .rest-timer-overlay.visible { display: block; animation: fadeIn 0.2s ease; }
+  .rest-timer-inner {
+    background: var(--card);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    border-radius: 14px;
+    padding: 12px 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+  .rest-timer-label {
+    font-size: 11px;
+    color: var(--cyan);
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .rest-timer-display {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 1px;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .rest-timer-display.rest-timer-done-flash { color: var(--green); }
+  .rest-timer-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px 0 12px;
+    overflow: hidden;
+  }
+  .rest-timer-bar-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    border-radius: 2px;
+    transition: width 0.15s linear;
+  }
+  .rest-timer-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .rest-timer-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .rest-timer-btn-primary {
+    background: rgba(0, 212, 255, 0.12);
+    border-color: rgba(0, 212, 255, 0.35);
+    color: var(--cyan);
+  }
+  .rest-timer-btn:active { background: var(--card-hover); }
+  .rest-preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+  .rest-preset-btn {
+    flex: 1;
+    min-width: 64px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .rest-preset-btn.selected {
+    border-color: rgba(0, 212, 255, 0.45);
+    color: var(--cyan);
+    background: rgba(0, 212, 255, 0.1);
+  }
+  .rest-preset-btn:active { background: var(--card-hover); }
+  .rest-timer-enabled-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .rest-timer-enabled-row input { width: 18px; height: 18px; accent-color: var(--cyan); }
+
   .duration-set-del {
     width: 32px;
     height: 38px;
@@ -2216,6 +2323,33 @@
       <span class="add-link" onclick="requestNotificationPermission()">권한 요청</span>
     </div>
 
+    <div class="section-title" style="margin-top:24px"><span>휴식 타이머</span></div>
+    <div class="settings-row">
+      <div>
+        <div class="sr-label">세트 간 휴식 타이머</div>
+        <div class="sr-sub">세트 완료 시 자동 카운트다운 · 진동 알림</div>
+      </div>
+      <label class="rest-timer-enabled-row">
+        <input type="checkbox" id="restTimerEnabled" onchange="RestTimer.saveFromForm()">
+        사용
+      </label>
+    </div>
+    <div class="settings-row col" id="restTimerSettings">
+      <div class="sr-label">기본 휴식 시간</div>
+      <div class="rest-preset-row">
+        <button type="button" class="rest-preset-btn" data-sec="60" onclick="RestTimer.selectPreset(60)">60초</button>
+        <button type="button" class="rest-preset-btn" data-sec="90" onclick="RestTimer.selectPreset(90)">90초</button>
+        <button type="button" class="rest-preset-btn" data-sec="120" onclick="RestTimer.selectPreset(120)">2분</button>
+        <button type="button" class="rest-preset-btn" data-sec="180" onclick="RestTimer.selectPreset(180)">3분</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <input type="number" id="restTimerSeconds" min="10" max="600" step="5" placeholder="90"
+          style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 12px;color:var(--text);font-size:13px"
+          onchange="RestTimer.saveFromForm()">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap">초 (10~600)</span>
+      </div>
+    </div>
+
     <div class="section-title" style="margin-top:24px"><span>🤖 AI 코치 (Gemini)</span></div>
     <div class="settings-row col">
       <div>
@@ -2479,7 +2613,9 @@
 
 <script src="app.js"></script>
 <script src="userProfile.js"></script>
+<script src="workoutUtils.js"></script>
 <script src="durationTimer.js"></script>
+<script src="restTimer.js"></script>
 <script src="cardioTracker.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>

@@ -9,8 +9,8 @@ const WorkoutAdvice = (() => {
 
   const PUSH_MUSCLES = ['chest', 'shoulder', 'triceps'];
   const PULL_MUSCLES = ['back', 'biceps'];
-  const LOWER_MUSCLES = ['quads', 'hamstrings', 'adductors', 'calves'];
-  const UPPER_MUSCLES = ['chest', 'back', 'shoulder', 'biceps', 'triceps', 'forearms'];
+  const LOWER_MUSCLES = WorkoutUtils.LOWER_MUSCLES;
+  const UPPER_MUSCLES = WorkoutUtils.UPPER_MUSCLES;
 
   const SPINAL_LOAD_KEYWORDS = [
     '데드리프트', '데드', '굿모닝', '백 익스텐션', '벤트오버',
@@ -20,13 +20,6 @@ const WorkoutAdvice = (() => {
 
   const CORE_SUGGESTIONS = ['플랭크', '데드버그', '버드독', '행잉 레그레이즈'];
   const MOBILITY_SUGGESTIONS = ['스트레칭', '모빌리티', '폼롤러', '고관절'];
-
-  function getWorkoutsInLookback(workouts, days) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    cutoff.setHours(0, 0, 0, 0);
-    return workouts.filter(w => new Date(`${w.date}T12:00:00`) >= cutoff);
-  }
 
   function getMuscleVolumeMap(workouts) {
     const map = {};
@@ -146,7 +139,7 @@ const WorkoutAdvice = (() => {
   function compute(workouts) {
     if (workouts.length < MIN_SESSION_COUNT) return null;
 
-    const recent = getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
+    const recent = WorkoutUtils.getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
     if (recent.length === 0) return null;
 
     const volumeMap = getMuscleVolumeMap(recent);

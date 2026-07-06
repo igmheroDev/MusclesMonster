@@ -1797,6 +1797,9 @@ function switchView(viewName) {
     try {
       if (typeof AiCoach !== 'undefined') AiCoach.renderSettings();
     } catch (e) { /* ignore */ }
+    try {
+      if (typeof RestTimer !== 'undefined') RestTimer.fillForm();
+    } catch (e) { /* ignore */ }
   }
 }
 
@@ -2176,6 +2179,7 @@ function openEditModal(idx) {
 
 function closeModal() {
   if (typeof DurationTimer !== 'undefined') DurationTimer.onModalClose();
+  if (typeof RestTimer !== 'undefined') RestTimer.onModalClose();
   document.getElementById('modalOverlay').classList.remove('show');
 }
 
@@ -2683,6 +2687,10 @@ function init() {
 
   try {
     if (typeof AiCoach !== 'undefined') AiCoach.init();
+  } catch (e) { /* ignore */ }
+
+  try {
+    if (typeof RestTimer !== 'undefined') RestTimer.init();
   } catch (e) { /* ignore */ }
 
   // refresh recovery every 60s while app is open
