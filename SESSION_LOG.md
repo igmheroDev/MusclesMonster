@@ -23,15 +23,15 @@ MusclesMonster/
 ├── recommendation.js # 운동 추천 모듈 (12종 유형, 드롭다운 선택)
 ├── userProfile.js    # 사용자 프로필 모듈 (신체정보·목표·회복 보정)
 ├── workoutAdvice.js  # 운동 패턴 조언 모듈 (독립 모듈)
-├── aiCoach.js        # AI 코치 상담 모듈 (Gemini Flash, BYOK)
+├── aiCoachFallback.js # AI 한도 초과 시 규칙 기반 답변 폴백
 ├── backupStorage.js  # IndexedDB 백업 핸들 저장
 ├── backupWriter.js   # File System API 백업 쓰기
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v34)
+├── sw.js             # Service Worker (PWA 캐싱, 현재 v35)
 ├── manifest.json     # PWA 메타 정보
 ├── icon-192.png      # PWA 앱 아이콘
 ├── icon-512.png      # PWA 앱 아이콘
 ├── test-duration-autosave.js   # DurationAutoSave 단위 테스트
-├── test-muscle-heatmap.js      # MuscleHeatmap 단위 테스트
+├── test-ai-coach-fallback.js   # AiCoachFallback 단위 테스트
 ├── test-rest-timer.js          # RestTimer 단위 테스트
 ├── test-workout-utils.js       # WorkoutUtils 단위 테스트
 ├── test-cardio-tracker.js      # CardioTracker 단위 테스트
@@ -627,6 +627,28 @@ MusclesMonster/
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v34`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 13 — 2026-07-06
+
+**AI 한도 초과 규칙 기반 폴백**
+- `aiCoachFallback.js` 신규 독립 모듈 — API 429·네트워크·503 오류 시 로컬 답변
+- 질문 의도 감지: 오늘 운동 / 주간 계획 / 밸런스 / 회복 / 유산소 / 일반
+- `WorkoutRecommendation` · `WorkoutAdvice` · `calcMuscleRecovery` · `CardioTracker` 연동
+- `aiCoach.js` 최소 연동: catch 시 폴백 시도, 네트워크·503 에러 분류 추가
+- `test-ai-coach-fallback.js` 단위 테스트 추가
+
+**버그 검사**
+- 전체 13개 테스트 스위트 ALL PASSED ✓
+
+**다음 세션 후보 작업**
+- [ ] 유산소 세부 지표 (거리 km, 칼로리, 심박수) 입력 옵션
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v35`
 
 **현재 앱 버전**: `1.0.0`
 

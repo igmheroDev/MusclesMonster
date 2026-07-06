@@ -200,16 +200,22 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
       },
     };
 
-    const res = await fetch(`${API_URL}?key=${encodeURIComponent(apiKey)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    let res;
+    try {
+      res = await fetch(`${API_URL}?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      throw new Error('NETWORK_ERROR');
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const msg = err?.error?.message || `HTTP ${res.status}`;
       if (res.status === 429) throw new Error('RATE_LIMIT');
+      if (res.status === 502 || res.status === 503) throw new Error('SERVICE_UNAVAILABLE');
       if (res.status === 400 && msg.includes('API key')) throw new Error('INVALID_KEY');
       throw new Error(msg);
     }
@@ -250,7 +256,9 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
     const code = err?.message || String(err);
     if (code === 'API_KEY_MISSING') return '설정에서 Gemini API 키를 먼저 입력해주세요.';
     if (code === 'INVALID_KEY') return 'API 키가 올바르지 않아요. Google AI Studio에서 키를 확인해주세요.';
-    if (code === 'RATE_LIMIT') return '요청 한도에 도달했어요. 잠시 후 다시 시도해주세요. (무료: 약 15회/분, 1,500회/일)';
+    if (code === 'RATE_LIMIT') return '요청 한도에 도달했어요. 규칙 기반 답변을 시도합니다…';
+    if (code === 'NETWORK_ERROR') return '네트워크 연결을 확인해주세요.';
+    if (code === 'SERVICE_UNAVAILABLE') return 'AI 서비스가 일시적으로 불안정해요.';
     if (code === 'EMPTY_RESPONSE') return '응답을 받지 못했어요. 다시 시도해주세요.';
     return `오류: ${code}`;
   }
@@ -315,7 +323,20 @@ ${sessionLines.length > 0 ? sessionLines.join('\n') : '  · 최근 기록 없음
       appendMessage('assistant', reply);
     } catch (e) {
       console.warn('[RECOVR AI] 상담 실패:', e);
-      appendMessage('error', getErrorMessage(e));
+      if (typeof AiCoachFallback !== 'undefined' && AiCoachFallback.shouldUseFallback(e)) {
+        try {
+          const reply = AiCoachFallback.buildFallbackReply(message);
+          chatHistory.push({ role: 'user', text: message });
+          chatHistory.push({ role: 'assistant', text: reply });
+          saveChatHistory();
+          appendMessage('assistant', reply);
+        } catch (fe) {
+          console.warn('[RECOVR AI] 폴백 실패:', fe);
+          appendMessage('error', getErrorMessage(e));
+        }
+      } else {
+        appendMessage('error', getErrorMessage(e));
+      }
     } finally {
       setLoading(false);
       const input = document.getElementById('aiChatInput');
