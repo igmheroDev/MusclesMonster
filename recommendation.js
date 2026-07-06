@@ -448,11 +448,18 @@ const WorkoutRecommendation = (() => {
 
   function exerciseToPrefill(exercise, mode) {
     if (exercise.mode === 'duration') {
+      const durationSets = Array.isArray(exercise.durationSets) && exercise.durationSets.length > 0
+        ? exercise.durationSets.map(s => ({
+          seconds: Math.max(0, Math.floor(Number(s.seconds) || 0)),
+          completed: false,
+        }))
+        : [{ seconds: (parseInt(exercise.durationMin, 10) || 1) * 60, completed: false }];
       return {
         name: exercise.name,
         mode: 'duration',
         durationMin: exercise.durationMin || 1,
-        sets: exercise.sets || 1,
+        sets: exercise.sets || durationSets.length,
+        durationSets,
       };
     }
 
@@ -461,7 +468,9 @@ const WorkoutRecommendation = (() => {
       weight: exercise.weight,
       reps: exercise.reps,
       sets: exercise.sets,
-      setDetails: exercise.setDetails ? exercise.setDetails.map(s => ({ ...s })) : undefined,
+      setDetails: exercise.setDetails
+        ? exercise.setDetails.map(s => ({ ...s, completed: false }))
+        : undefined,
     };
 
     if (mode !== 'growth') return prefill;

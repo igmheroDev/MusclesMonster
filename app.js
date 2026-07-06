@@ -2181,7 +2181,6 @@ function openModalWithPrefill({ type, exercises, title }) {
   selectType(type || 'upper');
   populateTemplateSelect();
   attachDraftListeners();
-  saveWorkoutProgress(true);
 }
 
 function openEditModal(idx) {
