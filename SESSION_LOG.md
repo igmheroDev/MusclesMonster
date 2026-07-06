@@ -104,6 +104,8 @@ MusclesMonster/
 - `CardioTracker.getWorkoutCardioMinutes()` — 세션별 유산소 시간 합산
 - `CardioTracker.getWeeklyStats()` — 주간 유산소 시간·횟수·목표 달성률 (150분)
 - `CardioTracker.addPreset()` — 기구 프리셋으로 운동 행 추가 (천국의계단, 로잉머신 등)
+- `CardioTracker.applyQuickMinutes()` — 마지막 항목에 프리셋 분(10/15/20/30/45) 적용
+- `CardioTracker.applyCustomMinutes()` — 임의 분(1~300) 직접 입력 적용
 - `CardioTracker.renderHomeCard()` — 홈 유산소 요약 카드
 - `CardioTracker.renderTrendChart()` — 통계 탭 유산소 추세 그래프
 - `CardioTracker.renderMachineBreakdown()` — 기구별 주간 분석
@@ -115,6 +117,9 @@ MusclesMonster/
 - `DurationTimer.readFromWrap()` — 폼에서 시간 세트 읽기 (실행 중 타이머 유지)
 - `DurationTimer.freezeActiveTimer()` — 저장/읽기 전 타이머 고정
 - `DurationTimer.formatExerciseSummary()` — 기록 표시용 시간 요약
+- `DurationTimer.openManualEditor()` — 시간 표시 탭 시 분·초 직접 입력 UI
+- `DurationTimer.secondsFromParts()` — 분·초 → 초 변환 유틸
+- `DurationTimer.applyManualSeconds()` — 프로그래밍 방식으로 세트 시간 설정
 
 ### recommendation.js
 - `WorkoutRecommendation.compute()` — 10일치 기록 분석 → **12종 유형** 중 1개 자동 추천
@@ -454,6 +459,51 @@ MusclesMonster/
 - [ ] AI 한도 초과 시 규칙 기반 답변 폴백 (하이브리드)
 - [ ] PWA 설치형 앱 업데이트 안내 UI
 - [ ] 미션 완료 시 캘린더 즉시 갱신 (현재 탭 전환 시 반영)
+- [ ] 유산소 세부 지표 (거리 km, 칼로리, 심박수) 입력 옵션
+- [ ] 운동 목표 설정 (월별 목표 횟수·유산소 시간 등)
+- [ ] 세트 간 휴식 타이머
+- [ ] 근육 히트맵 다이어그램 (전면/후면 신체 실루엣)
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v30`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 8 — 2026-07-06
+
+**운동 종류별 캘린더 도형 구분 (PR #23)**
+- 주간·월간 캘린더 범례 도형을 운동 종류별로 구분
+  - 상체 △ / 하체 ▽ / 전신 □ / 유산소 ○
+- `index.html` 범례·캘린더 점 스타일 CSS 수정
+
+**운동 추가 UX 개선 (PR #24)**
+- `+ 운동 추가` 시 **종목 피커 자동 열기** (빈 행 추가 후 바로 선택)
+- 운동 행 상단에 **「종목 선택」** 버튼 추가 (기존 행에서도 피커 재호출)
+- `app.js` — `addExerciseRow()` 후 `ExercisePicker.open()` 연동
+
+**시간 운동 수동 입력 (PR #25)**
+- **배경**: 스톱워치 사용 중 앱 강제 종료 시 시간 기록 소실, 세트별 직접 입력 불가
+- `durationTimer.js` — 시간 표시 칸 탭 → 분·초 입력 UI → ✓ 적용
+  - 스톱워치 실행 중인 세트는 탭 입력 불가 (정지 후 입력)
+  - 바깥 영역 탭 시 입력 취소
+  - `secondsFromParts()`, `applyManualSeconds()` API 추가
+- `cardioTracker.js` — `applyCustomMinutes()` 유산소 임의 분(1~300) 직접 입력
+- `index.html` — 수동 입력 스타일, 유산소 「분 직접 입력」 필드
+- `test-duration-timer.js` — 수동 입력 유닛 테스트 추가
+
+**머지된 PR 목록**
+| PR | 내용 |
+|----|------|
+| #23 | 운동 종류별 범례·캘린더 도형 구분 |
+| #24 | 운동 추가 시 종목 피커 자동 열기 |
+| #25 | 시간 운동 세트별 수동 입력 (앱 종료 시 복구용) |
+
+**다음 세션 후보 작업**
+- [ ] 스톱워치 실행 중 주기적 자동 저장 (크래시 복구 강화)
+- [ ] AI 한도 초과 시 규칙 기반 답변 폴백 (하이브리드)
+- [ ] PWA 설치형 앱 업데이트 안내 UI
 - [ ] 유산소 세부 지표 (거리 km, 칼로리, 심박수) 입력 옵션
 - [ ] 운동 목표 설정 (월별 목표 횟수·유산소 시간 등)
 - [ ] 세트 간 휴식 타이머
