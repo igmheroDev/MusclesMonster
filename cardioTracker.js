@@ -170,6 +170,18 @@ const CardioTracker = (() => {
     if (typeof saveWorkoutProgress === 'function') saveWorkoutProgress(true);
   }
 
+  function applyCustomMinutes() {
+    const input = document.getElementById('cardioCustomMin');
+    const minutes = parseInt(input?.value, 10);
+    if (!minutes || minutes < 1) {
+      alert('운동 시간(분)을 입력해 주세요.');
+      input?.focus();
+      return;
+    }
+    applyQuickMinutes(minutes);
+    if (input) input.value = '';
+  }
+
   function renderHomeCard() {
     const container = document.getElementById('cardioHomeCard');
     if (!container) return;
@@ -279,6 +291,7 @@ const CardioTracker = (() => {
     togglePresetArea,
     addPreset,
     applyQuickMinutes,
+    applyCustomMinutes,
     renderHomeCard,
     renderTrendChart,
     renderMachineBreakdown,
