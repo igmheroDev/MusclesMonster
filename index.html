@@ -1493,6 +1493,45 @@
     padding: 0 14px;
   }
 
+  /* cardio metrics */
+  .cardio-metrics-row {
+    margin: 8px 0 4px;
+    padding: 10px 12px;
+    background: rgba(232, 121, 249, 0.06);
+    border: 1px dashed rgba(232, 121, 249, 0.28);
+    border-radius: 10px;
+  }
+  .cardio-metrics-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cardio);
+    margin-bottom: 8px;
+  }
+  .cardio-metrics-optional { font-weight: 500; color: var(--muted); }
+  .cardio-metrics-fields {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .cardio-metrics-fields input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 8px;
+    color: var(--text);
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+  }
+  .cardio-metrics-fields input::placeholder { color: var(--muted2); font-size: 11px; }
+  .cardio-metrics-hint {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    margin: -8px 0 14px;
+    line-height: 1.4;
+  }
+
   /* ===== Workout recommendation ===== */
   .recommend-card {
     background: var(--surface);
@@ -2286,6 +2325,7 @@
     <div id="dailyMissionCard"></div>
 
     <div id="cardioHomeCard"></div>
+    <div id="cardioMetricsHome"></div>
 
     <div id="recommendationCard"></div>
     <div id="workoutAdviceCard"></div>
@@ -2431,6 +2471,9 @@
 
     <div class="section-title"><span>이번 주 유산소 기구별</span></div>
     <div id="cardioMachineList"></div>
+
+    <div class="section-title"><span>유산소 세부 지표</span></div>
+    <div id="cardioMetricsStats"></div>
 
     <div class="section-title"><span>주간 부위별 빈도</span></div>
     <div id="freqList"></div>
@@ -2831,6 +2874,7 @@
 <script src="restTimer.js"></script>
 <script src="pwaUpdate.js"></script>
 <script src="cardioTracker.js"></script>
+<script src="cardioMetrics.js"></script>
 <script src="workoutGoals.js"></script>
 <script src="muscleHeatmap.js"></script>
 <script src="backupStorage.js"></script>

@@ -943,6 +943,12 @@ function renderHome() {
     console.warn('[RECOVR] 유산소 카드 렌더 실패:', e);
   }
 
+  try {
+    if (typeof CardioMetrics !== 'undefined') CardioMetrics.renderHomeHint();
+  } catch (e) {
+    console.warn('[RECOVR] 유산소 세부 지표 렌더 실패:', e);
+  }
+
   // AI 코치 상담 카드
   try {
     if (typeof AiCoach !== 'undefined') AiCoach.renderHomeCard();
@@ -1065,6 +1071,10 @@ function buildExerciseDetailHTML(w, realIdx) {
         });
       } else {
         grouped[ex.name].push(`${ex.durationMin || '-'}분`);
+      }
+      if (typeof CardioMetrics !== 'undefined') {
+        const metricsSummary = CardioMetrics.formatSummary(ex);
+        if (metricsSummary) grouped[ex.name].push(metricsSummary);
       }
     } else if (ex.setDetails && ex.setDetails.length > 0) {
       ex.setDetails.forEach(s => {
@@ -1226,6 +1236,9 @@ function renderStats() {
     CardioTracker.renderTrendChart(workouts);
     CardioTracker.renderMachineBreakdown(workouts);
   }
+  try {
+    if (typeof CardioMetrics !== 'undefined') CardioMetrics.renderStatsCard(workouts);
+  } catch (e) { /* ignore */ }
 }
 
 // e1RM (Epley formula): weight x (1 + reps/30)
@@ -2221,6 +2234,10 @@ function selectType(type) {
   if (isCardio && durationInput && (!durationInput.value || durationInput.value === '100')) {
     durationInput.value = 30;
   }
+
+  try {
+    if (typeof CardioMetrics !== 'undefined') CardioMetrics.refreshAllRows();
+  } catch (e) { /* ignore */ }
 }
 
 function getLastExerciseRow() {
@@ -2342,6 +2359,10 @@ function addExerciseRow(prefill) {
 
   // 초기 HTML과 setRowMode 표시 규칙을 맞춤 (세트 추가 버튼 항상 표시)
   setRowMode(row, durationActive);
+
+  try {
+    if (typeof CardioMetrics !== 'undefined') CardioMetrics.onRowAdded(row, prefill);
+  } catch (e) { /* ignore */ }
 }
 
 // 새 세트 행 추가. 값이 없으면 마지막 세트의 무게/횟수를 복사.
@@ -2455,6 +2476,10 @@ function setRowMode(row, durationMode) {
       addSetRow(row, { weight: '', reps: '', completed: false });
     }
   }
+
+  try {
+    if (typeof CardioMetrics !== 'undefined') CardioMetrics.updateVisibility(row);
+  } catch (e) { /* ignore */ }
 }
 
 function showSuggestions(inputEl, suggestBox) {
@@ -2485,7 +2510,12 @@ function extractExercisesFromForm() {
       const durationData = (typeof DurationTimer !== 'undefined')
         ? DurationTimer.readFromWrap(wrap)
         : { durationMin: 0, durationSets: [], sets: 0, weight: 0, reps: 0 };
-      exercises.push({ name, mode: 'duration', ...durationData });
+      const exercise = { name, mode: 'duration', ...durationData };
+      if (typeof CardioMetrics !== 'undefined') {
+        const metrics = CardioMetrics.readFromWrap(wrap);
+        if (metrics) exercise.cardioMetrics = metrics;
+      }
+      exercises.push(exercise);
     } else {
       const setDetails = [];
       wrap.querySelectorAll('.set-row').forEach(setRow => {
@@ -2715,6 +2745,10 @@ function init() {
 
   try {
     if (typeof DurationAutoSave !== 'undefined') DurationAutoSave.init();
+  } catch (e) { /* ignore */ }
+
+  try {
+    if (typeof CardioMetrics !== 'undefined') CardioMetrics.init();
   } catch (e) { /* ignore */ }
 
   // refresh recovery every 60s while app is open

@@ -17,7 +17,7 @@ MusclesMonster/
 ├── durationAutoSave.js # 스톱워치 실행 중 주기적 자동 저장
 ├── muscleHeatmap.js  # 근육 회복 히트맵 (전면/후면 SVG)
 ├── workoutUtils.js   # 운동 분석 공통 유틸 (lookback·근육 그룹 상수)
-├── cardioTracker.js  # 유산소(심폐지구력) 추적 모듈 (프리셋·주간 통계)
+├── cardioMetrics.js  # 유산소 세부 지표 (거리·칼로리·심박)
 ├── dailyMission.js   # 데일리 미션 시스템 (홈트·재활·체중감량, 캘린더 연동)
 ├── exercisePicker.js # 운동 종목 목록 피커 (카테고리·검색·최근 수행)
 ├── recommendation.js # 운동 추천 모듈 (12종 유형, 드롭다운 선택)
@@ -26,12 +26,12 @@ MusclesMonster/
 ├── aiCoachFallback.js # AI 한도 초과 시 규칙 기반 답변 폴백
 ├── backupStorage.js  # IndexedDB 백업 핸들 저장
 ├── backupWriter.js   # File System API 백업 쓰기
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v35)
+├── sw.js             # Service Worker (PWA 캐싱, 현재 v36)
 ├── manifest.json     # PWA 메타 정보
 ├── icon-192.png      # PWA 앱 아이콘
 ├── icon-512.png      # PWA 앱 아이콘
 ├── test-duration-autosave.js   # DurationAutoSave 단위 테스트
-├── test-ai-coach-fallback.js   # AiCoachFallback 단위 테스트
+├── test-cardio-metrics.js      # CardioMetrics 단위 테스트
 ├── test-rest-timer.js          # RestTimer 단위 테스트
 ├── test-workout-utils.js       # WorkoutUtils 단위 테스트
 ├── test-cardio-tracker.js      # CardioTracker 단위 테스트
@@ -649,6 +649,29 @@ MusclesMonster/
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v35`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 14 — 2026-07-06
+
+**유산소 세부 지표 입력**
+- `cardioMetrics.js` 신규 독립 모듈 — 거리(km)·칼로리·평균 심박(bpm) 선택 입력
+- 유산소 운동 행에 세부 지표 필드 자동 표시 (유산소 타입·종목 감지)
+- `exercise.cardioMetrics` 스키마로 저장 (백업·import 자동 포함)
+- 홈: 이번 주 거리·칼로리·심박 요약 한 줄
+- 통계 탭: 주간 거리·칼로리·평균 심박 카드
+- 기록 상세·캘린더에 세부 지표 표시
+- `test-cardio-metrics.js` 단위 테스트 추가
+
+**버그 검사**
+- 전체 14개 테스트 스위트 ALL PASSED ✓
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v36`
 
 **현재 앱 버전**: `1.0.0`
 
