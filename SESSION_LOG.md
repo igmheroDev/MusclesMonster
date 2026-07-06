@@ -11,35 +11,31 @@
 ### 파일 구성
 ```
 MusclesMonster/
-├── index.html        # UI 전체 (뷰, 스타일, 모달, AI 채팅 포함)
-├── app.js            # 메인 로직 (~2665줄)
-├── durationTimer.js  # 시간 운동 스톱워치 모듈 (세트별 시작/정지)
+├── index.html          # UI 전체 (뷰, 스타일, 모달, AI 채팅 포함)
+├── app.js              # 메인 로직
+├── userProfile.js      # 사용자 프로필 (신체정보·목표·회복 보정)
+├── workoutUtils.js     # 운동 분석 공통 유틸 (lookback·근육 그룹 상수)
+├── durationTimer.js    # 시간 운동 스톱워치 (세트별 시작/정지)
 ├── durationAutoSave.js # 스톱워치 실행 중 주기적 자동 저장
-├── muscleHeatmap.js  # 근육 회복 히트맵 (전면/후면 SVG)
-├── workoutUtils.js   # 운동 분석 공통 유틸 (lookback·근육 그룹 상수)
-├── cardioMetrics.js  # 유산소 세부 지표 (거리·칼로리·심박)
-├── dailyMission.js   # 데일리 미션 시스템 (홈트·재활·체중감량, 캘린더 연동)
-├── exercisePicker.js # 운동 종목 목록 피커 (카테고리·검색·최근 수행)
-├── recommendation.js # 운동 추천 모듈 (12종 유형, 드롭다운 선택)
-├── userProfile.js    # 사용자 프로필 모듈 (신체정보·목표·회복 보정)
-├── workoutAdvice.js  # 운동 패턴 조언 모듈 (독립 모듈)
-├── aiCoachFallback.js # AI 한도 초과 시 규칙 기반 답변 폴백
-├── backupStorage.js  # IndexedDB 백업 핸들 저장
-├── backupWriter.js   # File System API 백업 쓰기
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v36)
-├── manifest.json     # PWA 메타 정보
-├── icon-192.png      # PWA 앱 아이콘
-├── icon-512.png      # PWA 앱 아이콘
-├── test-duration-autosave.js   # DurationAutoSave 단위 테스트
-├── test-cardio-metrics.js      # CardioMetrics 단위 테스트
-├── test-rest-timer.js          # RestTimer 단위 테스트
-├── test-workout-utils.js       # WorkoutUtils 단위 테스트
-├── test-cardio-tracker.js      # CardioTracker 단위 테스트
-├── test-profile-integration.js # 프로필 연동 검증
-├── test-add-set-btn.js         # 세트 추가 버튼 5항목 크로스체크
-├── test-daily-mission-profile.js # 데일리 미션 프로필·완료 도장 검증
-├── test-recommendation-types.js  # 추천 12종 유형 검증
-└── SESSION_LOG.md    # 이 파일
+├── restTimer.js        # 세트 간 휴식 타이머 (카운트다운·진동)
+├── pwaUpdate.js        # PWA 새 버전 안내 배너
+├── cardioTracker.js    # 유산소 추적 (프리셋·주간 통계)
+├── cardioMetrics.js    # 유산소 세부 지표 (거리·칼로리·심박)
+├── workoutGoals.js     # 월별 운동·유산소 목표
+├── muscleHeatmap.js    # 근육 회복 히트맵 (전면/후면 SVG)
+├── recommendation.js   # 운동 추천 (12종 유형)
+├── workoutAdvice.js    # 운동 패턴 조언
+├── aiCoachFallback.js  # AI 한도 초과 규칙 기반 폴백
+├── aiCoach.js          # AI 코치 (Gemini Flash, BYOK)
+├── dailyMission.js     # 데일리 미션
+├── exercisePicker.js   # 운동 종목 피커
+├── backupStorage.js    # IndexedDB 백업 핸들
+├── backupWriter.js     # File System API 백업
+├── sw.js               # Service Worker (PWA 캐싱, v36)
+├── manifest.json       # PWA 메타
+├── icon-192.png / icon-512.png
+├── test-*.js           # 단위 테스트 14개
+└── SESSION_LOG.md
 ```
 
 ### 기술 스택
@@ -670,6 +666,36 @@ MusclesMonster/
 
 **다음 세션 후보 작업**
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v36`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 15 — 2026-07-06 (main 머지)
+
+**무결성 검사**
+- JS 문법 검사: 전체 `.js` 파일 통과 ✓
+- 단위 테스트 14개 스위트: ALL PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 (19개) ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 (19개) ✓
+
+**main 머지 (PR #26~#31 일괄 통합)**
+| PR | 기능 |
+|----|------|
+| #26 | 세트 간 휴식 타이머 + workoutUtils 중복 정리 |
+| #27 | 스톱워치 주기적 자동 저장 + PWA 업데이트 안내 |
+| #28 | 월별 운동 목표 설정 + 테스트 버그 수정 |
+| #29 | 근육 회복 히트맵 (전면/후면 SVG) |
+| #30 | AI 한도 초과 규칙 기반 폴백 |
+| #31 | 유산소 세부 지표 (거리·칼로리·심박) |
+
+**신규 모듈 10개**: `restTimer.js`, `workoutUtils.js`, `durationAutoSave.js`, `pwaUpdate.js`, `workoutGoals.js`, `muscleHeatmap.js`, `aiCoachFallback.js`, `cardioMetrics.js` (+ 기존 모듈 연동)
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v36`
 
