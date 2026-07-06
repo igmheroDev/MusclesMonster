@@ -49,9 +49,20 @@ assert(!CardioTracker.isCardioExercise({ name: '벤치 프레스', weight: 60, r
 
 assert(CardioTracker.getExerciseMinutes(rowing) === 15, 'rowing 15 min');
 
+const today = new Date();
+const fmt = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const todayStr = fmt(today);
+const yesterday = new Date(today);
+yesterday.setDate(yesterday.getDate() - 1);
+
 const workout = {
   type: 'cardio',
-  date: '2026-06-24',
+  date: todayStr,
   duration: 30,
   exercises: [rowing, { name: '천국의 계단', mode: 'duration', durationSets: [{ seconds: 1200, completed: true }] }],
 };
@@ -60,7 +71,7 @@ assert(CardioTracker.getWorkoutCardioMinutes(workout) === 35, 'total cardio minu
 
 const workouts = [
   workout,
-  { type: 'upper', date: '2026-06-23', exercises: [{ name: '스쿼트', weight: 100, reps: 5 }] },
+  { type: 'upper', date: fmt(yesterday), exercises: [{ name: '스쿼트', weight: 100, reps: 5 }] },
 ];
 const stats = CardioTracker.getWeeklyStats(workouts, 7);
 assert(stats.sessionCount === 1, 'one cardio session');

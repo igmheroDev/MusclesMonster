@@ -915,6 +915,13 @@ function renderHome() {
   // week bar
   renderWeekBar(workouts);
 
+  // monthly goals
+  try {
+    if (typeof WorkoutGoals !== 'undefined') WorkoutGoals.renderHomeCard();
+  } catch (e) {
+    console.warn('[RECOVR] 목표 카드 렌더 실패:', e);
+  }
+
   // workout recommendation (10일+ 기록 시)
   try {
     if (typeof WorkoutRecommendation !== 'undefined') WorkoutRecommendation.render();
@@ -1799,6 +1806,9 @@ function switchView(viewName) {
     } catch (e) { /* ignore */ }
     try {
       if (typeof RestTimer !== 'undefined') RestTimer.fillForm();
+    } catch (e) { /* ignore */ }
+    try {
+      if (typeof WorkoutGoals !== 'undefined') WorkoutGoals.fillForm();
     } catch (e) { /* ignore */ }
   }
 }
