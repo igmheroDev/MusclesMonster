@@ -957,6 +957,13 @@ function renderHome() {
     console.warn('[RECOVR] 데일리 미션 카드 렌더 실패:', e);
   }
 
+  // muscle heatmap
+  try {
+    if (typeof MuscleHeatmap !== 'undefined') MuscleHeatmap.render(recovery, active);
+  } catch (e) {
+    console.warn('[RECOVR] 히트맵 렌더 실패:', e);
+  }
+
   // muscle list
   const muscleList = document.getElementById('muscleList');
   muscleList.innerHTML = '';

@@ -1347,6 +1347,83 @@
   }
   .goal-enabled-row input { width: 18px; height: 18px; accent-color: var(--cyan); }
 
+  /* ===== Muscle Heatmap ===== */
+  .mh-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .mh-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .mh-title { font-size: 13.5px; font-weight: 700; }
+  .mh-toggle { display: flex; gap: 4px; }
+  .mh-toggle-btn {
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mh-toggle-btn.selected {
+    border-color: rgba(0, 212, 255, 0.4);
+    color: var(--cyan);
+    background: rgba(0, 212, 255, 0.1);
+  }
+  .mh-toggle-btn:active { background: var(--card-hover); }
+  .mh-body-wrap { position: relative; display: flex; justify-content: center; }
+  .mh-svg { width: 100%; max-width: 200px; height: auto; display: block; }
+  .mh-region { cursor: pointer; transition: fill-opacity 0.15s; }
+  .mh-region:active { fill-opacity: 1 !important; }
+  .mh-tooltip {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .mh-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .mh-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .mh-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .mh-sub {
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
   .cardio-preset-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -2217,6 +2294,7 @@
     <div class="section-title">
       <span>부위별 회복 상태</span>
     </div>
+    <div id="muscleHeatmapCard"></div>
     <div id="muscleList"></div>
 
   </div>
@@ -2754,6 +2832,7 @@
 <script src="pwaUpdate.js"></script>
 <script src="cardioTracker.js"></script>
 <script src="workoutGoals.js"></script>
+<script src="muscleHeatmap.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>
 <script src="recommendation.js"></script>

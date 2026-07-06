@@ -15,7 +15,7 @@ MusclesMonster/
 ├── app.js            # 메인 로직 (~2665줄)
 ├── durationTimer.js  # 시간 운동 스톱워치 모듈 (세트별 시작/정지)
 ├── durationAutoSave.js # 스톱워치 실행 중 주기적 자동 저장
-├── workoutGoals.js     # 월별 운동·유산소 목표 설정 및 달성률
+├── muscleHeatmap.js  # 근육 회복 히트맵 (전면/후면 SVG)
 ├── workoutUtils.js   # 운동 분석 공통 유틸 (lookback·근육 그룹 상수)
 ├── cardioTracker.js  # 유산소(심폐지구력) 추적 모듈 (프리셋·주간 통계)
 ├── dailyMission.js   # 데일리 미션 시스템 (홈트·재활·체중감량, 캘린더 연동)
@@ -26,12 +26,12 @@ MusclesMonster/
 ├── aiCoach.js        # AI 코치 상담 모듈 (Gemini Flash, BYOK)
 ├── backupStorage.js  # IndexedDB 백업 핸들 저장
 ├── backupWriter.js   # File System API 백업 쓰기
-├── sw.js             # Service Worker (PWA 캐싱, 현재 v33)
+├── sw.js             # Service Worker (PWA 캐싱, 현재 v34)
 ├── manifest.json     # PWA 메타 정보
 ├── icon-192.png      # PWA 앱 아이콘
 ├── icon-512.png      # PWA 앱 아이콘
 ├── test-duration-autosave.js   # DurationAutoSave 단위 테스트
-├── test-workout-goals.js       # WorkoutGoals 단위 테스트
+├── test-muscle-heatmap.js      # MuscleHeatmap 단위 테스트
 ├── test-rest-timer.js          # RestTimer 단위 테스트
 ├── test-workout-utils.js       # WorkoutUtils 단위 테스트
 ├── test-cardio-tracker.js      # CardioTracker 단위 테스트
@@ -603,6 +603,30 @@ MusclesMonster/
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v33`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 12 — 2026-07-06
+
+**근육 히트맵 다이어그램**
+- `muscleHeatmap.js` 신규 독립 모듈 — 전면/후면 SVG 실루엣 + 11개 부위 회복도 색상
+- 홈 `부위별 회복 상태` 섹션 상단에 히트맵 카드 배치
+- 전면/후면 토글, 부위 탭 시 툴팁 (이름·회복 %)
+- 회복도 색상: 기존 `getPctColor` 연동 (빨강→주황→노랑→초록)
+- 기록 없는 부위: 흐린 회색 표시
+- `test-muscle-heatmap.js` 단위 테스트 추가
+
+**버그 검사**
+- 전체 12개 테스트 스위트 ALL PASSED ✓
+
+**다음 세션 후보 작업**
+- [ ] AI 한도 초과 시 규칙 기반 답변 폴백 (하이브리드)
+- [ ] 유산소 세부 지표 (거리 km, 칼로리, 심박수) 입력 옵션
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v34`
 
 **현재 앱 버전**: `1.0.0`
 
