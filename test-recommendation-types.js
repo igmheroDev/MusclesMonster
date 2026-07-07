@@ -96,6 +96,53 @@ const rec = WorkoutRecommendation.compute(workouts, cervicalSettings);
 assert(rec && rec.exercises.length > 0, '추천 운동 목록 생성');
 assert(rec.exercises.some(ex => ex.name.includes('턱') || ex.name.includes('견갑')), '목 재활 프리셋 반영');
 
+console.log('\n=== 5. 추천 prefill 미완료 상태 ===');
+const historyWithCompleted = [];
+for (let i = 0; i < 12; i++) {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  historyWithCompleted.push({
+    date: d.toISOString().slice(0, 10),
+    type: 'upper',
+    exercises: [{
+      name: '벤치 프레스',
+      weight: 60,
+      reps: 10,
+      sets: 3,
+      setDetails: [
+        { weight: 60, reps: 10, completed: true },
+        { weight: 60, reps: 10, completed: true },
+        { weight: 60, reps: 10, completed: true },
+      ],
+    }],
+  });
+}
+const upperRec = WorkoutRecommendation.compute(historyWithCompleted, {});
+assert(upperRec && upperRec.exercises.length > 0, '상체 추천 생성');
+const bench = upperRec.exercises.find(ex => ex.name === '벤치 프레스');
+assert(bench, '벤치 프레스 추천 포함');
+if (bench?.setDetails?.length) {
+  assert(
+    bench.setDetails.every(s => s.completed === false),
+    '과거 완료 세트도 추천 시 미체크'
+  );
+}
+
+const cardioRec = WorkoutRecommendation.compute(historyWithCompleted, {
+  profile: UserProfile.normalize({
+    gender: 'male', age: 30, heightCm: 175, weightKg: 75,
+    goal: 'fat_loss', condition: 'fat_loss', experience: 'under1year',
+  }),
+});
+const walk = cardioRec?.exercises.find(ex => ex.name === '제자리 걷기');
+assert(walk?.mode === 'duration', '유산소 duration 종목');
+if (walk?.durationSets?.length) {
+  assert(
+    walk.durationSets.every(s => s.completed === false),
+    'duration 추천도 미체크'
+  );
+}
+
 console.log('\n=== 4. 정적 검사 ===');
 try {
   require('child_process').execFileSync('node', ['--check', path.join(__dirname, 'recommendation.js')]);
