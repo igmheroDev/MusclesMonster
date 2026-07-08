@@ -1348,12 +1348,32 @@
   .goal-enabled-row input { width: 18px; height: 18px; accent-color: var(--cyan); }
 
   /* ===== Muscle Heatmap ===== */
+  @keyframes mh-pulse-low {
+    0%, 100% { filter: drop-shadow(0 0 3px var(--red)); opacity: 0.85; }
+    50% { filter: drop-shadow(0 0 6px var(--red)); opacity: 1; }
+  }
+  @keyframes mh-pulse-mid {
+    0%, 100% { filter: drop-shadow(0 0 2px var(--orange)); }
+    50% { filter: drop-shadow(0 0 5px var(--orange)); }
+  }
+  @keyframes mh-tooltip-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
   .mh-card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
+    border-radius: 16px;
+    padding: 0 16px 14px;
     margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+  .mh-accent-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--orange) 25%, var(--yellow) 60%, var(--green) 100%);
+    margin: 0 -16px 14px;
+    border-radius: 0;
   }
   .mh-header {
     display: flex;
@@ -1361,61 +1381,119 @@
     justify-content: space-between;
     margin-bottom: 10px;
   }
-  .mh-title { font-size: 13.5px; font-weight: 700; }
-  .mh-toggle { display: flex; gap: 4px; }
-  .mh-toggle-btn {
-    padding: 5px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
+  .mh-title { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; }
+  .mh-toggle {
+    display: flex;
+    gap: 0;
     background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2px;
+  }
+  .mh-toggle-btn {
+    padding: 4px 13px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
     color: var(--muted);
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
+    transition: background 0.15s, color 0.15s;
   }
   .mh-toggle-btn.selected {
-    border-color: rgba(0, 212, 255, 0.4);
+    background: var(--card);
     color: var(--cyan);
-    background: rgba(0, 212, 255, 0.1);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
   }
-  .mh-toggle-btn:active { background: var(--card-hover); }
+  .mh-toggle-btn:active { opacity: 0.7; }
   .mh-body-wrap { position: relative; display: flex; justify-content: center; }
-  .mh-svg { width: 100%; max-width: 200px; height: auto; display: block; }
+  .mh-svg { width: 100%; max-width: 228px; height: auto; display: block; }
+  .mh-body-outline {
+    opacity: 0.95;
+  }
+  .mh-guide {
+    opacity: 0.95;
+  }
+  .mh-guide-head {
+    stroke: rgba(255,255,255,0.12);
+  }
   .mh-region { cursor: pointer; transition: fill-opacity 0.15s; }
   .mh-region:active { fill-opacity: 1 !important; }
+  .mh-region--low {
+    animation: mh-pulse-low 2.5s ease-in-out infinite;
+  }
+  .mh-region--mid {
+    animation: mh-pulse-mid 3s ease-in-out infinite;
+  }
+  .mh-region-text {
+    font-family: system-ui, -apple-system, sans-serif;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    pointer-events: none;
+  }
   .mh-tooltip {
     position: absolute;
-    bottom: 4px;
+    bottom: 6px;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--surface);
+    background: rgba(20, 20, 30, 0.88);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 12px;
+    border-radius: 10px;
+    padding: 6px 14px;
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: opacity 0.2s;
   }
+  .mh-tooltip.visible {
+    opacity: 1;
+    animation: mh-tooltip-in 0.2s ease;
+  }
+  .mh-tip-label { color: var(--text); }
+  .mh-tip-status { color: var(--muted); }
+  .mh-tip-status.low { color: var(--red); }
+  .mh-tip-status.mid { color: var(--orange); }
+  .mh-tip-status.good { color: var(--green); }
   .mh-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 12px;
+    gap: 6px 10px;
     justify-content: center;
     margin-top: 10px;
+    padding: 8px 0 2px;
+    border-top: 1px solid var(--border);
   }
   .mh-legend-item {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 10px;
-    color: var(--muted);
+    font-size: 10.5px;
+    color: var(--text);
+    font-weight: 600;
   }
   .mh-legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
     flex-shrink: 0;
+    box-shadow: 0 0 4px currentColor;
+  }
+  .mh-legend-label {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .mh-legend-sub {
+    font-size: 9px;
+    color: var(--muted);
+    font-weight: 400;
   }
   .mh-sub {
     text-align: center;
