@@ -143,6 +143,51 @@ if (walk?.durationSets?.length) {
   );
 }
 
+console.log('\n=== 6. 추천 무게 5kg 단위 ===');
+function isGymWeight(w) {
+  const n = Number(w);
+  if (w === '' || w == null) return true;
+  if (!n || Number.isNaN(n)) return true;
+  return n % 5 === 0;
+}
+
+const decimalHistory = [];
+for (let i = 0; i < 12; i++) {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  decimalHistory.push({
+    date: d.toISOString().slice(0, 10),
+    type: 'upper',
+    exercises: [{
+      name: '벤치 프레스',
+      weight: 53.2,
+      reps: 10,
+      sets: 3,
+      setDetails: [
+        { weight: 52.5, reps: 10, completed: true },
+        { weight: 53.2, reps: 10, completed: true },
+        { weight: 54.1, reps: 10, completed: true },
+      ],
+    }],
+  });
+}
+const decimalRec = WorkoutRecommendation.compute(decimalHistory, {});
+const decimalBench = decimalRec?.exercises.find(ex => ex.name === '벤치 프레스');
+assert(decimalBench, '소수 무게 기록 → 벤치 프레스 추천');
+if (decimalBench?.setDetails?.length) {
+  assert(
+    decimalBench.setDetails.every(s => isGymWeight(s.weight)),
+    '세트 무게 5kg 단위'
+  );
+  assert(
+    decimalBench.setDetails.every(s => Number(s.weight) === 55),
+    '53.2kg 계열은 55kg로 반올림'
+  );
+}
+if (decimalBench?.weight) {
+  assert(isGymWeight(decimalBench.weight), '대표 무게도 5kg 단위');
+}
+
 console.log('\n=== 4. 정적 검사 ===');
 try {
   require('child_process').execFileSync('node', ['--check', path.join(__dirname, 'recommendation.js')]);

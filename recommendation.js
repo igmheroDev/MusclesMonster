@@ -11,6 +11,7 @@ const WorkoutRecommendation = (() => {
   const MAX_SUGGESTED_EXERCISES = 7;
   const GROWTH_WEIGHT_BUMP_RATIO = 0.05;
   const GROWTH_WEIGHT_BUMP_MIN_KG = 2.5;
+  const GYM_WEIGHT_STEP_KG = 5;
   const WEEKLY_CARDIO_GOAL_MINUTES = 150;
 
   const UPPER_MUSCLES = WorkoutUtils.UPPER_MUSCLES;
@@ -439,11 +440,32 @@ const WorkoutRecommendation = (() => {
     return { name, weight: '', reps: 10, sets: 3 };
   }
 
+  function roundWeightToGymPlate(weight) {
+    if (weight === '' || weight == null) return weight;
+    const num = Number(weight);
+    if (!num || Number.isNaN(num)) return weight;
+    if (num <= 0) return 0;
+    return Math.round(num / GYM_WEIGHT_STEP_KG) * GYM_WEIGHT_STEP_KG;
+  }
+
+  function normalizePrefillWeights(prefill) {
+    if (prefill.setDetails?.length) {
+      prefill.setDetails = prefill.setDetails.map((s) => ({
+        ...s,
+        weight: roundWeightToGymPlate(s.weight),
+      }));
+    }
+    if (prefill.weight !== '' && prefill.weight != null) {
+      prefill.weight = roundWeightToGymPlate(prefill.weight);
+    }
+    return prefill;
+  }
+
   function bumpWeightForGrowth(weight) {
     const num = Number(weight);
     if (!num || Number.isNaN(num)) return weight;
-    const bumped = Math.max(num + GROWTH_WEIGHT_BUMP_MIN_KG, Math.round(num * (1 + GROWTH_WEIGHT_BUMP_RATIO) * 2) / 2);
-    return bumped;
+    const bumped = Math.max(num + GROWTH_WEIGHT_BUMP_MIN_KG, num * (1 + GROWTH_WEIGHT_BUMP_RATIO));
+    return roundWeightToGymPlate(bumped);
   }
 
   function exerciseToPrefill(exercise, mode) {
@@ -473,7 +495,7 @@ const WorkoutRecommendation = (() => {
         : undefined,
     };
 
-    if (mode !== 'growth') return prefill;
+    if (mode !== 'growth') return normalizePrefillWeights(prefill);
 
     if (prefill.setDetails?.length) {
       prefill.setDetails = prefill.setDetails.map(s => ({
@@ -484,7 +506,7 @@ const WorkoutRecommendation = (() => {
     } else if (prefill.weight) {
       prefill.weight = bumpWeightForGrowth(prefill.weight);
     }
-    return prefill;
+    return normalizePrefillWeights(prefill);
   }
 
   function buildSuggestedExercises(workouts, id) {
