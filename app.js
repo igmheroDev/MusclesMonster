@@ -654,6 +654,11 @@ const REFERENCE_VOLUME = {
   quads: 5000, hamstrings: 2400, adductors: 2880, calves: 1500, core: 500, forearms: 800,
 };
 
+// duration 모드 운동(플랭크 등 시간 기반 등척성 운동)의 초당 환산 부하 (kg/초)
+// 기준: core REFERENCE_VOLUME 500 기준, 3세트×60초=180초 → 180×3.0=540 ≈ 평균 세션(factor≈1.0)
+// 대근육(chest, back 등)은 REFERENCE_VOLUME이 커서 자동으로 "가벼운 세션(0.5배 클램프)"으로 처리됨
+const DURATION_LOAD_PER_SECOND = 3.0;
+
 // 부위별 기본 회복 시간 (시간) - 근육 크기와 피로 특성 반영
 // 사용자의 "회복 속도" 설정이 이 값에 배율로 적용됩니다.
 // 기준: 설정 48h = ×1.0 (보통), 36h = ×0.75 (빠름), 60h = ×1.25 (느림)
@@ -688,6 +693,21 @@ function getExerciseVolume(ex) {
     }, 0);
   }
   return (ex.weight || 0) * (ex.reps || 0) * (ex.sets || 0);
+}
+
+// duration 모드 운동의 근육 회복 계산용 환산 부하를 반환.
+// 완료(completed)된 세트의 초합계에 DURATION_LOAD_PER_SECOND를 곱해 합산.
+// durationSets가 없으면 durationMin(분)으로 폴백.
+// 회복 계산(calcMuscleRecovery) 전용 — 볼륨 표시 UI에는 사용하지 않음.
+function getDurationLoad(ex) {
+  if (ex.mode !== 'duration') return 0;
+  if (ex.durationSets && ex.durationSets.length > 0) {
+    const completedSeconds = ex.durationSets.reduce((sum, s) => {
+      return s.completed ? sum + (s.seconds || 0) : sum;
+    }, 0);
+    return completedSeconds * DURATION_LOAD_PER_SECOND;
+  }
+  return (ex.durationMin || 0) * 60 * DURATION_LOAD_PER_SECOND;
 }
 
 // 운동명에서 매칭되는 부위 목록을 반환.
@@ -756,7 +776,7 @@ function calcMuscleRecovery(workouts, settings) {
       (w.exercises || []).forEach(ex => {
         const muscles = getMusclesFromExerciseName(ex.name);
         if (muscles.includes(muscleKey)) {
-          const vol = getExerciseVolume(ex);
+          const vol = ex.mode === 'duration' ? getDurationLoad(ex) : getExerciseVolume(ex);
           sessionVolumeForMuscle += vol;
           exNames.push(ex.name);
         }
