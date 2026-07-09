@@ -127,10 +127,18 @@ MusclesMonster/
 - `WorkoutRecommendation.compute()` — 10일치 기록 분석 → **12종 유형** 중 1개 자동 추천
 - `WorkoutRecommendation.setType()` — 드롭다운으로 유형 직접 선택 (3그룹 optgroup)
 - `WorkoutRecommendation.render()` — 홈 화면 추천 카드 + select 드롭다운
-- `WorkoutRecommendation.apply()` — 추천 내용으로 운동 모달 열기
+- `WorkoutRecommendation.apply()` — 추천 내용으로 운동 모달 열기 (세트 미체크 prefill, 즉시 저장 없음)
+- `roundWeightToGymPlate()` — 추천 무게 **5kg 단위** 반올림 (53.2kg → 55kg)
 - **12종 유형**: 상·하체 유지/성장, 전신 유지, 체중감소, 기능성 유산소, 목·허리 재활, 재활·회복, 가동성, 코어 안정화
 - 유형별 `EXERCISE_PRESETS` 프리셋 운동 목록
 - 선택값 `localStorage` 키: `recovr_rec_selected_v1`
+
+### muscleHeatmap.js
+- `MuscleHeatmap.render()` — 전면/후면 SVG 히트맵 + 부위별 회복도 색상
+- `MuscleHeatmap.setView()` — 전면/후면 토글
+- 고스트 바디 가이드 레이어 + 부위 타원 비율·각도 조정으로 인체 실루엣 표현
+- 큰 근육에 회복 % 숫자 직접 표시, 낮은 회복 부위 glow pulse
+- 부위 탭 시 glassmorphism 툴팁 (피로·회복중·준비됨·최적)
 
 ### 캘린더 날짜 색상 규칙 (주간·월간)
 | 상태 | CSS 클래스 | 색상 |
@@ -692,6 +700,45 @@ MusclesMonster/
 | #31 | 유산소 세부 지표 (거리·칼로리·심박) |
 
 **신규 모듈 10개**: `restTimer.js`, `workoutUtils.js`, `durationAutoSave.js`, `pwaUpdate.js`, `workoutGoals.js`, `muscleHeatmap.js`, `aiCoachFallback.js`, `cardioMetrics.js` (+ 기존 모듈 연동)
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v36`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 16 — 2026-07-08 (main 머지)
+
+**추천 운동 UX 개선 (PR #32)**
+- `이 추천으로 운동 시작` 시 세트가 **미체크** 상태로 열림 (과거 `completed: true` 복사 방지)
+- duration 프리셋도 `durationSets`를 `completed: false`로 생성
+- `openModalWithPrefill`에서 모달 열자마자 `saveWorkoutProgress` 호출 제거 → 닫으면 저장 안 됨
+- `test-recommendation-types.js` 미체크 prefill 검증 추가
+
+**근육 회복 히트맵 시각 개선 (PR #33)**
+- 큰 근육(가슴·등·허벅지·햄스트링·코어·어깨)에 회복 % 숫자 직접 표시
+- 낮은 회복 부위 glow pulse 애니메이션 (피로 빨강 / 회복중 주황)
+- 카드 상단 gradient accent bar, segmented control 토글, glassmorphism 툴팁
+- **인체 도형 실루엣 개선**: 고스트 바디 가이드 레이어 + 타원 비율·각도 재조정
+
+**추천 무게 5kg 단위 (PR #34)**
+- `roundWeightToGymPlate()` — 헬스장 원판 단위(5kg)로 반올림 (53.2kg → 55kg)
+- 유지/성장 모든 추천 prefill에 적용, 성장 모드 bump 후에도 5kg 단위 유지
+
+**무결성 검사**
+- JS 문법 검사: 전체 `.js` 파일 통과 ✓
+- 단위 테스트 14개 스위트: ALL PASSED ✓
+
+**main 머지**
+| PR | 기능 |
+|----|------|
+| #32 | 추천 운동 시작 시 세트 미체크 + 즉시 저장 방지 |
+| #33 | 근육 회복 히트맵 시각·인체 실루엣 개선 |
+| #34 | 추천 운동 무게 5kg 단위 반올림 |
 
 **다음 세션 후보 작업**
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
