@@ -59,11 +59,11 @@ assert(MuscleHeatmap.FRONT_REGIONS.every((r) => typeof r.d === 'string' && r.d.l
 assert(MuscleHeatmap.BACK_REGIONS.every((r) => typeof r.d === 'string' && r.d.length > 10), 'back regions use path d');
 assert(typeof MuscleHeatmap.BODY_SILHOUETTE?.front === 'string', 'body silhouette front');
 assert(MuscleHeatmap.BODY_SILHOUETTE.front.includes('M120'), 'silhouette path present');
-assert(MuscleHeatmap.BODY_IMAGES?.front === 'body-map-front.jpg', 'front body image');
-assert(MuscleHeatmap.BODY_IMAGES?.back === 'body-map-back.jpg', 'back body image');
+assert(MuscleHeatmap.BODY_IMAGES?.front === 'body-map-front.png', 'front body image');
+assert(MuscleHeatmap.BODY_IMAGES?.back === 'body-map-back.png', 'back body image');
 assert(MuscleHeatmap.BODY_MASKS?.front === 'body-mask-front.png', 'front body mask');
-assert(fs.existsSync(path.join(__dirname, 'body-map-front.jpg')), 'front jpg exists');
-assert(fs.existsSync(path.join(__dirname, 'body-map-back.jpg')), 'back jpg exists');
+assert(fs.existsSync(path.join(__dirname, 'body-map-front.png')), 'front png exists');
+assert(fs.existsSync(path.join(__dirname, 'body-map-back.png')), 'back png exists');
 assert(fs.existsSync(path.join(__dirname, 'body-mask-front.png')), 'front mask exists');
 assert(fs.existsSync(path.join(__dirname, 'body-mask-back.png')), 'back mask exists');
 
