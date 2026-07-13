@@ -22,7 +22,9 @@ MusclesMonster/
 ├── cardioTracker.js    # 유산소 추적 (프리셋·주간 통계)
 ├── cardioMetrics.js    # 유산소 세부 지표 (거리·칼로리·심박)
 ├── workoutGoals.js     # 월별 운동·유산소 목표
-├── muscleHeatmap.js    # 근육 회복 히트맵 (전면/후면 SVG)
+├── muscleHeatmap.js    # 근육 회복 히트맵 (일러스트 베이스 + 오버레이)
+├── body-map-front.jpg / body-map-back.jpg   # 히트맵 바디 일러스트
+├── body-mask-front.png / body-mask-back.png # 히트맵 실루엣 마스크
 ├── recommendation.js   # 운동 추천 (12종 유형)
 ├── workoutAdvice.js    # 운동 패턴 조언
 ├── aiCoachFallback.js  # AI 한도 초과 규칙 기반 폴백
@@ -31,7 +33,7 @@ MusclesMonster/
 ├── exercisePicker.js   # 운동 종목 피커
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
-├── sw.js               # Service Worker (PWA 캐싱, v36)
+├── sw.js               # Service Worker (PWA 캐싱, v44)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
 ├── test-*.js           # 단위 테스트 14개
@@ -134,9 +136,10 @@ MusclesMonster/
 - 선택값 `localStorage` 키: `recovr_rec_selected_v1`
 
 ### muscleHeatmap.js
-- `MuscleHeatmap.render()` — 전면/후면 SVG 히트맵 + 부위별 회복도 색상
+- `MuscleHeatmap.render()` — 전면/후면 일러스트 베이스 + 부위별 회복도 오버레이
 - `MuscleHeatmap.setView()` — 전면/후면 토글
-- 고스트 바디 가이드 레이어 + 부위 타원 비율·각도 조정으로 인체 실루엣 표현
+- `body-map-*.jpg` 일러스트 + `body-mask-*.png` 실루엣 마스크
+- 흰색 분할선 기준 구역 path, 기본 근육색 옅은 회색 (`#eeeeef`)
 - 큰 근육에 회복 % 숫자 직접 표시, 낮은 회복 부위 glow pulse
 - 부위 탭 시 glassmorphism 툴팁 (피로·회복중·준비됨·최적)
 
