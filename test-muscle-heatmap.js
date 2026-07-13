@@ -40,7 +40,9 @@ assert(MuscleHeatmap.getRecoveryColor(30, true) === 'var(--red)', 'red zone');
 assert(MuscleHeatmap.getRecoveryColor(50, true) === 'var(--orange)', 'orange zone');
 assert(MuscleHeatmap.getRecoveryColor(80, true) === 'var(--yellow)', 'yellow zone');
 assert(MuscleHeatmap.getRecoveryColor(99, true) === 'var(--green)', 'green zone');
-assert(MuscleHeatmap.getRecoveryColor(100, false) === MuscleHeatmap.TERRACOTTA, 'no data terracotta');
+assert(MuscleHeatmap.getRecoveryColor(100, false) === MuscleHeatmap.BASE_MUSCLE, 'no data base color');
+assert(MuscleHeatmap.BASE_MUSCLE === '#eeeeef', 'base muscle light gray');
+assert(MuscleHeatmap.TERRACOTTA === MuscleHeatmap.BASE_MUSCLE, 'terracotta alias');
 
 const frontMuscles = new Set(MuscleHeatmap.FRONT_REGIONS.map((r) => r.muscle));
 assert(frontMuscles.has('chest'), 'front has chest');

@@ -7,7 +7,9 @@ const MuscleHeatmap = (() => {
   const VIEWBOX_W = 240;
   const VIEWBOX_H = 360;
 
-  const TERRACOTTA = '#c4785a';
+  // 기본 근육 색 (일러스트 베이스) — 회복색과 겹치지 않는 옅은 회색
+  const BASE_MUSCLE = '#eeeeef';
+  const TERRACOTTA = BASE_MUSCLE; // 하위호환 alias
 
   const BODY_IMAGES = {
     front: 'body-map-front.jpg',
@@ -250,6 +252,7 @@ const MuscleHeatmap = (() => {
     BODY_SILHOUETTE,
     BODY_IMAGES,
     BODY_MASKS,
+    BASE_MUSCLE,
     TERRACOTTA,
   };
 })();
