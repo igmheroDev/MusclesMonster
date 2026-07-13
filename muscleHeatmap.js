@@ -1,6 +1,6 @@
 // ============================================================
 // RECOVR - 근육 히트맵 다이어그램 모듈 (독립 모듈)
-// 픽토그램형: 매끈한 외곽 + 양팔/다리 벌림 + 외곽에 맞춘 근육 구역
+// 일러스트 이미지 베이스 + 탭/회복색 오버레이
 // ============================================================
 
 const MuscleHeatmap = (() => {
@@ -8,141 +8,69 @@ const MuscleHeatmap = (() => {
   const VIEWBOX_H = 360;
 
   const TERRACOTTA = '#c4785a';
-  const SEGMENT_STROKE = '#ffffff';
-  const OUTER_STROKE = '#1a1a1a';
+
+  const BODY_IMAGES = {
+    front: 'body-map-front.jpg',
+    back: 'body-map-back.jpg',
+  };
+
+  // 테스트/하위호환용 (이미지 모드에서는 외곽 참고만)
+  const BODY_SILHOUETTE = {
+    front: 'M120 18C136 18 148 30 148 46C148 62 136 74 120 74C104 74 92 62 92 46C92 30 104 18 120 18Z',
+    back: 'M120 18C136 18 148 30 148 46C148 62 136 74 120 74C104 74 92 62 92 46C92 30 104 18 120 18Z',
+  };
 
   const TEXT_MUSCLES = new Set(['chest', 'back', 'quads', 'hamstrings', 'core', 'shoulder']);
 
   const TEXT_POSITIONS = {
     front: {
-      shoulder: { x: 120, y: 92 },
-      chest: { x: 120, y: 116 },
-      core: { x: 120, y: 162 },
-      quads: { x: 120, y: 244 },
+      shoulder: { x: 120, y: 88 },
+      chest: { x: 120, y: 118 },
+      core: { x: 120, y: 168 },
+      quads: { x: 120, y: 248 },
     },
     back: {
-      shoulder: { x: 120, y: 92 },
-      back: { x: 120, y: 124 },
-      hamstrings: { x: 120, y: 244 },
+      shoulder: { x: 120, y: 88 },
+      back: { x: 120, y: 130 },
+      hamstrings: { x: 120, y: 248 },
     },
   };
 
   /**
-   * 픽토그램 실루엣 (매끈)
-   * - 양팔 벌림 (거의 수평)
-   * - 다리 어깨너비로 벌림
-   *
-   * 좌표 가이드 (cx=120):
-   *  좌손 ~14,112 / 우손 ~226,112
-   *  어깨폭 ~88~152 / 허리 ~98~142
-   *  좌발 중심 ~78 / 우발 중심 ~162 / 가랑이 120,210
+   * 일러스트(전면/후면)에 맞춘 탭·색칠 영역
+   * viewBox 240×360 기준, 몸 중심에 맞춤
    */
-  const BODY_PATH =
-    // 머리
-    'M120 12C133 12 144 23 144 36C144 49 133 60 120 60C107 60 96 49 96 36C96 23 107 12 120 12Z' +
-    // 목 → 몸통+팔+다리 단일 경로
-    'M113 58' +
-    'C111 66 109 72 107 76' +
-    // 왼팔 바깥 (수평에 가깝게)
-    'C90 78 68 84 46 94' +
-    'C32 102 20 110 14 120' +
-    'C10 128 14 136 24 138' +
-    'C34 140 40 134 42 126' +
-    'C40 118 48 110 64 104' +
-    'C76 100 86 98 92 100' +
-    // 좌 몸통 (완만한 허리)
-    'L96 148' +
-    'C98 162 100 174 104 186' +
-    // 왼다리 (어깨너비, 원통형에 가깝게)
-    'C90 194 76 210 66 232' +
-    'C58 250 54 274 58 298' +
-    'C62 318 72 336 88 342' +
-    'C100 346 110 340 114 328' +
-    'C116 316 114 300 112 282' +
-    'C110 258 112 238 116 222' +
-    'C118 214 119 210 120 208' +
-    // 오른다리
-    'C121 210 122 214 124 222' +
-    'C128 238 130 258 128 282' +
-    'C126 300 124 316 126 328' +
-    'C130 340 140 346 152 342' +
-    'C168 336 178 318 182 298' +
-    'C186 274 182 250 174 232' +
-    'C164 210 150 194 136 186' +
-    // 우 몸통
-    'C140 174 142 162 144 148' +
-    'L148 100' +
-    // 오른팔
-    'C154 98 164 100 176 104' +
-    'C192 110 200 118 198 126' +
-    'C200 134 206 140 216 138' +
-    'C226 136 230 128 226 120' +
-    'C220 110 208 102 194 94' +
-    'C172 84 150 78 133 76' +
-    'C131 72 129 66 127 58' +
-    'C123 56 117 56 113 58Z';
-
-  const BODY_SILHOUETTE = { front: BODY_PATH, back: BODY_PATH };
-
-  const HEAD_NECK = {
-    front: [
-      'M120 14C132 14 142 24 142 36C142 48 132 58 120 58C108 58 98 48 98 36C98 24 108 14 120 14Z',
-      'M112 56C114 64 117 68 120 68C123 68 126 64 128 56C124 54 116 54 112 56Z',
-    ],
-    back: [
-      'M120 14C132 14 142 24 142 36C142 48 132 58 120 58C108 58 98 48 98 36C98 24 108 14 120 14Z',
-      'M112 56C114 64 117 68 120 68C123 68 126 64 128 56C124 54 116 54 112 56Z',
-    ],
-  };
-
-  // 근육 구역: clip으로 외곽에 맞춰 잘리도록 충분히 크게
   const FRONT_REGIONS = [
-    { muscle: 'shoulder', d: 'M88 76C70 78 54 88 46 100C42 110 52 118 66 116C82 114 98 106 102 94C104 84 98 78 88 76Z' },
-    { muscle: 'shoulder', d: 'M152 76C170 78 186 88 194 100C198 110 188 118 174 116C158 114 142 106 138 94C136 84 142 78 152 76Z' },
-    { muscle: 'chest', d: 'M96 88C110 80 130 80 144 88C152 96 154 112 146 124C136 134 128 136 120 132C112 136 104 134 94 124C86 112 88 96 96 88Z' },
-    { muscle: 'biceps', d: 'M46 98C32 104 20 114 14 124C10 132 16 140 28 138C38 136 46 128 50 118C52 108 50 102 46 98Z' },
-    { muscle: 'biceps', d: 'M194 98C208 104 220 114 226 124C230 132 224 140 212 138C202 136 194 128 190 118C188 108 190 102 194 98Z' },
-    { muscle: 'forearms', d: 'M12 124C6 130 8 140 20 142C32 144 40 138 38 130C36 124 26 120 18 122C14 122 12 122 12 124Z' },
-    { muscle: 'forearms', d: 'M228 124C234 130 232 140 220 142C208 144 200 138 202 130C204 124 214 120 222 122C226 122 228 122 228 124Z' },
-    { muscle: 'core', d: 'M98 128C112 118 128 118 142 128C150 136 152 154 148 172C142 190 134 200 120 200C106 200 98 190 92 172C88 154 90 136 98 128Z' },
-    { muscle: 'quads', d: 'M70 184C84 170 102 176 106 196C110 220 104 252 94 276C86 288 72 290 62 278C56 268 58 244 64 220C70 196 66 188 70 184Z' },
-    { muscle: 'quads', d: 'M170 184C156 170 138 176 134 196C130 220 136 252 146 276C154 288 168 290 178 278C184 268 182 244 176 220C170 196 174 188 170 184Z' },
-    { muscle: 'adductors', d: 'M108 196C116 186 124 186 132 196C134 208 134 232 132 252C130 260 126 264 120 264C114 264 110 260 108 252C106 232 106 208 108 196Z' },
-    { muscle: 'calves', d: 'M60 278C76 266 96 276 100 298C102 316 92 336 76 340C60 344 52 326 54 310C56 294 56 284 60 278Z' },
-    { muscle: 'calves', d: 'M180 278C164 266 144 276 140 298C138 316 148 336 164 340C180 344 188 326 186 310C184 294 184 284 180 278Z' },
+    { muscle: 'shoulder', d: 'M78 78C66 84 58 98 62 110C66 120 80 124 94 116C102 110 104 98 98 90C92 82 84 76 78 78Z' },
+    { muscle: 'shoulder', d: 'M162 78C174 84 182 98 178 110C174 120 160 124 146 116C138 110 136 98 142 90C148 82 156 76 162 78Z' },
+    { muscle: 'chest', d: 'M94 96C108 86 132 86 146 96C154 104 156 120 148 132C138 142 128 144 120 140C112 144 102 142 92 132C84 120 86 104 94 96Z' },
+    { muscle: 'biceps', d: 'M58 108C46 118 40 136 42 152C44 162 54 166 64 160C72 154 74 140 70 126C68 116 62 110 58 108Z' },
+    { muscle: 'biceps', d: 'M182 108C194 118 200 136 198 152C196 162 186 166 176 160C168 154 166 140 170 126C172 116 178 110 182 108Z' },
+    { muscle: 'forearms', d: 'M44 156C34 166 30 184 36 198C42 208 56 208 64 198C70 190 68 176 62 166C58 160 50 156 44 156Z' },
+    { muscle: 'forearms', d: 'M196 156C206 166 210 184 204 198C198 208 184 208 176 198C170 190 172 176 178 166C182 160 190 156 196 156Z' },
+    { muscle: 'core', d: 'M102 138C114 128 126 128 138 138C146 146 148 164 144 182C138 200 130 208 120 208C110 208 102 200 96 182C92 164 94 146 102 138Z' },
+    { muscle: 'quads', d: 'M78 210C90 198 104 204 108 222C112 246 106 274 96 296C88 308 74 308 66 296C60 286 62 260 68 238C72 224 72 214 78 210Z' },
+    { muscle: 'quads', d: 'M162 210C150 198 136 204 132 222C128 246 134 274 144 296C152 308 166 308 174 296C180 286 178 260 172 238C168 224 168 214 162 210Z' },
+    { muscle: 'adductors', d: 'M110 214C116 206 124 206 130 214C132 224 132 246 130 266C128 274 124 278 120 278C116 278 112 274 110 266C108 246 108 224 110 214Z' },
+    { muscle: 'calves', d: 'M70 298C84 288 100 296 104 314C106 328 98 344 84 348C70 352 60 338 60 324C60 312 62 302 70 298Z' },
+    { muscle: 'calves', d: 'M170 298C156 288 140 296 136 314C134 328 142 344 156 348C170 352 180 338 180 324C180 312 178 302 170 298Z' },
   ];
 
   const BACK_REGIONS = [
-    { muscle: 'shoulder', d: 'M88 76C70 78 54 88 46 100C42 110 52 118 66 116C82 114 98 106 102 94C104 84 98 78 88 76Z' },
-    { muscle: 'shoulder', d: 'M152 76C170 78 186 88 194 100C198 110 188 118 174 116C158 114 142 106 138 94C136 84 142 78 152 76Z' },
-    { muscle: 'back', d: 'M94 84C110 74 130 74 146 84C154 92 158 108 150 122C140 136 130 142 120 138C110 142 100 136 90 122C82 108 86 92 94 84Z' },
-    { muscle: 'back', d: 'M98 128C112 118 128 118 142 128C150 136 152 154 146 172C138 188 130 196 120 194C110 196 102 188 94 172C88 154 90 136 98 128Z' },
-    { muscle: 'triceps', d: 'M46 98C32 104 20 114 14 124C10 132 16 140 28 138C38 136 46 128 50 118C52 108 50 102 46 98Z' },
-    { muscle: 'triceps', d: 'M194 98C208 104 220 114 226 124C230 132 224 140 212 138C202 136 194 128 190 118C188 108 190 102 194 98Z' },
-    { muscle: 'forearms', d: 'M12 124C6 130 8 140 20 142C32 144 40 138 38 130C36 124 26 120 18 122C14 122 12 122 12 124Z' },
-    { muscle: 'forearms', d: 'M228 124C234 130 232 140 220 142C208 144 200 138 202 130C204 124 214 120 222 122C226 122 228 122 228 124Z' },
-    { muscle: 'hamstrings', d: 'M70 184C84 170 102 176 106 196C110 220 104 252 94 276C86 288 72 290 62 278C56 268 58 244 64 220C70 196 66 188 70 184Z' },
-    { muscle: 'hamstrings', d: 'M170 184C156 170 138 176 134 196C130 220 136 252 146 276C154 288 168 290 178 278C184 268 182 244 176 220C170 196 174 188 170 184Z' },
-    { muscle: 'adductors', d: 'M108 196C116 186 124 186 132 196C134 208 134 232 132 252C130 260 126 264 120 264C114 264 110 260 108 252C106 232 106 208 108 196Z' },
-    { muscle: 'calves', d: 'M60 278C76 266 96 276 100 298C102 316 92 336 76 340C60 344 52 326 54 310C56 294 56 284 60 278Z' },
-    { muscle: 'calves', d: 'M180 278C164 266 144 276 140 298C138 316 148 336 164 340C180 344 188 326 186 310C184 294 184 284 180 278Z' },
+    { muscle: 'shoulder', d: 'M78 78C66 84 58 98 62 110C66 120 80 124 94 116C102 110 104 98 98 90C92 82 84 76 78 78Z' },
+    { muscle: 'shoulder', d: 'M162 78C174 84 182 98 178 110C174 120 160 124 146 116C138 110 136 98 142 90C148 82 156 76 162 78Z' },
+    { muscle: 'back', d: 'M92 92C108 80 132 80 148 92C156 100 160 116 152 132C142 148 130 154 120 150C110 154 98 148 88 132C80 116 84 100 92 92Z' },
+    { muscle: 'back', d: 'M100 140C112 130 128 130 140 140C148 148 150 166 144 184C136 200 128 206 120 204C112 206 104 200 96 184C90 166 92 148 100 140Z' },
+    { muscle: 'triceps', d: 'M58 108C46 118 40 136 42 152C44 162 54 166 64 160C72 154 74 140 70 126C68 116 62 110 58 108Z' },
+    { muscle: 'triceps', d: 'M182 108C194 118 200 136 198 152C196 162 186 166 176 160C168 154 166 140 170 126C172 116 178 110 182 108Z' },
+    { muscle: 'forearms', d: 'M44 156C34 166 30 184 36 198C42 208 56 208 64 198C70 190 68 176 62 166C58 160 50 156 44 156Z' },
+    { muscle: 'forearms', d: 'M196 156C206 166 210 184 204 198C198 208 184 208 176 198C170 190 172 176 178 166C182 160 190 156 196 156Z' },
+    { muscle: 'hamstrings', d: 'M78 210C90 198 104 204 108 222C112 246 106 274 96 296C88 308 74 308 66 296C60 286 62 260 68 238C72 224 72 214 78 210Z' },
+    { muscle: 'hamstrings', d: 'M162 210C150 198 136 204 132 222C128 246 134 274 144 296C152 308 166 308 174 296C180 286 178 260 172 238C168 224 168 214 162 210Z' },
+    { muscle: 'adductors', d: 'M110 214C116 206 124 206 130 214C132 224 132 246 130 266C128 274 124 278 120 278C116 278 112 274 110 266C108 246 108 224 110 214Z' },
+    { muscle: 'calves', d: 'M70 298C84 288 100 296 104 314C106 328 98 344 84 348C70 352 60 338 60 324C60 312 62 302 70 298Z' },
+    { muscle: 'calves', d: 'M170 298C156 288 140 296 136 314C134 328 142 344 156 348C170 352 180 338 180 324C180 312 178 302 170 298Z' },
   ];
-
-  const DETAIL_LINES = {
-    front: [
-      'M120 98L120 126',
-      'M108 144L132 144',
-      'M108 158L132 158',
-      'M108 172L132 172',
-      'M120 204L120 268',
-    ],
-    back: [
-      'M120 90L120 178',
-      'M104 108C112 120 118 128 120 132',
-      'M136 108C128 120 122 128 120 132',
-      'M120 204L120 268',
-    ],
-  };
 
   let currentView = 'front';
   let lastRecovery = null;
@@ -179,32 +107,20 @@ const MuscleHeatmap = (() => {
     return { pct: r.recoveryPct, hasData: true };
   }
 
-  function buildHeadNeck(view) {
-    return (HEAD_NECK[view] || []).map((d) =>
-      `<path class="mh-base-part" d="${d}" fill="${TERRACOTTA}" stroke="${SEGMENT_STROKE}" stroke-width="1.6" stroke-linejoin="round"/>`
-    ).join('');
-  }
-
-  function buildDetailLines(view) {
-    return (DETAIL_LINES[view] || []).map((d) =>
-      `<path class="mh-detail" d="${d}" fill="none" stroke="${SEGMENT_STROKE}" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.7"/>`
-    ).join('');
-  }
-
   function buildRegionsSvg(view, recovery) {
     const regions = view === 'back' ? BACK_REGIONS : FRONT_REGIONS;
     const textRendered = new Set();
 
     return regions.map((region) => {
       const { pct, hasData } = getMuscleData(region.muscle, recovery);
-      const fill = getRecoveryColor(pct, hasData);
-      const opacity = hasData ? 0.92 : 1;
+      const fill = hasData ? getRecoveryColor(pct, true) : 'transparent';
+      const opacity = hasData ? 0.52 : 0;
       const label = getMuscleLabel(region.muscle);
       const title = hasData ? `${label} ${pct}%` : `${label} (기록 없음)`;
       const cls = getRecoveryClass(pct, hasData);
 
       const path = `<path class="mh-region ${cls}" data-muscle="${region.muscle}" data-label="${label}" data-pct="${hasData ? pct : ''}"
-        d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="${SEGMENT_STROKE}" stroke-width="1.8" stroke-linejoin="round">
+        d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="none" pointer-events="all">
         <title>${title}</title>
       </path>`;
 
@@ -236,26 +152,13 @@ const MuscleHeatmap = (() => {
   }
 
   function buildSvg(view, recovery) {
-    const clipId = `mhClip-${view}`;
+    const src = BODY_IMAGES[view] || BODY_IMAGES.front;
     return `
       <svg class="mh-svg" viewBox="0 0 ${VIEWBOX_W} ${VIEWBOX_H}" role="img" aria-label="근육 회복 히트맵 ${view === 'back' ? '후면' : '전면'}">
-        <defs>
-          <filter id="mhBodyShadow" x="-10%" y="-4%" width="120%" height="112%">
-            <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.35" />
-          </filter>
-          <clipPath id="${clipId}">
-            <path d="${BODY_SILHOUETTE[view]}" />
-          </clipPath>
-        </defs>
-        <g class="mh-body-shell" filter="url(#mhBodyShadow)">
-          <path class="mh-body-outline" d="${BODY_SILHOUETTE[view]}" fill="none" stroke="${OUTER_STROKE}" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
-          <path class="mh-body-gap" d="${BODY_SILHOUETTE[view]}" fill="none" stroke="${SEGMENT_STROKE}" stroke-width="2.2" stroke-linejoin="round"/>
-          <path class="mh-body-fill" d="${BODY_SILHOUETTE[view]}" fill="${TERRACOTTA}" stroke="none"/>
-        </g>
-        <g class="mh-muscles" clip-path="url(#${clipId})">
-          ${buildHeadNeck(view)}
+        <image class="mh-body-image" href="${src}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
+          preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
+        <g class="mh-muscles" style="mix-blend-mode:multiply">
           ${buildRegionsSvg(view, recovery)}
-          ${buildDetailLines(view)}
         </g>
       </svg>`;
   }
@@ -333,6 +236,7 @@ const MuscleHeatmap = (() => {
     FRONT_REGIONS,
     BACK_REGIONS,
     BODY_SILHOUETTE,
+    BODY_IMAGES,
     TERRACOTTA,
   };
 })();
