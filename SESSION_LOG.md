@@ -23,7 +23,7 @@ MusclesMonster/
 ├── cardioMetrics.js    # 유산소 세부 지표 (거리·칼로리·심박)
 ├── workoutGoals.js     # 월별 운동·유산소 목표
 ├── muscleHeatmap.js    # 근육 회복 히트맵 (일러스트 베이스 + 오버레이)
-├── body-map-front.jpg / body-map-back.jpg   # 히트맵 바디 일러스트
+├── body-map-front.png / body-map-back.png   # 히트맵 바디 일러스트 (4색 PNG)
 ├── body-mask-front.png / body-mask-back.png # 히트맵 실루엣 마스크
 ├── recommendation.js   # 운동 추천 (12종 유형)
 ├── workoutAdvice.js    # 운동 패턴 조언
@@ -33,7 +33,7 @@ MusclesMonster/
 ├── exercisePicker.js   # 운동 종목 피커
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
-├── sw.js               # Service Worker (PWA 캐싱, v44)
+├── sw.js               # Service Worker (PWA 캐싱, v46)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
 ├── test-*.js           # 단위 테스트 14개
@@ -138,8 +138,9 @@ MusclesMonster/
 ### muscleHeatmap.js
 - `MuscleHeatmap.render()` — 전면/후면 일러스트 베이스 + 부위별 회복도 오버레이
 - `MuscleHeatmap.setView()` — 전면/후면 토글
-- `body-map-*.jpg` 일러스트 + `body-mask-*.png` 실루엣 마스크
+- `body-map-*.png` 일러스트(4색 팔레트) + `body-mask-*.png` 실루엣 마스크
 - 흰색 분할선 기준 구역 path, 기본 근육색 옅은 회색 (`#eeeeef`)
+- 이미지 URL `?v=` + SW 네트워크 우선으로 캐시 잔존 방지
 - 큰 근육에 회복 % 숫자 직접 표시, 낮은 회복 부위 glow pulse
 - 부위 탭 시 glassmorphism 툴팁 (피로·회복중·준비됨·최적)
 
@@ -781,6 +782,36 @@ MusclesMonster/
 - [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v44`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 18 — 2026-07-13 (main 머지)
+
+**히트맵 바디 에셋 정리·캐시 보정**
+- 기본 몸통이 주황으로 보이던 문제 → **SW/브라우저 캐시 잔존** 확인
+- 바디맵·마스크 네트워크 우선 + `?v=` 쿼리로 구캐시 우회 (PR #43, v45)
+- JPEG 압축·주황 제거 잔여 픽셀 정리 → **4색 팔레트 PNG** 재생성 (PR #44)
+- `body-map-*.jpg` 제거, `body-map-*.png`로 교체, 구역 path 재추출
+- SW 캐시 `recovr-cache-v46`
+
+**무결성 검사**
+- JS 문법 검사: `muscleHeatmap.js` / `sw.js` 통과 ✓
+- `test-muscle-heatmap.js` PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 ✓
+
+**main 머지**
+| PR | 기능 |
+|----|------|
+| #43 | 히트맵 바디 이미지 캐시 잔존 방지 |
+| #44 | 바디맵 무압축 PNG로 깔끔하게 재생성 |
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v46`
 
 **현재 앱 버전**: `1.0.0`
 
