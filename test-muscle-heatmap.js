@@ -57,7 +57,11 @@ assert(MuscleHeatmap.FRONT_REGIONS.every((r) => typeof r.d === 'string' && r.d.l
 assert(MuscleHeatmap.BACK_REGIONS.every((r) => typeof r.d === 'string' && r.d.length > 10), 'back regions use path d');
 assert(typeof MuscleHeatmap.BODY_SILHOUETTE?.front === 'string', 'body silhouette front');
 assert(MuscleHeatmap.BODY_SILHOUETTE.front.includes('M120'), 'silhouette starts with head');
+assert(MuscleHeatmap.BODY_IMAGES?.front === 'body-map-front.jpg', 'front body image');
+assert(MuscleHeatmap.BODY_IMAGES?.back === 'body-map-back.jpg', 'back body image');
 assert(MuscleHeatmap.TERRACOTTA === '#c4785a', 'terracotta hex');
+assert(fs.existsSync(path.join(__dirname, 'body-map-front.jpg')), 'front jpg exists');
+assert(fs.existsSync(path.join(__dirname, 'body-map-back.jpg')), 'back jpg exists');
 
 assert(typeof MuscleHeatmap.render === 'function', 'render exists');
 assert(typeof MuscleHeatmap.setView === 'function', 'setView exists');

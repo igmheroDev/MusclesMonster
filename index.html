@@ -1411,22 +1411,20 @@
     position: relative;
     display: flex;
     justify-content: center;
-    padding: 10px 0 6px;
-    background:
-      radial-gradient(ellipse 60% 48% at 50% 40%, rgba(196,120,90,0.14), transparent 72%),
-      radial-gradient(ellipse 70% 60% at 50% 75%, rgba(0,0,0,0.22), transparent 75%);
+    padding: 8px 0 4px;
+    background: #ebe4dc;
     border-radius: 14px;
+    overflow: hidden;
   }
-  .mh-svg { width: 100%; max-width: 280px; height: auto; display: block; }
-  .mh-body-fill { opacity: 1; }
-  .mh-base-part { pointer-events: none; }
-  .mh-detail { pointer-events: none; }
+  .mh-svg { width: 100%; max-width: 300px; height: auto; display: block; }
+  .mh-body-image { pointer-events: none; }
   .mh-region {
     cursor: pointer;
+    pointer-events: all;
     transition: fill 0.15s, fill-opacity 0.15s, filter 0.15s;
   }
-  .mh-region:active { fill-opacity: 1 !important; filter: brightness(1.08); }
-  .mh-region--idle { }
+  .mh-region:active { fill-opacity: 0.72 !important; filter: brightness(1.08); }
+  .mh-region--idle { fill: transparent !important; fill-opacity: 0 !important; }
   .mh-region--low {
     animation: mh-pulse-low 2.5s ease-in-out infinite;
   }
