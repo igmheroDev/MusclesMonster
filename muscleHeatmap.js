@@ -21,6 +21,13 @@ const MuscleHeatmap = (() => {
     back: 'body-mask-back.png',
   };
 
+  // 이미지/마스크 캐시 무효화 (SW·브라우저 캐시 잔존 방지)
+  const ASSET_VERSION = 'v45';
+
+  function assetUrl(path) {
+    return `${path}?v=${ASSET_VERSION}`;
+  }
+
   // 테스트/하위호환용
   const BODY_SILHOUETTE = {
     front: 'M120 20C134 20 144 30 144 44C144 58 134 68 120 68C106 68 96 58 96 44C96 30 106 20 120 20Z',
@@ -158,8 +165,8 @@ const MuscleHeatmap = (() => {
   }
 
   function buildSvg(view, recovery) {
-    const src = BODY_IMAGES[view] || BODY_IMAGES.front;
-    const mask = BODY_MASKS[view] || BODY_MASKS.front;
+    const src = assetUrl(BODY_IMAGES[view] || BODY_IMAGES.front);
+    const mask = assetUrl(BODY_MASKS[view] || BODY_MASKS.front);
     const maskId = `mhMask-${view}`;
     return `
       <svg class="mh-svg" viewBox="0 0 ${VIEWBOX_W} ${VIEWBOX_H}" role="img" aria-label="근육 회복 히트맵 ${view === 'back' ? '후면' : '전면'}">
