@@ -22,7 +22,9 @@ MusclesMonster/
 ├── cardioTracker.js    # 유산소 추적 (프리셋·주간 통계)
 ├── cardioMetrics.js    # 유산소 세부 지표 (거리·칼로리·심박)
 ├── workoutGoals.js     # 월별 운동·유산소 목표
-├── muscleHeatmap.js    # 근육 회복 히트맵 (전면/후면 SVG)
+├── muscleHeatmap.js    # 근육 회복 히트맵 (일러스트 베이스 + 오버레이)
+├── body-map-front.jpg / body-map-back.jpg   # 히트맵 바디 일러스트
+├── body-mask-front.png / body-mask-back.png # 히트맵 실루엣 마스크
 ├── recommendation.js   # 운동 추천 (12종 유형)
 ├── workoutAdvice.js    # 운동 패턴 조언
 ├── aiCoachFallback.js  # AI 한도 초과 규칙 기반 폴백
@@ -31,7 +33,7 @@ MusclesMonster/
 ├── exercisePicker.js   # 운동 종목 피커
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
-├── sw.js               # Service Worker (PWA 캐싱, v36)
+├── sw.js               # Service Worker (PWA 캐싱, v44)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
 ├── test-*.js           # 단위 테스트 14개
@@ -134,9 +136,10 @@ MusclesMonster/
 - 선택값 `localStorage` 키: `recovr_rec_selected_v1`
 
 ### muscleHeatmap.js
-- `MuscleHeatmap.render()` — 전면/후면 SVG 히트맵 + 부위별 회복도 색상
+- `MuscleHeatmap.render()` — 전면/후면 일러스트 베이스 + 부위별 회복도 오버레이
 - `MuscleHeatmap.setView()` — 전면/후면 토글
-- 고스트 바디 가이드 레이어 + 부위 타원 비율·각도 조정으로 인체 실루엣 표현
+- `body-map-*.jpg` 일러스트 + `body-mask-*.png` 실루엣 마스크
+- 흰색 분할선 기준 구역 path, 기본 근육색 옅은 회색 (`#eeeeef`)
 - 큰 근육에 회복 % 숫자 직접 표시, 낮은 회복 부위 glow pulse
 - 부위 탭 시 glassmorphism 툴팁 (피로·회복중·준비됨·최적)
 
@@ -745,6 +748,39 @@ MusclesMonster/
 - [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v36`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 17 — 2026-07-13 (main 머지)
+
+**근육 회복 히트맵 전면 개편**
+- SVG 손그림 실루엣 → **일러스트 이미지 베이스** (`body-map-front.jpg` / `body-map-back.jpg`)
+- SVG는 부위 탭 + 회복색 오버레이만 담당
+- 일러스트 흰색 분할선 기준으로 구역 path 추출 → blob 오버레이 정렬 개선
+- 몸 실루엣 마스크(`body-mask-*.png`)로 배경 번짐 방지
+- 기본 근육색을 테라코타 → **옅은 회색 (`#eeeeef`)** 로 변경해 회복색과 대비 확보
+
+**무결성 검사**
+- JS 문법 검사: 전체 `.js` 파일 통과 ✓
+- 단위 테스트 14개 스위트: ALL PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 ✓
+
+**main 머지**
+| PR | 기능 |
+|----|------|
+| #38 | 히트맵 스타일 A / 픽토그램 실루엣 |
+| #39 | 일러스트 이미지 베이스 히트맵 |
+| #40 | 근육 칸 정렬 + 실루엣 마스크 |
+| #41 | 기본 근육색 옅은 회색 |
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v44`
 
 **현재 앱 버전**: `1.0.0`
 
