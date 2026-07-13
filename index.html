@@ -1407,18 +1407,27 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.18);
   }
   .mh-toggle-btn:active { opacity: 0.7; }
-  .mh-body-wrap { position: relative; display: flex; justify-content: center; }
-  .mh-svg { width: 100%; max-width: 228px; height: auto; display: block; }
-  .mh-body-outline {
-    opacity: 0.95;
+  .mh-body-wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 2px;
+    background:
+      radial-gradient(ellipse 55% 45% at 50% 42%, rgba(212,184,150,0.08), transparent 70%),
+      radial-gradient(ellipse 70% 60% at 50% 70%, rgba(0,0,0,0.18), transparent 75%);
+    border-radius: 14px;
   }
-  .mh-guide {
-    opacity: 0.95;
+  .mh-svg { width: 100%; max-width: 240px; height: auto; display: block; }
+  .mh-body-fill {
+    opacity: 0.98;
   }
-  .mh-guide-head {
-    stroke: rgba(255,255,255,0.12);
+  .mh-detail {
+    pointer-events: none;
   }
-  .mh-region { cursor: pointer; transition: fill-opacity 0.15s; }
+  .mh-region {
+    cursor: pointer;
+    transition: fill-opacity 0.15s, filter 0.15s;
+  }
   .mh-region:active { fill-opacity: 1 !important; }
   .mh-region--low {
     animation: mh-pulse-low 2.5s ease-in-out infinite;
@@ -1428,7 +1437,7 @@
   }
   .mh-region-text {
     font-family: system-ui, -apple-system, sans-serif;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
     pointer-events: none;
   }
   .mh-tooltip {
