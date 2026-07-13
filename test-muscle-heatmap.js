@@ -56,7 +56,7 @@ assert(backMuscles.has('triceps'), 'back has triceps');
 assert(MuscleHeatmap.FRONT_REGIONS.every((r) => typeof r.d === 'string' && r.d.length > 10), 'front regions use path d');
 assert(MuscleHeatmap.BACK_REGIONS.every((r) => typeof r.d === 'string' && r.d.length > 10), 'back regions use path d');
 assert(typeof MuscleHeatmap.BODY_SILHOUETTE?.front === 'string', 'body silhouette front');
-assert(MuscleHeatmap.BODY_SILHOUETTE.front.includes('M100'), 'silhouette starts with head');
+assert(MuscleHeatmap.BODY_SILHOUETTE.front.includes('M120'), 'silhouette starts with head');
 assert(MuscleHeatmap.TERRACOTTA === '#c4785a', 'terracotta hex');
 
 assert(typeof MuscleHeatmap.render === 'function', 'render exists');
