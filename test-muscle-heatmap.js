@@ -40,7 +40,7 @@ assert(MuscleHeatmap.getRecoveryColor(30, true) === 'var(--red)', 'red zone');
 assert(MuscleHeatmap.getRecoveryColor(50, true) === 'var(--orange)', 'orange zone');
 assert(MuscleHeatmap.getRecoveryColor(80, true) === 'var(--yellow)', 'yellow zone');
 assert(MuscleHeatmap.getRecoveryColor(99, true) === 'var(--green)', 'green zone');
-assert(MuscleHeatmap.getRecoveryColor(100, false).includes('0.08') || MuscleHeatmap.getRecoveryColor(100, false).includes('0.06'), 'no data dim');
+assert(MuscleHeatmap.getRecoveryColor(100, false) === MuscleHeatmap.TERRACOTTA, 'no data terracotta');
 
 const frontMuscles = new Set(MuscleHeatmap.FRONT_REGIONS.map((r) => r.muscle));
 assert(frontMuscles.has('chest'), 'front has chest');
@@ -56,7 +56,8 @@ assert(backMuscles.has('triceps'), 'back has triceps');
 assert(MuscleHeatmap.FRONT_REGIONS.every((r) => typeof r.d === 'string' && r.d.length > 10), 'front regions use path d');
 assert(MuscleHeatmap.BACK_REGIONS.every((r) => typeof r.d === 'string' && r.d.length > 10), 'back regions use path d');
 assert(typeof MuscleHeatmap.BODY_SILHOUETTE?.front === 'string', 'body silhouette front');
-assert(MuscleHeatmap.BODY_SILHOUETTE.front.includes('M100'), 'silhouette starts with head');
+assert(MuscleHeatmap.BODY_SILHOUETTE.front.includes('M120'), 'silhouette starts with head');
+assert(MuscleHeatmap.TERRACOTTA === '#c4785a', 'terracotta hex');
 
 assert(typeof MuscleHeatmap.render === 'function', 'render exists');
 assert(typeof MuscleHeatmap.setView === 'function', 'setView exists');
