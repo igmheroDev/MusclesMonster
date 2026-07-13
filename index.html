@@ -1411,24 +1411,22 @@
     position: relative;
     display: flex;
     justify-content: center;
-    padding: 4px 0 2px;
+    padding: 10px 0 6px;
     background:
-      radial-gradient(ellipse 55% 45% at 50% 42%, rgba(212,184,150,0.08), transparent 70%),
-      radial-gradient(ellipse 70% 60% at 50% 70%, rgba(0,0,0,0.18), transparent 75%);
+      radial-gradient(ellipse 60% 48% at 50% 40%, rgba(196,120,90,0.14), transparent 72%),
+      radial-gradient(ellipse 70% 60% at 50% 75%, rgba(0,0,0,0.22), transparent 75%);
     border-radius: 14px;
   }
-  .mh-svg { width: 100%; max-width: 240px; height: auto; display: block; }
-  .mh-body-fill {
-    opacity: 0.98;
-  }
-  .mh-detail {
-    pointer-events: none;
-  }
+  .mh-svg { width: 100%; max-width: 268px; height: auto; display: block; }
+  .mh-body-fill { opacity: 1; }
+  .mh-base-part { pointer-events: none; }
+  .mh-detail { pointer-events: none; }
   .mh-region {
     cursor: pointer;
-    transition: fill-opacity 0.15s, filter 0.15s;
+    transition: fill 0.15s, fill-opacity 0.15s, filter 0.15s;
   }
-  .mh-region:active { fill-opacity: 1 !important; }
+  .mh-region:active { fill-opacity: 1 !important; filter: brightness(1.08); }
+  .mh-region--idle { }
   .mh-region--low {
     animation: mh-pulse-low 2.5s ease-in-out infinite;
   }
@@ -1437,7 +1435,7 @@
   }
   .mh-region-text {
     font-family: system-ui, -apple-system, sans-serif;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.75), 0 0 6px rgba(0,0,0,0.35);
     pointer-events: none;
   }
   .mh-tooltip {
