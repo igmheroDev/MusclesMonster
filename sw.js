@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v42';
+const CACHE_NAME = 'recovr-cache-v43';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,8 @@ const ASSETS = [
   './muscleHeatmap.js',
   './body-map-front.jpg',
   './body-map-back.jpg',
+  './body-mask-front.png',
+  './body-mask-back.png',
   './cardioTracker.js',
   './cardioMetrics.js',
   './backupStorage.js',
