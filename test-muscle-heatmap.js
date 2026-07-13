@@ -62,8 +62,8 @@ assert(MuscleHeatmap.BODY_SILHOUETTE.front.includes('M120'), 'silhouette path pr
 assert(MuscleHeatmap.BODY_IMAGES?.front === 'body-map-front.png', 'front body image');
 assert(MuscleHeatmap.BODY_IMAGES?.back === 'body-map-back.png', 'back body image');
 assert(MuscleHeatmap.BODY_MASKS?.front === 'body-mask-front.png', 'front body mask');
-assert(fs.existsSync(path.join(__dirname, 'body-map-front.png')), 'front jpg exists');
-assert(fs.existsSync(path.join(__dirname, 'body-map-back.png')), 'back jpg exists');
+assert(fs.existsSync(path.join(__dirname, 'body-map-front.png')), 'front png exists');
+assert(fs.existsSync(path.join(__dirname, 'body-map-back.png')), 'back png exists');
 assert(fs.existsSync(path.join(__dirname, 'body-mask-front.png')), 'front mask exists');
 assert(fs.existsSync(path.join(__dirname, 'body-mask-back.png')), 'back mask exists');
 
