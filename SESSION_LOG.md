@@ -35,10 +35,11 @@ MusclesMonster/
 ├── celebrateFx.js      # 중간 축하 연출 (confetti·미션클리어·스트릭)
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
-├── sw.js               # Service Worker (PWA 캐싱, v48)
+├── backupReconnect.js  # 백업 권한 원탭 재연결 (새로고침 후 복원)
+├── sw.js               # Service Worker (PWA 캐싱, v50)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
-├── test-*.js           # 단위 테스트 16개
+├── test-*.js           # 단위 테스트 17개
 └── SESSION_LOG.md
 ```
 
@@ -881,6 +882,45 @@ MusclesMonster/
 - [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v48`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 21 — 2026-07-14 (main 머지)
+
+**근육 히트맵 근육명 라벨 (PR #48)**
+- 전면/후면 부위에 한국어 짧은 근육명 표시 (가슴·등·어깨·이두·삼두·코어·전완·대퇴·햄스·내전·종아리)
+- 회복 데이터 있으면 `이름 + %`, 없으면 이름만
+- 라벨을 multiply 블렌드/마스크 **밖**에 배치해 가독성 확보
+
+**백업 파일 연결 원탭 재연결 (PR #49)**
+- 독립 모듈 `backupReconnect.js` 추가
+- 브라우저 보안상 새로고침 후 권한(`prompt`) 풀림은 완전 무조작 유지 불가
+- IndexedDB 핸들은 유지 → 상단 **「다시 연결」** 한 번으로 `requestPermission` 복원 (파일 재선택 불필요)
+- PWA 설치 / 권한 「매번 허용」 시 유지되는 경우 많음 → 가이드 문구 반영
+- 재연결 쓰기 실패 시에도 핸들 clear 하지 않음
+- `visibilitychange` / `pageshow` 시 권한 재확인
+- SW 캐시 `recovr-cache-v50`, `test-backup-reconnect.js` 추가
+
+**무결성 검사**
+- JS 문법 검사: `muscleHeatmap.js` / `backupReconnect.js` / `app.js` / `sw.js` 통과 ✓
+- 단위 테스트 17개 스위트: ALL PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 ✓
+
+**main 머지**
+| PR | 기능 |
+|----|------|
+| #48 | 근육 히트맵 부위별 근육명 라벨 |
+| #49 | 백업 파일 연결 원탭 재연결 |
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+- [ ] 백업 재연결 실기기(Android Chrome/PWA) 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v50`
 
 **현재 앱 버전**: `1.0.0`
 
