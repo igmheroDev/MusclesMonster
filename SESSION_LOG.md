@@ -32,12 +32,13 @@ MusclesMonster/
 ├── dailyMission.js     # 데일리 미션
 ├── exercisePicker.js   # 운동 종목 피커
 ├── microAnim.js        # 마이크로 애니메이션 (터치·완료 피드백)
+├── celebrateFx.js      # 중간 축하 연출 (confetti·미션클리어·스트릭)
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
-├── sw.js               # Service Worker (PWA 캐싱, v47)
+├── sw.js               # Service Worker (PWA 캐싱, v48)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
-├── test-*.js           # 단위 테스트 15개
+├── test-*.js           # 단위 테스트 16개
 └── SESSION_LOG.md
 ```
 
@@ -109,6 +110,13 @@ MusclesMonster/
 - `MicroAnim.pop()` / `ripple()` / `stamp()` / `successPulse()` — 피드백 API
 - 세트·시간·미션 체크, 저장/FAB/네비 터치 피드백 (기존 모듈 비침투)
 - `prefers-reduced-motion: reduce` 시 애니메이션 비활성
+
+### celebrateFx.js
+- `CelebrateFx.showMissionClear()` — 데일리 미션 전부 완료 시 풀스크린 축하
+- `CelebrateFx.confettiBurst()` / `floatXp()` / `showToast()` — confetti·XP 팝·토스트
+- `CelebrateFx.igniteStreakPill()` — 스트릭 불꽃 점화
+- 운동 저장 완료 시 confetti + 토스트 (모달 닫힘 감지)
+- `prefers-reduced-motion` / cooldown으로 과한 연출·중복 방지
 
 ### cardioTracker.js
 - `CardioTracker.isCardioExercise()` — 유산소 운동 판별 (키워드 + duration 모드)
@@ -846,6 +854,33 @@ MusclesMonster/
 - [ ] 마이크로 애니메이션 범위 확장(진행바 숫자 카운트 등) 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v47`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 20 — 2026-07-14
+
+**중간 수준 축하 연출 (CelebrateFx)**
+- 독립 모듈 `celebrateFx.js` — 기존 모듈 비침투 (이벤트 위임)
+- 데일리 미션 전부 완료 → **풀스크린 미션 클리어** + confetti + 스트릭 표시
+- 세트/시간 체크 → **+1 XP 팝** + 소량 confetti
+- 운동 저장 완료 → confetti + 「운동 기록 완료」토스트 + 스트릭 점화
+- 스트릭 pill 텍스트 변경 시 **불꽃 점화** 애니메이션
+- 진동 피드백(`navigator.vibrate`) + cooldown + `prefers-reduced-motion`
+- SW 캐시 `recovr-cache-v48`, `test-celebrate-fx.js` 추가
+
+**무결성 검사**
+- JS 문법 검사: `celebrateFx.js` / `sw.js` 통과 ✓
+- 단위 테스트 16개 스위트: ALL PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 ✓
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v48`
 
 **현재 앱 버전**: `1.0.0`
 
