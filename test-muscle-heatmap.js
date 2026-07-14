@@ -111,5 +111,12 @@ assert(backHtml.includes('40%'), 'renders back pct on back view');
 assert(backHtml.includes('삼두'), 'renders triceps name on back');
 assert(backHtml.includes('햄스'), 'renders hamstrings short name');
 
+// 데이터 없으면 대형 바디맵 대신 컴팩트 안내
+MuscleHeatmap.render({}, []);
+const emptyHtml = global.__mhCard.innerHTML;
+assert(emptyHtml.includes('mh-card--empty'), 'empty state compact card');
+assert(!emptyHtml.includes('mh-svg'), 'no full svg when empty');
+assert(emptyHtml.includes('운동을 기록하면'), 'empty hint text');
+
 console.log(failures === 0 ? 'MuscleHeatmap tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);
