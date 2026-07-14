@@ -22,7 +22,7 @@ const MuscleHeatmap = (() => {
   };
 
   // 이미지/마스크 캐시 무효화 (SW·브라우저 캐시 잔존 방지)
-  const ASSET_VERSION = 'v51';
+  const ASSET_VERSION = 'v52';
 
   function assetUrl(path) {
     return `${path}?v=${ASSET_VERSION}`;

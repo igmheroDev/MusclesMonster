@@ -583,15 +583,7 @@ async function writeBackupFile() {
 
 function updateBackupGuideText() {
   const el = document.getElementById('backupGuideText');
-  if (!el) return;
-  if (typeof BackupReconnect !== 'undefined') {
-    const pwa = (typeof BackupWriter !== 'undefined' && BackupWriter.isRunningAsPwa)
-      ? BackupWriter.isRunningAsPwa()
-      : isRunningAsPwa();
-    el.textContent = BackupReconnect.getPersistGuide(pwa);
-    return;
-  }
-  if (typeof BackupWriter === 'undefined') return;
+  if (!el || typeof BackupWriter === 'undefined') return;
   el.textContent = BackupWriter.getSettingsGuide();
 }
 
@@ -620,9 +612,9 @@ function updateBackupStatus() {
     if (manualBtn) manualBtn.style.display = '';
     if (linkBtn) linkBtn.textContent = '변경';
   } else if (localStorage.getItem('recovr_backup_linked') === 'true') {
-    el.textContent = '권한 재허용 필요 · 파일 재선택 불필요';
+    el.textContent = '재연결 필요 (연결 버튼 한 번 탭)';
     if (manualBtn) manualBtn.style.display = 'none';
-    if (linkBtn) linkBtn.textContent = '다시 연결';
+    if (linkBtn) linkBtn.textContent = '연결';
   } else {
     el.textContent = '연결 안 됨';
     if (manualBtn) manualBtn.style.display = 'none';
@@ -907,103 +899,124 @@ function renderStreak(workouts) {
 }
 
 function renderHome() {
+  // 히어로를 먼저 갱신해 "—" 고착을 방지
   try {
-    renderHomeInner();
+    const pctEl = document.getElementById('overallPct');
+    if (pctEl) pctEl.innerHTML = `100<span class="unit">% 회복</span>`;
+  } catch (_) { /* ignore */ }
+
+  let workouts = [];
+  let settings = { baseRecoveryHours: 48 };
+  let recovery = {};
+  let active = [];
+
+  try {
+    workouts = getCompletedWorkouts();
   } catch (e) {
-    console.error('[RECOVR] 홈 렌더 실패:', e);
-    try {
-      const pctEl = document.getElementById('overallPct');
-      if (pctEl && (!pctEl.textContent || pctEl.textContent.indexOf('—') >= 0)) {
-        pctEl.innerHTML = `—<span class="unit">% 회복</span>`;
-      }
-      const list = document.getElementById('muscleList');
-      if (list && !list.innerHTML) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <div class="ee-icon">⚠️</div>
-            <div class="ee-title">화면을 불러오지 못했어요</div>
-            <div class="ee-body">잠시 후 다시 시도하거나<br>앱을 한 번 종료 후 열어주세요.</div>
-          </div>`;
-      }
-    } catch (_) { /* ignore */ }
+    console.warn('[RECOVR] 운동 로드 실패:', e);
   }
-}
 
-function renderHomeInner() {
-  const workouts = getCompletedWorkouts();
-  const settings = loadSettings();
-  const recovery = calcMuscleRecovery(workouts, settings);
+  try {
+    settings = loadSettings() || { baseRecoveryHours: 48 };
+  } catch (e) {
+    console.warn('[RECOVR] 설정 로드 실패:', e);
+  }
 
-  checkRecoveryNotifications(recovery);
+  try {
+    recovery = calcMuscleRecovery(workouts, settings) || {};
+  } catch (e) {
+    console.warn('[RECOVR] 회복도 계산 실패:', e);
+    recovery = {};
+  }
 
-  // overall = average recovery across muscles that have data
-  const active = MUSCLE_ORDER.filter(m => recovery[m].lastDate !== null);
+  try {
+    active = MUSCLE_ORDER.filter(m => recovery[m] && recovery[m].lastDate !== null);
+  } catch (e) {
+    active = [];
+  }
+
   let overallPct = 100;
   if (active.length > 0) {
-    overallPct = Math.round(active.reduce((sum, m) => sum + recovery[m].recoveryPct, 0) / active.length);
+    try {
+      overallPct = Math.round(active.reduce((sum, m) => sum + (recovery[m].recoveryPct || 0), 0) / active.length);
+    } catch (_) {
+      overallPct = 100;
+    }
   }
 
-  document.getElementById('overallPct').innerHTML = `${overallPct}<span class="unit">% 회복</span>`;
+  try {
+    document.getElementById('overallPct').innerHTML = `${overallPct}<span class="unit">% 회복</span>`;
+  } catch (_) { /* ignore */ }
 
-  const ring = document.getElementById('heroRing');
-  let desc, ringBg, ringIcon;
-  if (active.length === 0) {
-    desc = '운동 기록을 추가하면 회복도가 표시돼요.';
-    ringBg = 'rgba(255,255,255,0.05)'; ringIcon = '🧘';
-  } else if (overallPct < 40) {
-    desc = '최근 운동 강도가 높았어요. 휴식을 추천해요.';
-    ringBg = 'rgba(255,59,92,0.12)'; ringIcon = '🔥';
-  } else if (overallPct < 70) {
-    desc = '회복 진행 중이에요. 가벼운 활동이 좋아요.';
-    ringBg = 'rgba(255,107,53,0.12)'; ringIcon = '⏳';
-  } else if (overallPct < 95) {
-    desc = '거의 회복됐어요. 곧 재운동 가능해요.';
-    ringBg = 'rgba(255,214,0,0.12)'; ringIcon = '👍';
-  } else {
-    desc = '대부분 회복 완료! 운동하기 좋은 날이에요.';
-    ringBg = 'rgba(0,255,157,0.12)'; ringIcon = '💪';
-  }
-  ring.style.background = ringBg;
-  ring.textContent = ringIcon;
-  document.getElementById('overallDesc').textContent = desc;
-
-  const profileSummaryEl = document.getElementById('profileSummary');
-  if (profileSummaryEl) {
-    const summary = (typeof UserProfile !== 'undefined')
-      ? UserProfile.getHomeSummary(settings.profile, settings)
-      : '';
-    profileSummaryEl.textContent = summary;
-    profileSummaryEl.style.display = summary ? '' : 'none';
+  try {
+    checkRecoveryNotifications(recovery);
+  } catch (e) {
+    console.warn('[RECOVR] 알림 체크 실패:', e);
   }
 
-  // streak
-  renderStreak(workouts);
+  try {
+    const ring = document.getElementById('heroRing');
+    let desc, ringBg, ringIcon;
+    if (active.length === 0) {
+      desc = '운동 기록을 추가하면 회복도가 표시돼요.';
+      ringBg = 'rgba(255,255,255,0.05)'; ringIcon = '🧘';
+    } else if (overallPct < 40) {
+      desc = '최근 운동 강도가 높았어요. 휴식을 추천해요.';
+      ringBg = 'rgba(255,59,92,0.12)'; ringIcon = '🔥';
+    } else if (overallPct < 70) {
+      desc = '회복 진행 중이에요. 가벼운 활동이 좋아요.';
+      ringBg = 'rgba(255,107,53,0.12)'; ringIcon = '⏳';
+    } else if (overallPct < 95) {
+      desc = '거의 회복됐어요. 곧 재운동 가능해요.';
+      ringBg = 'rgba(255,214,0,0.12)'; ringIcon = '👍';
+    } else {
+      desc = '대부분 회복 완료! 운동하기 좋은 날이에요.';
+      ringBg = 'rgba(0,255,157,0.12)'; ringIcon = '💪';
+    }
+    if (ring) {
+      ring.style.background = ringBg;
+      ring.textContent = ringIcon;
+    }
+    const descEl = document.getElementById('overallDesc');
+    if (descEl) descEl.textContent = desc;
+  } catch (e) {
+    console.warn('[RECOVR] 히어로 렌더 실패:', e);
+  }
 
-  // week bar
-  renderWeekBar(workouts);
+  try {
+    const profileSummaryEl = document.getElementById('profileSummary');
+    if (profileSummaryEl) {
+      const summary = (typeof UserProfile !== 'undefined')
+        ? UserProfile.getHomeSummary(settings.profile, settings)
+        : '';
+      profileSummaryEl.textContent = summary;
+      profileSummaryEl.style.display = summary ? '' : 'none';
+    }
+  } catch (e) {
+    console.warn('[RECOVR] 프로필 요약 실패:', e);
+  }
 
-  // monthly goals
+  try { renderStreak(workouts); } catch (e) { console.warn('[RECOVR] 스트릭 실패:', e); }
+  try { renderWeekBar(workouts); } catch (e) { console.warn('[RECOVR] 주간바 실패:', e); }
+
   try {
     if (typeof WorkoutGoals !== 'undefined') WorkoutGoals.renderHomeCard();
   } catch (e) {
     console.warn('[RECOVR] 목표 카드 렌더 실패:', e);
   }
 
-  // workout recommendation (10일+ 기록 시)
   try {
     if (typeof WorkoutRecommendation !== 'undefined') WorkoutRecommendation.render();
   } catch (e) {
     console.warn('[RECOVR] 추천 카드 렌더 실패:', e);
   }
 
-  // workout advice (패턴 분석 조언)
   try {
     if (typeof WorkoutAdvice !== 'undefined') WorkoutAdvice.render();
   } catch (e) {
     console.warn('[RECOVR] 조언 카드 렌더 실패:', e);
   }
 
-  // 유산소 요약 카드
   try {
     if (typeof CardioTracker !== 'undefined') CardioTracker.renderHomeCard();
   } catch (e) {
@@ -1016,69 +1029,76 @@ function renderHomeInner() {
     console.warn('[RECOVR] 유산소 세부 지표 렌더 실패:', e);
   }
 
-  // AI 코치 상담 카드
   try {
     if (typeof AiCoach !== 'undefined') AiCoach.renderHomeCard();
   } catch (e) {
     console.warn('[RECOVR] AI 코치 카드 렌더 실패:', e);
   }
 
-  // 데일리 미션 카드
   try {
     if (typeof DailyMission !== 'undefined') DailyMission.renderHomeCard();
   } catch (e) {
     console.warn('[RECOVR] 데일리 미션 카드 렌더 실패:', e);
   }
 
-  // muscle heatmap
   try {
     if (typeof MuscleHeatmap !== 'undefined') MuscleHeatmap.render(recovery, active);
   } catch (e) {
     console.warn('[RECOVR] 히트맵 렌더 실패:', e);
   }
 
-  // muscle list
   const muscleList = document.getElementById('muscleList');
   if (!muscleList) return;
-  muscleList.innerHTML = '';
 
-  if (active.length === 0) {
+  try {
+    muscleList.innerHTML = '';
+
+    if (active.length === 0) {
+      muscleList.innerHTML = `
+        <div class="empty-state">
+          <div class="ee-icon">📭</div>
+          <div class="ee-title">아직 운동 기록이 없어요</div>
+          <div class="ee-body">하단의 + 버튼을 눌러<br>첫 운동을 기록해보세요.</div>
+        </div>`;
+      return;
+    }
+
+    const sorted = [...active].sort((a, b) => recovery[a].recoveryPct - recovery[b].recoveryPct);
+
+    sorted.forEach(m => {
+      const r = recovery[m];
+      const label = MUSCLE_LABELS[m];
+      if (!r || !label) return;
+      const badge = getStatusBadge(r.recoveryPct);
+      const barColor = getBarColor(r.recoveryPct);
+      const exNames = [...new Set(r.exercises || [])].join(' · ');
+
+      muscleList.innerHTML += `
+        <div class="muscle-card">
+          <div class="mc-top">
+            <div class="mc-icon" style="background:rgba(255,255,255,0.04)">${label.icon}</div>
+            <div class="mc-info">
+              <div class="mc-name">${label.name}</div>
+              <div class="mc-detail">${exNames}</div>
+            </div>
+            <div class="mc-right">
+              <div class="mc-pct" style="color:${getPctColor(r.recoveryPct)}">${r.recoveryPct}%</div>
+              <div class="badge ${badge.cls}">${badge.label}</div>
+            </div>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${r.recoveryPct}%;background:${barColor}"></div></div>
+          <div class="mc-time" style="margin-top:4px">${formatHoursElapsed(r.hoursElapsed)} · ${r.recoveryHours}h 기준</div>
+        </div>`;
+    });
+  } catch (e) {
+    console.warn('[RECOVR] 근육 목록 렌더 실패:', e);
     muscleList.innerHTML = `
       <div class="empty-state">
         <div class="ee-icon">📭</div>
         <div class="ee-title">아직 운동 기록이 없어요</div>
         <div class="ee-body">하단의 + 버튼을 눌러<br>첫 운동을 기록해보세요.</div>
       </div>`;
-    return;
   }
-
-  // sort by recovery pct ascending (least recovered first)
-  const sorted = [...active].sort((a, b) => recovery[a].recoveryPct - recovery[b].recoveryPct);
-
-  sorted.forEach(m => {
-    const r = recovery[m];
-    const label = MUSCLE_LABELS[m];
-    const badge = getStatusBadge(r.recoveryPct);
-    const barColor = getBarColor(r.recoveryPct);
-    const exNames = [...new Set(r.exercises)].join(' · ');
-
-    muscleList.innerHTML += `
-      <div class="muscle-card">
-        <div class="mc-top">
-          <div class="mc-icon" style="background:rgba(255,255,255,0.04)">${label.icon}</div>
-          <div class="mc-info">
-            <div class="mc-name">${label.name}</div>
-            <div class="mc-detail">${exNames}</div>
-          </div>
-          <div class="mc-right">
-            <div class="mc-pct" style="color:${getPctColor(r.recoveryPct)}">${r.recoveryPct}%</div>
-            <div class="badge ${badge.cls}">${badge.label}</div>
-          </div>
-        </div>
-        <div class="bar-track"><div class="bar-fill" style="width:${r.recoveryPct}%;background:${barColor}"></div></div>
-        <div class="mc-time" style="margin-top:4px">${formatHoursElapsed(r.hoursElapsed)} · ${r.recoveryHours}h 기준</div>
-      </div>`;
-  });
 }
 
 function getPctColor(pct) {
@@ -1090,6 +1110,7 @@ function getPctColor(pct) {
 
 function renderWeekBar(workouts) {
   const weekBar = document.getElementById('weekBar');
+  if (!weekBar) return;
   weekBar.innerHTML = '';
   const dayLabels = ['일','월','화','수','목','금','토'];
   const today = new Date();
@@ -2744,60 +2765,8 @@ async function onBackupReconnectResult(result) {
   updateBackupStatus();
 }
 
-function scheduleBackupBanner(handle) {
-  // 홈 첫 페인트 이후에 배너를 띄워 레이아웃을 가리지 않음
-  setTimeout(() => {
-    try {
-      if (typeof BackupReconnect !== 'undefined') {
-        BackupReconnect.showBanner(handle, onBackupReconnectResult);
-      }
-      updateBackupStatus();
-    } catch (e) {
-      console.warn('[RECOVR] 백업 배너 표시 실패:', e);
-    }
-  }, 0);
-}
-
-async function recheckBackupPermission() {
-  if (!isFileSystemAccessSupported()) return;
-
-  try {
-    // 이미 연결된 핸들의 권한이 백그라운드에서 풀렸는지 확인
-    if (backupRootHandle && typeof BackupReconnect !== 'undefined') {
-      const result = await BackupReconnect.evaluate(backupRootHandle);
-      if (result.status === 'restored') return;
-      const handle = backupRootHandle;
-      backupRootHandle = null;
-      localStorage.setItem('recovr_backup_linked', 'true');
-      scheduleBackupBanner(handle);
-      return;
-    }
-
-    if (backupRootHandle) return;
-    if (typeof BackupStorage === 'undefined') return;
-
-    const handle = await BackupStorage.loadBackupHandle();
-    if (!handle) return;
-
-    localStorage.setItem('recovr_backup_linked', 'true');
-    if (typeof BackupReconnect === 'undefined') {
-      updateBackupStatus();
-      return;
-    }
-
-    const result = await BackupReconnect.evaluate(handle);
-    if (result.status === 'restored') {
-      backupRootHandle = handle;
-      BackupReconnect.hideBanner();
-      updateBackupStatus();
-    } else {
-      scheduleBackupBanner(handle);
-    }
-  } catch (e) {
-    console.warn('[RECOVR] 백업 권한 재확인 실패:', e);
-  }
-}
-
+// 자동 배너/재연결 훅은 홈 화면 안정성을 위해 비활성화.
+// 설정 > 연결 버튼으로만 권한을 다시 허용합니다.
 async function initBackupFromStorage() {
   if (!isFileSystemAccessSupported()) {
     updateBackupStatus();
@@ -2805,6 +2774,9 @@ async function initBackupFromStorage() {
   }
 
   try {
+    if (typeof BackupReconnect !== 'undefined' && BackupReconnect.hideBanner) {
+      BackupReconnect.hideBanner();
+    }
     if (typeof BackupStorage === 'undefined') {
       updateBackupStatus();
       return;
@@ -2816,30 +2788,28 @@ async function initBackupFromStorage() {
       return;
     }
 
-    // 핸들은 유지 — 권한만 풀린 상태일 수 있음
-    localStorage.setItem('recovr_backup_linked', 'true');
+    let perm = 'prompt';
+    try {
+      if (handle.queryPermission) {
+        perm = await handle.queryPermission({ mode: 'readwrite' });
+      }
+    } catch (_) {
+      perm = 'prompt';
+    }
 
-    if (typeof BackupReconnect !== 'undefined') {
-      const result = await BackupReconnect.evaluate(handle);
-      if (result.status === 'restored') {
-        backupRootHandle = handle;
-        BackupReconnect.hideBanner();
-        updateBackupStatus();
-      } else {
-        backupRootHandle = null;
-        scheduleBackupBanner(handle);
-      }
+    if (perm === 'granted') {
+      backupRootHandle = handle;
+      localStorage.setItem('recovr_backup_linked', 'true');
     } else {
-      const perm = await handle.queryPermission({ mode: 'readwrite' });
-      if (perm === 'granted') {
-        backupRootHandle = handle;
-      }
-      updateBackupStatus();
+      // 핸들은 IndexedDB에 유지. 설정에서 "연결" 시 권한만 다시 요청.
+      localStorage.setItem('recovr_backup_linked', 'true');
+      backupRootHandle = null;
     }
   } catch (e) {
     console.warn('[RECOVR] 백업 파일 자동 복원 실패:', e);
-    updateBackupStatus();
   }
+
+  updateBackupStatus();
 }
 
 // ============================================================
@@ -2871,13 +2841,6 @@ function init() {
   updateBackupGuideText();
   setupBackgroundSave();
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') recheckBackupPermission();
-  });
-  window.addEventListener('pageshow', (ev) => {
-    if (ev.persisted) recheckBackupPermission();
-  });
-
   if (typeof UserProfile !== 'undefined') {
     try { UserProfile.fillForm(loadSettings()); } catch (e) { console.warn('[RECOVR] 프로필 폼 실패:', e); }
   }
@@ -2887,7 +2850,6 @@ function init() {
     el.textContent = el.id === 'appVersionLabel' ? `RECOVR ${versionText}` : versionText;
   });
 
-  // 홈을 먼저 그리고, 백업 배너는 비동기로 나중에
   renderHome();
 
   try {
