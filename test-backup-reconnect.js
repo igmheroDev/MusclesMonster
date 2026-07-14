@@ -54,14 +54,15 @@ function makeEl(tag) {
 }
 
 const body = makeEl('body');
+const head = makeEl('head');
 global.document = {
   body,
+  head,
   getElementById(id) {
     return created.find((e) => e.id === id) || null;
   },
   createElement(tag) {
     const el = makeEl(tag);
-    // mimic prepend usage via body.prepend in module — patch below
     return el;
   },
 };
@@ -71,16 +72,22 @@ body.prepend = function prepend(child) {
   if (child.id) created.push(child);
   return child;
 };
+body.appendChild = function appendChild(child) {
+  child.parentNode = this;
+  this.children.push(child);
+  if (child.id && !created.includes(child)) created.push(child);
+  return child;
+};
+head.appendChild = function appendChild(child) {
+  child.parentNode = this;
+  this.children.push(child);
+  if (child.id && !created.includes(child)) created.push(child);
+  return child;
+};
 // ensure createElement results are trackable when id set later
 const origCreate = global.document.createElement.bind(global.document);
 global.document.createElement = (tag) => {
   const el = origCreate(tag);
-  const desc = Object.getOwnPropertyDescriptor(el, 'id') || {
-    configurable: true,
-    enumerable: true,
-    writable: true,
-    value: '',
-  };
   let idVal = '';
   Object.defineProperty(el, 'id', {
     get() { return idVal; },
@@ -131,13 +138,14 @@ assert(BackupReconnect.getPersistGuide(true).includes('앱'), 'pwa guide mention
   const denied = await BackupReconnect.evaluate(deniedHandle);
   assert(denied.status === 'denied', 'denied status');
 
-  BackupReconnect.showBanner(promptHandle, async () => {});
-  const banner = document.getElementById('backupReconnectBanner');
-  assert(!!banner, 'banner created');
-  assert(banner.classList.contains('visible'), 'banner visible');
-  assert(BackupReconnect.hasPending(), 'pending handle set');
-  BackupReconnect.hideBanner();
-  assert(!banner.classList.contains('visible'), 'banner hidden');
+BackupReconnect.showBanner(promptHandle, async () => {});
+const banner = document.getElementById('backupReconnectBanner');
+assert(!!banner, 'banner created');
+assert(banner.classList.contains('visible'), 'banner visible');
+assert(!!document.getElementById('backup-reconnect-styles'), 'injects own styles');
+assert(BackupReconnect.hasPending(), 'pending handle set');
+BackupReconnect.hideBanner();
+assert(!banner.classList.contains('visible'), 'banner hidden');
 
   // static integration
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
@@ -145,7 +153,7 @@ assert(BackupReconnect.getPersistGuide(true).includes('앱'), 'pwa guide mention
   assert(html.includes('backupReconnect.js'), 'index loads module');
   assert(html.includes('backup-reconnect-banner'), 'index has banner css');
   assert(sw.includes('backupReconnect.js'), 'sw caches module');
-  assert(sw.includes('recovr-cache-v50'), 'sw cache bump');
+  assert(sw.includes('recovr-cache-v51'), 'sw cache bump');
 
   console.log(failures === 0 ? 'BackupReconnect tests passed ✓' : failures + ' failed');
   process.exit(failures === 0 ? 0 : 1);

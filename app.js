@@ -907,6 +907,29 @@ function renderStreak(workouts) {
 }
 
 function renderHome() {
+  try {
+    renderHomeInner();
+  } catch (e) {
+    console.error('[RECOVR] 홈 렌더 실패:', e);
+    try {
+      const pctEl = document.getElementById('overallPct');
+      if (pctEl && (!pctEl.textContent || pctEl.textContent.indexOf('—') >= 0)) {
+        pctEl.innerHTML = `—<span class="unit">% 회복</span>`;
+      }
+      const list = document.getElementById('muscleList');
+      if (list && !list.innerHTML) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="ee-icon">⚠️</div>
+            <div class="ee-title">화면을 불러오지 못했어요</div>
+            <div class="ee-body">잠시 후 다시 시도하거나<br>앱을 한 번 종료 후 열어주세요.</div>
+          </div>`;
+      }
+    } catch (_) { /* ignore */ }
+  }
+}
+
+function renderHomeInner() {
   const workouts = getCompletedWorkouts();
   const settings = loadSettings();
   const recovery = calcMuscleRecovery(workouts, settings);
@@ -1016,6 +1039,7 @@ function renderHome() {
 
   // muscle list
   const muscleList = document.getElementById('muscleList');
+  if (!muscleList) return;
   muscleList.innerHTML = '';
 
   if (active.length === 0) {
@@ -2710,7 +2734,7 @@ function clearAllData() {
 }
 
 async function onBackupReconnectResult(result) {
-  if (result?.status === 'restored' && result.handle) {
+  if (result && result.status === 'restored' && result.handle) {
     backupRootHandle = result.handle;
     localStorage.setItem('recovr_backup_linked', 'true');
     updateBackupStatus();
@@ -2718,6 +2742,20 @@ async function onBackupReconnectResult(result) {
     return;
   }
   updateBackupStatus();
+}
+
+function scheduleBackupBanner(handle) {
+  // 홈 첫 페인트 이후에 배너를 띄워 레이아웃을 가리지 않음
+  setTimeout(() => {
+    try {
+      if (typeof BackupReconnect !== 'undefined') {
+        BackupReconnect.showBanner(handle, onBackupReconnectResult);
+      }
+      updateBackupStatus();
+    } catch (e) {
+      console.warn('[RECOVR] 백업 배너 표시 실패:', e);
+    }
+  }, 0);
 }
 
 async function recheckBackupPermission() {
@@ -2731,8 +2769,7 @@ async function recheckBackupPermission() {
       const handle = backupRootHandle;
       backupRootHandle = null;
       localStorage.setItem('recovr_backup_linked', 'true');
-      BackupReconnect.showBanner(handle, onBackupReconnectResult);
-      updateBackupStatus();
+      scheduleBackupBanner(handle);
       return;
     }
 
@@ -2752,10 +2789,10 @@ async function recheckBackupPermission() {
     if (result.status === 'restored') {
       backupRootHandle = handle;
       BackupReconnect.hideBanner();
+      updateBackupStatus();
     } else {
-      BackupReconnect.showBanner(handle, onBackupReconnectResult);
+      scheduleBackupBanner(handle);
     }
-    updateBackupStatus();
   } catch (e) {
     console.warn('[RECOVR] 백업 권한 재확인 실패:', e);
   }
@@ -2787,21 +2824,22 @@ async function initBackupFromStorage() {
       if (result.status === 'restored') {
         backupRootHandle = handle;
         BackupReconnect.hideBanner();
+        updateBackupStatus();
       } else {
         backupRootHandle = null;
-        BackupReconnect.showBanner(handle, onBackupReconnectResult);
+        scheduleBackupBanner(handle);
       }
     } else {
       const perm = await handle.queryPermission({ mode: 'readwrite' });
       if (perm === 'granted') {
         backupRootHandle = handle;
       }
+      updateBackupStatus();
     }
   } catch (e) {
     console.warn('[RECOVR] 백업 파일 자동 복원 실패:', e);
+    updateBackupStatus();
   }
-
-  updateBackupStatus();
 }
 
 // ============================================================
@@ -2841,13 +2879,15 @@ function init() {
   });
 
   if (typeof UserProfile !== 'undefined') {
-    UserProfile.fillForm(loadSettings());
+    try { UserProfile.fillForm(loadSettings()); } catch (e) { console.warn('[RECOVR] 프로필 폼 실패:', e); }
   }
 
   const versionText = `v${APP_VERSION}`;
   document.querySelectorAll('#appVersionBadge, #appVersionLabel').forEach(el => {
     el.textContent = el.id === 'appVersionLabel' ? `RECOVR ${versionText}` : versionText;
   });
+
+  // 홈을 먼저 그리고, 백업 배너는 비동기로 나중에
   renderHome();
 
   try {

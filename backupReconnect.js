@@ -8,11 +8,72 @@
 
 const BackupReconnect = (() => {
   const BANNER_ID = 'backupReconnectBanner';
+  const STYLE_ID = 'backup-reconnect-styles';
   const PERM_OPTS = { mode: 'readwrite' };
 
   let pendingHandle = null;
   let onResultCb = null;
   let busy = false;
+
+  function ensureStyles() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+      #${BANNER_ID} {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9998;
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 10px 14px;
+        box-sizing: border-box;
+        background: linear-gradient(135deg, rgba(255, 176, 32, 0.95), rgba(0, 212, 255, 0.88));
+        border-bottom: 1px solid rgba(255, 176, 32, 0.45);
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: #1a1a22;
+        font-family: inherit;
+      }
+      #${BANNER_ID}.visible { display: flex; }
+      #${BANNER_ID} .backup-reconnect-text {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.45;
+        flex: 1;
+        min-width: 0;
+      }
+      #${BANNER_ID} .backup-reconnect-icon { font-size: 15px; flex-shrink: 0; }
+      #${BANNER_ID} .backup-reconnect-actions { display: flex; gap: 6px; flex-shrink: 0; }
+      #${BANNER_ID} .backup-reconnect-btn {
+        padding: 7px 11px;
+        border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.12);
+        background: rgba(255,255,255,0.85);
+        color: #333;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #${BANNER_ID} .backup-reconnect-btn.primary {
+        background: #1a1a22;
+        border-color: transparent;
+        color: #fff;
+      }
+      body.backup-reconnect-open {
+        padding-top: 64px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   async function queryPermission(handle) {
     if (!handle || typeof handle.queryPermission !== 'function') return 'prompt';
@@ -28,8 +89,7 @@ const BackupReconnect = (() => {
     try {
       return await handle.requestPermission(PERM_OPTS);
     } catch (err) {
-      // SecurityError: 사용자 제스처 없이 호출된 경우 등
-      console.warn('[BackupReconnect] requestPermission 실패:', err?.name || err);
+      console.warn('[BackupReconnect] requestPermission 실패:', err && err.name ? err.name : err);
       return 'prompt';
     }
   }
@@ -62,6 +122,7 @@ const BackupReconnect = (() => {
   }
 
   function ensureBanner() {
+    ensureStyles();
     let el = document.getElementById(BANNER_ID);
     if (el) return el;
 
@@ -72,11 +133,11 @@ const BackupReconnect = (() => {
     el.innerHTML = `
       <div class="backup-reconnect-text">
         <span class="backup-reconnect-icon">📁</span>
-        <span>백업 연결 권한이 풀렸어요. 파일 재선택 없이 복원할 수 있어요.</span>
+        <span>백업 권한이 풀렸어요. 파일 재선택 없이 복원 가능</span>
       </div>
       <div class="backup-reconnect-actions">
         <button type="button" class="backup-reconnect-btn primary" data-action="restore">다시 연결</button>
-        <button type="button" class="backup-reconnect-btn" data-action="dismiss">나중에</button>
+        <button type="button" class="backup-reconnect-btn" data-action="dismiss">닫기</button>
       </div>`;
 
     el.querySelector('[data-action="restore"]').addEventListener('click', async (ev) => {
@@ -101,7 +162,7 @@ const BackupReconnect = (() => {
       hideBanner();
     });
 
-    document.body.prepend(el);
+    document.body.appendChild(el);
     return el;
   }
 
@@ -111,6 +172,7 @@ const BackupReconnect = (() => {
     onResultCb = onResult || null;
     const el = ensureBanner();
     el.classList.add('visible');
+    document.body.classList.add('backup-reconnect-open');
   }
 
   function hideBanner() {
@@ -118,6 +180,9 @@ const BackupReconnect = (() => {
       ? document.getElementById(BANNER_ID)
       : null;
     if (el) el.classList.remove('visible');
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('backup-reconnect-open');
+    }
   }
 
   function getPersistGuide(isPwa) {
@@ -145,5 +210,6 @@ const BackupReconnect = (() => {
     hasPending,
     queryPermission,
     requestPermission,
+    ensureStyles,
   };
 })();

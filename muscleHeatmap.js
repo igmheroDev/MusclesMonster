@@ -22,7 +22,7 @@ const MuscleHeatmap = (() => {
   };
 
   // 이미지/마스크 캐시 무효화 (SW·브라우저 캐시 잔존 방지)
-  const ASSET_VERSION = 'v49';
+  const ASSET_VERSION = 'v51';
 
   function assetUrl(path) {
     return `${path}?v=${ASSET_VERSION}`;
@@ -270,6 +270,22 @@ const MuscleHeatmap = (() => {
     const hasData = lastActive.length > 0;
     const viewLabel = currentView === 'back' ? '후면' : '전면';
 
+    // 데이터 없을 때 대형 빈 바디맵을 그리면 라이트 모드에서
+    // "홈이 하얗게 깨진 것처럼" 보이므로 컴팩트 안내만 표시
+    if (!hasData) {
+      container.innerHTML = `
+        <div class="mh-card mh-card--empty">
+          <div class="mh-accent-bar"></div>
+          <div class="mh-header">
+            <div class="mh-title">💪 근육 회복 히트맵</div>
+          </div>
+          <div class="mh-empty-hint">
+            운동을 기록하면 부위별 회복 색이 여기에 표시돼요.
+          </div>
+        </div>`;
+      return;
+    }
+
     container.innerHTML = `
       <div class="mh-card">
         <div class="mh-accent-bar"></div>
@@ -285,7 +301,7 @@ const MuscleHeatmap = (() => {
           <div class="mh-tooltip" id="mhTooltip"></div>
         </div>
         <div class="mh-legend">${buildLegend()}</div>
-        <div class="mh-sub">${hasData ? `${viewLabel} 보기 · 부위를 탭하면 상세 확인` : '운동 기록을 추가하면 부위별 회복도가 표시돼요'}</div>
+        <div class="mh-sub">${viewLabel} 보기 · 부위를 탭하면 상세 확인</div>
       </div>`;
 
     container.querySelectorAll('.mh-toggle-btn').forEach((btn) => {
