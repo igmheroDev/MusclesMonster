@@ -22,7 +22,7 @@ const MuscleHeatmap = (() => {
   };
 
   // 이미지/마스크 캐시 무효화 (SW·브라우저 캐시 잔존 방지)
-  const ASSET_VERSION = 'v46';
+  const ASSET_VERSION = 'v49';
 
   function assetUrl(path) {
     return `${path}?v=${ASSET_VERSION}`;
@@ -34,17 +34,41 @@ const MuscleHeatmap = (() => {
     back: 'M120 20C134 20 144 30 144 44C144 58 134 68 120 68C106 68 96 58 96 44C96 30 106 20 120 20Z',
   };
 
-  const TEXT_MUSCLES = new Set(['chest', 'back', 'quads', 'hamstrings', 'core']);
+  // 바디맵에 표시할 짧은 근육명 (좁은 구역용)
+  const SHORT_NAMES = {
+    chest: '가슴',
+    back: '등',
+    shoulder: '어깨',
+    biceps: '이두',
+    triceps: '삼두',
+    quads: '대퇴',
+    hamstrings: '햄스',
+    adductors: '내전',
+    calves: '종아리',
+    core: '코어',
+    forearms: '전완',
+  };
 
-  const TEXT_POSITIONS = {
+  // 전면/후면 근육명 라벨 좌표 (viewBox 240×360, 좌측 또는 중앙 1회만)
+  const LABEL_POSITIONS = {
     front: {
-      chest: { x: 120, y: 108 },
-      core: { x: 120, y: 165 },
-      quads: { x: 100, y: 245 },
+      shoulder: { x: 68, y: 78 },
+      chest: { x: 120, y: 96 },
+      biceps: { x: 70, y: 112 },
+      core: { x: 120, y: 148 },
+      forearms: { x: 48, y: 160 },
+      quads: { x: 92, y: 210 },
+      adductors: { x: 120, y: 208 },
+      calves: { x: 92, y: 290 },
     },
     back: {
-      back: { x: 120, y: 120 },
-      hamstrings: { x: 100, y: 245 },
+      shoulder: { x: 68, y: 82 },
+      back: { x: 120, y: 118 },
+      triceps: { x: 70, y: 112 },
+      forearms: { x: 48, y: 160 },
+      hamstrings: { x: 92, y: 210 },
+      adductors: { x: 120, y: 212 },
+      calves: { x: 92, y: 290 },
     },
   };
 
@@ -109,7 +133,11 @@ const MuscleHeatmap = (() => {
     if (typeof MUSCLE_LABELS !== 'undefined' && MUSCLE_LABELS[muscleKey]) {
       return MUSCLE_LABELS[muscleKey].name;
     }
-    return muscleKey;
+    return SHORT_NAMES[muscleKey] || muscleKey;
+  }
+
+  function getShortName(muscleKey) {
+    return SHORT_NAMES[muscleKey] || getMuscleLabel(muscleKey);
   }
 
   function getMuscleData(muscleKey, recovery) {
@@ -120,9 +148,8 @@ const MuscleHeatmap = (() => {
     return { pct: r.recoveryPct, hasData: true };
   }
 
-  function buildRegionsSvg(view, recovery) {
+  function buildRegionPaths(view, recovery) {
     const regions = view === 'back' ? BACK_REGIONS : FRONT_REGIONS;
-    const textRendered = new Set();
 
     return regions.map((region) => {
       const { pct, hasData } = getMuscleData(region.muscle, recovery);
@@ -132,21 +159,38 @@ const MuscleHeatmap = (() => {
       const title = hasData ? `${label} ${pct}%` : `${label} (기록 없음)`;
       const cls = getRecoveryClass(pct, hasData);
 
-      const path = `<path class="mh-region ${cls}" data-muscle="${region.muscle}" data-label="${label}" data-pct="${hasData ? pct : ''}"
+      return `<path class="mh-region ${cls}" data-muscle="${region.muscle}" data-label="${label}" data-pct="${hasData ? pct : ''}"
         d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="none" pointer-events="all">
         <title>${title}</title>
       </path>`;
+    }).join('');
+  }
 
-      const showText = hasData && TEXT_MUSCLES.has(region.muscle) && !textRendered.has(region.muscle);
-      if (showText) textRendered.add(region.muscle);
-      const textPos = TEXT_POSITIONS[view]?.[region.muscle] || { x: 120, y: 170 };
+  /** 블렌드/마스크 밖에 그려 가독성 확보 — 근육명(+회복%) */
+  function buildRegionLabels(view, recovery) {
+    const positions = LABEL_POSITIONS[view] || {};
+    const labeled = new Set();
 
-      const text = showText
-        ? `<text x="${textPos.x}" y="${textPos.y}" text-anchor="middle" dominant-baseline="middle"
-            class="mh-region-text" fill="#ffffff" font-size="10" font-weight="800" pointer-events="none">${pct}%</text>`
-        : '';
+    return Object.keys(positions).map((muscle) => {
+      if (labeled.has(muscle)) return '';
+      labeled.add(muscle);
 
-      return path + text;
+      const pos = positions[muscle];
+      const { pct, hasData } = getMuscleData(muscle, recovery);
+      const name = getShortName(muscle);
+      const fullLabel = getMuscleLabel(muscle);
+
+      if (hasData) {
+        return `<text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="middle"
+            class="mh-region-label mh-region-label--active" data-muscle="${muscle}" pointer-events="none">
+            <tspan x="${pos.x}" dy="-5" class="mh-region-name">${name}</tspan>
+            <tspan x="${pos.x}" dy="12" class="mh-region-pct">${pct}%</tspan>
+          </text>`;
+      }
+
+      return `<text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="middle"
+          class="mh-region-label mh-region-label--idle" data-muscle="${muscle}"
+          aria-label="${fullLabel}" pointer-events="none">${name}</text>`;
     }).join('');
   }
 
@@ -179,7 +223,10 @@ const MuscleHeatmap = (() => {
         <image class="mh-body-image" href="${src}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
           preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
         <g class="mh-muscles" mask="url(#${maskId})" style="mix-blend-mode:multiply">
-          ${buildRegionsSvg(view, recovery)}
+          ${buildRegionPaths(view, recovery)}
+        </g>
+        <g class="mh-labels" aria-hidden="false">
+          ${buildRegionLabels(view, recovery)}
         </g>
       </svg>`;
   }
@@ -254,6 +301,9 @@ const MuscleHeatmap = (() => {
     render,
     setView,
     getRecoveryColor,
+    getShortName,
+    SHORT_NAMES,
+    LABEL_POSITIONS,
     FRONT_REGIONS,
     BACK_REGIONS,
     BODY_SILHOUETTE,

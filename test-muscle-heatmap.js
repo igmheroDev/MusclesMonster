@@ -70,5 +70,46 @@ assert(fs.existsSync(path.join(__dirname, 'body-mask-back.png')), 'back mask exi
 assert(typeof MuscleHeatmap.render === 'function', 'render exists');
 assert(typeof MuscleHeatmap.setView === 'function', 'setView exists');
 
+assert(MuscleHeatmap.SHORT_NAMES.chest === '가슴', 'short name chest');
+assert(MuscleHeatmap.SHORT_NAMES.hamstrings === '햄스', 'short name hamstrings');
+assert(MuscleHeatmap.getShortName('quads') === '대퇴', 'getShortName quads');
+assert(MuscleHeatmap.LABEL_POSITIONS.front.chest?.x === 120, 'front chest label pos');
+assert(MuscleHeatmap.LABEL_POSITIONS.back.back?.y > 0, 'back label pos');
+assert(Object.keys(MuscleHeatmap.LABEL_POSITIONS.front).length >= 7, 'front has multiple labels');
+assert(Object.keys(MuscleHeatmap.LABEL_POSITIONS.back).length >= 6, 'back has multiple labels');
+
+// DOM 렌더: 근육명 라벨이 SVG에 포함되는지
+global.document = {
+  getElementById(id) {
+    if (id !== 'muscleHeatmapCard') return null;
+    const el = {
+      innerHTML: '',
+      querySelectorAll() { return []; },
+      querySelector() { return null; },
+    };
+    global.__mhCard = el;
+    return el;
+  },
+};
+MuscleHeatmap.render({
+  chest: { recoveryPct: 72, lastDate: '2026-07-13' },
+  back: { recoveryPct: 40, lastDate: '2026-07-12' },
+}, ['chest', 'back']);
+const html = global.__mhCard.innerHTML;
+assert(html.includes('mh-region-label'), 'renders label class');
+assert(html.includes('가슴'), 'renders chest name');
+assert(html.includes('72%'), 'renders chest pct');
+assert(html.includes('mh-labels'), 'labels group outside blend');
+assert(html.includes('코어'), 'renders idle core name on front');
+assert(html.includes('이두'), 'renders idle biceps name on front');
+assert(html.includes('대퇴'), 'renders idle quads short name');
+
+MuscleHeatmap.setView('back');
+const backHtml = global.__mhCard.innerHTML;
+assert(backHtml.includes('등'), 'renders back name on back view');
+assert(backHtml.includes('40%'), 'renders back pct on back view');
+assert(backHtml.includes('삼두'), 'renders triceps name on back');
+assert(backHtml.includes('햄스'), 'renders hamstrings short name');
+
 console.log(failures === 0 ? 'MuscleHeatmap tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);
