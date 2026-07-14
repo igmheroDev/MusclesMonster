@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v46';
+const CACHE_NAME = 'recovr-cache-v47';
 const ASSETS = [
   './',
   './index.html',
@@ -26,6 +26,7 @@ const ASSETS = [
   './aiCoach.js',
   './dailyMission.js',
   './exercisePicker.js',
+  './microAnim.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -56,6 +57,7 @@ const NETWORK_FIRST_PATHS = [
   '/aiCoach.js',
   '/dailyMission.js',
   '/exercisePicker.js',
+  '/microAnim.js',
   '/sw.js',
 ];
 

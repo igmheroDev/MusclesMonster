@@ -31,12 +31,13 @@ MusclesMonster/
 ├── aiCoach.js          # AI 코치 (Gemini Flash, BYOK)
 ├── dailyMission.js     # 데일리 미션
 ├── exercisePicker.js   # 운동 종목 피커
+├── microAnim.js        # 마이크로 애니메이션 (터치·완료 피드백)
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
-├── sw.js               # Service Worker (PWA 캐싱, v46)
+├── sw.js               # Service Worker (PWA 캐싱, v47)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
-├── test-*.js           # 단위 테스트 14개
+├── test-*.js           # 단위 테스트 15개
 └── SESSION_LOG.md
 ```
 
@@ -102,6 +103,12 @@ MusclesMonster/
 - `ExercisePicker.select()` — 선택 종목을 운동 행에 적용 (빈 행 재사용)
 - `ExercisePicker.getCatalog()` — COMMON_EXERCISES 기반 카탈로그 + 최근 수행일
 - 초성 검색·카테고리 칩(상체/하체/코어/유산소 등) 지원
+
+### microAnim.js
+- `MicroAnim.init()` — 스타일 주입 + 전역 이벤트 위임 (자동 기동)
+- `MicroAnim.pop()` / `ripple()` / `stamp()` / `successPulse()` — 피드백 API
+- 세트·시간·미션 체크, 저장/FAB/네비 터치 피드백 (기존 모듈 비침투)
+- `prefers-reduced-motion: reduce` 시 애니메이션 비활성
 
 ### cardioTracker.js
 - `CardioTracker.isCardioExercise()` — 유산소 운동 판별 (키워드 + duration 모드)
@@ -812,6 +819,33 @@ MusclesMonster/
 - [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v46`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 19 — 2026-07-14
+
+**마이크로 애니메이션 모듈 추가**
+- 독립 모듈 `microAnim.js` — 기존 모듈 로직 수정 없이 이벤트 위임으로 연결
+- 세트/시간/미션 체크 완료 시 **pop + glow flash**
+- 저장·타입·FAB 등 주요 버튼 **터치 리플**
+- 네비/탭 **press scale**, 미션 하루 완료 시 **stamp + success pulse**
+- `prefers-reduced-motion` 존중 (모션 끄기)
+- SW 캐시 `recovr-cache-v47`, `test-micro-anim.js` 추가
+
+**무결성 검사**
+- JS 문법 검사: `microAnim.js` / `sw.js` 통과 ✓
+- 단위 테스트 15개 스위트: ALL PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 ✓
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+- [ ] 마이크로 애니메이션 범위 확장(진행바 숫자 카운트 등) 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v47`
 
 **현재 앱 버전**: `1.0.0`
 
