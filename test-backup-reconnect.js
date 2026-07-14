@@ -153,7 +153,7 @@ assert(!banner.classList.contains('visible'), 'banner hidden');
   assert(html.includes('backupReconnect.js'), 'index loads module');
   assert(html.includes('backup-reconnect-banner'), 'index has banner css');
   assert(sw.includes('backupReconnect.js'), 'sw caches module');
-  assert(sw.includes('recovr-cache-v51'), 'sw cache bump');
+  assert(sw.includes('recovr-cache-v52'), 'sw cache bump');
 
   console.log(failures === 0 ? 'BackupReconnect tests passed ✓' : failures + ' failed');
   process.exit(failures === 0 ? 0 : 1);
