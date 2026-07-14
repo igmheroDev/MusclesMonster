@@ -455,22 +455,36 @@ async function linkBackupFile() {
   try {
     const json = JSON.stringify(buildBackupPayload(), null, 2);
 
+    // 1) IndexedDB에 남아 있는 핸들이 있으면 파일 재선택 없이 권한만 복원
     if (typeof BackupStorage !== 'undefined') {
       const stored = await BackupStorage.loadBackupHandle();
       if (stored) {
-        const perm = await stored.requestPermission({ mode: 'readwrite' });
-        if (perm === 'granted') {
-          const result = await BackupWriter.writeToRoot(stored, json);
-          if (result.ok) {
+        let restored = false;
+        if (typeof BackupReconnect !== 'undefined') {
+          const result = await BackupReconnect.restoreWithGesture(stored);
+          restored = result.status === 'restored';
+        } else {
+          const perm = await stored.requestPermission({ mode: 'readwrite' });
+          restored = perm === 'granted';
+        }
+
+        if (restored) {
+          const writeResult = await BackupWriter.writeToRoot(stored, json);
+          if (writeResult.ok) {
             backupRootHandle = stored;
             localStorage.setItem('recovr_backup_linked', 'true');
+            if (typeof BackupReconnect !== 'undefined') BackupReconnect.hideBanner();
             updateBackupStatus();
             return;
           }
-          console.warn('[Backup] 재연결 후 쓰기 실패:', result.error);
-          await clearBackupConnection();
-          const reconnectMsg = BackupWriter.describeError(result.error);
+          // 권한은 살아 있으니 핸들은 유지 (연결을 지우지 않음)
+          console.warn('[Backup] 재연결 후 쓰기 실패(핸들 유지):', writeResult.error);
+          backupRootHandle = stored;
+          localStorage.setItem('recovr_backup_linked', 'true');
+          updateBackupStatus();
+          const reconnectMsg = BackupWriter.describeError(writeResult.error);
           if (reconnectMsg) alert(reconnectMsg);
+          return;
         }
       }
     }
@@ -491,6 +505,7 @@ async function linkBackupFile() {
         await BackupStorage.saveBackupHandle(backupRootHandle);
       }
       localStorage.setItem('recovr_backup_linked', 'true');
+      if (typeof BackupReconnect !== 'undefined') BackupReconnect.hideBanner();
       updateBackupStatus();
       return;
     }
@@ -512,6 +527,7 @@ async function linkBackupFile() {
       await BackupStorage.saveBackupHandle(backupRootHandle);
     }
     localStorage.setItem('recovr_backup_linked', 'true');
+    if (typeof BackupReconnect !== 'undefined') BackupReconnect.hideBanner();
     updateBackupStatus();
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -567,7 +583,15 @@ async function writeBackupFile() {
 
 function updateBackupGuideText() {
   const el = document.getElementById('backupGuideText');
-  if (!el || typeof BackupWriter === 'undefined') return;
+  if (!el) return;
+  if (typeof BackupReconnect !== 'undefined') {
+    const pwa = (typeof BackupWriter !== 'undefined' && BackupWriter.isRunningAsPwa)
+      ? BackupWriter.isRunningAsPwa()
+      : isRunningAsPwa();
+    el.textContent = BackupReconnect.getPersistGuide(pwa);
+    return;
+  }
+  if (typeof BackupWriter === 'undefined') return;
   el.textContent = BackupWriter.getSettingsGuide();
 }
 
@@ -596,9 +620,9 @@ function updateBackupStatus() {
     if (manualBtn) manualBtn.style.display = '';
     if (linkBtn) linkBtn.textContent = '변경';
   } else if (localStorage.getItem('recovr_backup_linked') === 'true') {
-    el.textContent = '재연결 필요 (연결 버튼 한 번 탭)';
+    el.textContent = '권한 재허용 필요 · 파일 재선택 불필요';
     if (manualBtn) manualBtn.style.display = 'none';
-    if (linkBtn) { linkBtn.textContent = '연결'; }
+    if (linkBtn) linkBtn.textContent = '다시 연결';
   } else {
     el.textContent = '연결 안 됨';
     if (manualBtn) manualBtn.style.display = 'none';
@@ -2685,6 +2709,58 @@ function clearAllData() {
   }
 }
 
+async function onBackupReconnectResult(result) {
+  if (result?.status === 'restored' && result.handle) {
+    backupRootHandle = result.handle;
+    localStorage.setItem('recovr_backup_linked', 'true');
+    updateBackupStatus();
+    try { await writeBackupFile(); } catch (_) { /* ignore */ }
+    return;
+  }
+  updateBackupStatus();
+}
+
+async function recheckBackupPermission() {
+  if (!isFileSystemAccessSupported()) return;
+
+  try {
+    // 이미 연결된 핸들의 권한이 백그라운드에서 풀렸는지 확인
+    if (backupRootHandle && typeof BackupReconnect !== 'undefined') {
+      const result = await BackupReconnect.evaluate(backupRootHandle);
+      if (result.status === 'restored') return;
+      const handle = backupRootHandle;
+      backupRootHandle = null;
+      localStorage.setItem('recovr_backup_linked', 'true');
+      BackupReconnect.showBanner(handle, onBackupReconnectResult);
+      updateBackupStatus();
+      return;
+    }
+
+    if (backupRootHandle) return;
+    if (typeof BackupStorage === 'undefined') return;
+
+    const handle = await BackupStorage.loadBackupHandle();
+    if (!handle) return;
+
+    localStorage.setItem('recovr_backup_linked', 'true');
+    if (typeof BackupReconnect === 'undefined') {
+      updateBackupStatus();
+      return;
+    }
+
+    const result = await BackupReconnect.evaluate(handle);
+    if (result.status === 'restored') {
+      backupRootHandle = handle;
+      BackupReconnect.hideBanner();
+    } else {
+      BackupReconnect.showBanner(handle, onBackupReconnectResult);
+    }
+    updateBackupStatus();
+  } catch (e) {
+    console.warn('[RECOVR] 백업 권한 재확인 실패:', e);
+  }
+}
+
 async function initBackupFromStorage() {
   if (!isFileSystemAccessSupported()) {
     updateBackupStatus();
@@ -2703,10 +2779,23 @@ async function initBackupFromStorage() {
       return;
     }
 
-    const perm = await handle.queryPermission({ mode: 'readwrite' });
-    if (perm === 'granted') {
-      backupRootHandle = handle;
-      localStorage.setItem('recovr_backup_linked', 'true');
+    // 핸들은 유지 — 권한만 풀린 상태일 수 있음
+    localStorage.setItem('recovr_backup_linked', 'true');
+
+    if (typeof BackupReconnect !== 'undefined') {
+      const result = await BackupReconnect.evaluate(handle);
+      if (result.status === 'restored') {
+        backupRootHandle = handle;
+        BackupReconnect.hideBanner();
+      } else {
+        backupRootHandle = null;
+        BackupReconnect.showBanner(handle, onBackupReconnectResult);
+      }
+    } else {
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        backupRootHandle = handle;
+      }
     }
   } catch (e) {
     console.warn('[RECOVR] 백업 파일 자동 복원 실패:', e);
@@ -2743,6 +2832,13 @@ function init() {
   initBackupFromStorage();
   updateBackupGuideText();
   setupBackgroundSave();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') recheckBackupPermission();
+  });
+  window.addEventListener('pageshow', (ev) => {
+    if (ev.persisted) recheckBackupPermission();
+  });
 
   if (typeof UserProfile !== 'undefined') {
     UserProfile.fillForm(loadSettings());

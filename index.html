@@ -159,6 +159,55 @@
     from { transform: translateY(-100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+
+  /* Backup reconnect banner */
+  .backup-reconnect-banner {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9998;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(255, 176, 32, 0.16), rgba(0, 212, 255, 0.10));
+    border-bottom: 1px solid rgba(255, 176, 32, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    animation: slideDown 0.25s ease;
+  }
+  .backup-reconnect-banner.visible { display: flex; }
+  .backup-reconnect-text {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .backup-reconnect-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .backup-reconnect-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .backup-reconnect-btn {
+    padding: 7px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .backup-reconnect-btn.primary {
+    background: var(--cyan);
+    border-color: transparent;
+    color: #041018;
+  }
+  .backup-reconnect-btn:active { opacity: 0.75; }
   .pwa-update-text {
     display: flex;
     align-items: center;
@@ -2621,7 +2670,7 @@
       </div>
     </div>
     <div id="backupGuideText" style="font-size:10px;color:var(--muted);padding:0 4px 4px;line-height:1.5">
-      폰/PC의 폴더를 선택하면 운동 저장 시 자동 백업돼요. Android Chrome에서는 "내 파일" 앱에 RECOVR 폴더를 만들고 연결하는 것을 권장해요.
+      브라우저 보안상 새로고침 후 권한이 풀릴 수 있어요. 홈 화면 앱 설치, 또는 권한 팝업에서 "매번 허용"을 선택하면 유지됩니다. 끊겨도 파일 재선택 없이 한 번 탭으로 복원돼요.
     </div>
 
     <div class="settings-row">
@@ -2990,6 +3039,7 @@
 <script src="muscleHeatmap.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>
+<script src="backupReconnect.js"></script>
 <script src="recommendation.js"></script>
 <script src="workoutAdvice.js"></script>
 <script src="aiCoachFallback.js"></script>
