@@ -1917,6 +1917,9 @@ function switchView(viewName) {
       if (typeof RestTimer !== 'undefined') RestTimer.fillForm();
     } catch (e) { /* ignore */ }
     try {
+      if (typeof WakeLock !== 'undefined') WakeLock.fillForm();
+    } catch (e) { /* ignore */ }
+    try {
       if (typeof WorkoutGoals !== 'undefined') WorkoutGoals.fillForm();
     } catch (e) { /* ignore */ }
   }
@@ -2858,6 +2861,10 @@ function init() {
 
   try {
     if (typeof RestTimer !== 'undefined') RestTimer.init();
+  } catch (e) { /* ignore */ }
+
+  try {
+    if (typeof WakeLock !== 'undefined') WakeLock.init();
   } catch (e) { /* ignore */ }
 
   try {

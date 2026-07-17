@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v53';
+const CACHE_NAME = 'recovr-cache-v54';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './durationTimer.js',
   './durationAutoSave.js',
   './restTimer.js',
+  './wakeLock.js',
   './pwaUpdate.js',
   './workoutGoals.js',
   './muscleHeatmap.js',
@@ -41,6 +42,7 @@ const NETWORK_FIRST_PATHS = [
   '/durationTimer.js',
   '/durationAutoSave.js',
   '/restTimer.js',
+  '/wakeLock.js',
   '/pwaUpdate.js',
   '/workoutGoals.js',
   '/muscleHeatmap.js',
