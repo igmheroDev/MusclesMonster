@@ -19,6 +19,7 @@ MusclesMonster/
 ├── durationAutoSave.js # 스톱워치 실행 중 주기적 자동 저장
 ├── restTimer.js        # 세트 간 휴식 타이머 (카운트다운·진동)
 ├── wakeLock.js         # 앱 사용 중 화면 꺼짐 방지 (Screen Wake Lock)
+├── logList.js          # 기록 목록 페이지네이션 + 상세 lazy 렌더
 ├── pwaUpdate.js        # PWA 새 버전 안내 배너
 ├── cardioTracker.js    # 유산소 추적 (프리셋·주간 통계)
 ├── cardioMetrics.js    # 유산소 세부 지표 (거리·칼로리·심박)
@@ -37,10 +38,10 @@ MusclesMonster/
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
 ├── backupReconnect.js  # 백업 권한 원탭 재연결 (새로고침 후 복원)
-├── sw.js               # Service Worker (PWA 캐싱, v54)
+├── sw.js               # Service Worker (PWA 캐싱, v55)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
-├── test-*.js           # 단위 테스트 18개
+├── test-*.js           # 단위 테스트 19개
 └── SESSION_LOG.md
 ```
 
@@ -76,7 +77,7 @@ MusclesMonster/
 | `FATIGUE_RECOVERY_SCALE` | 피로도(1~5) → 회복 시간 배율 |
 | `calcMuscleRecovery()` | 회복도 계산 엔진 |
 | `renderHome()` | 홈 뷰 렌더링 (회복도 + 추천 + 스트릭) |
-| `renderLog()` | 목록 뷰 - 드롭다운 방식 |
+| `renderLog()` | 목록 뷰 — `LogList.render()` 위임 (페이지네이션·lazy detail) |
 | `renderCalendar()` | 주간/월간 캘린더 렌더링 |
 | `renderCalDayDetail()` | 날짜 탭 시 세부 운동 표시 |
 | `toggleWorkoutDetail()` | 목록 드롭다운 열기/닫기 |
@@ -125,6 +126,13 @@ MusclesMonster/
 - `WakeLock.saveFromForm()` / `fillForm()` — 설정 토글 연동
 - 설정 키: `settings.wakeLock.enabled` (기본 ON)
 - `visibilitychange` 시 재요청 · 미지원 브라우저는 상태 문구로 안내
+
+### logList.js
+- `LogList.render()` — 기록 목록 렌더 (최근 `PAGE_SIZE=40`개)
+- `LogList.loadMore()` — 「더 보기」로 40개씩 추가 표시
+- `LogList.toggleDetail()` — 펼칠 때 세트 상세 HTML lazy 생성
+- 정렬 시 원본 인덱스 유지 (`indexOf` O(n²) 제거)
+- `buildExerciseDetailHTML()`는 캘린더 day detail과 공용 유지
 
 ### 자동 백업 트리거
 - `saveWorkouts()` → `triggerAutoBackup()` (디바운스 300ms)
@@ -968,6 +976,38 @@ MusclesMonster/
 - [ ] 화면 유지·자동 백업 실기기(Android Chrome/PWA) 확인
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v54`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 23 — 2026-07-17 (main 머지)
+
+**기록 목록 페이지네이션 + 상세 lazy 렌더 (PR #56)**
+- 독립 모듈 `logList.js` 추가
+- 목록은 최근 **40개**만 표시, 「더 보기」로 40개씩 확장 (`N / 전체` 표시)
+- 세트 상세·수정/삭제 버튼은 **펼칠 때만** 생성
+- `app.js`의 `renderLog` / `toggleWorkoutDetail`는 `LogList`에 위임
+- 정렬 시 원본 인덱스 유지로 대량 목록 성능 개선
+- SW 캐시 `recovr-cache-v55`, `test-log-list.js` 추가
+
+**무결성 검사**
+- JS 문법 검사: `logList.js` / `app.js` / `sw.js` 통과 ✓
+- 단위 테스트 19개 스위트: ALL PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 ✓
+
+**main 머지**
+| PR | 기능 |
+|----|------|
+| #56 | 기록 목록 페이지네이션 + 상세 lazy 렌더 |
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+- [ ] 대량 기록(수백~수천) 실기기 스크롤·더보기 체감 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v55`
 
 **현재 앱 버전**: `1.0.0`
 
