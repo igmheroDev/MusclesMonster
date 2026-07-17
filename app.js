@@ -1182,92 +1182,27 @@ function buildExerciseDetailHTML(w, realIdx) {
     </div>`).join('');
 }
 
+// 기록 목록 렌더링은 LogList 모듈로 위임
+// - 최근 PAGE_SIZE개만 표시 + 「더 보기」
+// - 상세(세트 HTML)는 펼칠 때 lazy 생성
 function renderLog() {
-  const workouts = loadWorkouts();
-  const list = document.getElementById('workoutList');
-  list.innerHTML = '';
-
-  if (workouts.length === 0) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="ee-icon">📋</div>
-        <div class="ee-title">운동 기록이 없어요</div>
-        <div class="ee-body">오른쪽 위 + 추가를 눌러<br>운동을 기록해보세요.</div>
-      </div>`;
+  if (typeof LogList !== 'undefined') {
+    LogList.render({ reset: true });
     return;
   }
-
-  const sorted = [...workouts].sort((a,b) => new Date(b.date) - new Date(a.date));
-  const FATIGUE_EMOJI = ['','😌','🙂','😐','😓','🥵'];
-
-  sorted.forEach((w) => {
-    const realIdx = workouts.indexOf(w);
-    const totalVolume = (w.exercises || []).reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
-    const typeMeta = getWorkoutTypeMeta(w.type);
-    const typeLabel = typeMeta.label;
-    const typeCls = typeMeta.cls;
-    const cardioMin = (typeof CardioTracker !== 'undefined') ? CardioTracker.getWorkoutCardioMinutes(w) : 0;
-    const dateObj = new Date(w.date + 'T12:00:00');
-    const dowLabels = ['일','월','화','수','목','금','토'];
-    const dateStr = `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${dowLabels[dateObj.getDay()]})`;
-
-    const activityTags = new Set();
-    (w.exercises || []).forEach(ex => {
-      getActivityTagsFromExerciseName(ex.name).forEach(tag => activityTags.add(tag));
-    });
-    let tagsHtml = '';
-    activityTags.forEach(tag => {
-      const lbl = NON_MUSCLE_LABELS[tag];
-      tagsHtml += `<span class="activity-tag">${lbl.icon} ${lbl.name}</span>`;
-    });
-
-    const exDetailHTML = buildExerciseDetailHTML(w, realIdx);
-    const itemId = `wi-${realIdx}`;
-    const panelId = `wp-${realIdx}`;
-    const progressBadge = w.inProgress
-      ? '<span class="wi-type" style="padding:1px 6px;font-size:9px;background:rgba(0,229,255,0.15);color:var(--cyan)">진행 중</span>'
-      : '';
-
-    const item = document.createElement('div');
-    item.className = 'workout-item' + (w.inProgress ? ' in-progress' : '');
-    item.id = itemId;
-    item.innerHTML = `
-      <div class="wi-top" onclick="toggleWorkoutDetail('${panelId}', '${itemId}')">
-        <div>
-          <div class="wi-date">${dateStr}</div>
-          <div class="wi-meta" style="margin-top:4px">
-            <span><span class="wi-type ${typeCls}" style="padding:1px 6px;font-size:9px">${typeLabel}</span></span>
-            ${progressBadge}
-            ${w.type === 'cardio' || cardioMin > 0
-              ? `<span>유산소 <b>${cardioMin || w.duration || '-'}</b>분</span>`
-              : `<span>볼륨 <b>${totalVolume.toLocaleString()}</b> kg</span>`}
-            <span>${w.duration || '-'}분</span>
-            ${w.fatigue ? `<span>${FATIGUE_EMOJI[w.fatigue]}</span>` : ''}
-          </div>
-          ${tagsHtml ? `<div style="margin-top:4px">${tagsHtml}</div>` : ''}
-        </div>
-        <span class="wi-expand-icon" id="icon-${realIdx}">▼</span>
-      </div>
-      <div class="workout-detail-panel" id="${panelId}">
-        <div style="padding:10px 0 4px">
-          ${exDetailHTML}
-          <div style="display:flex;gap:6px;margin-top:10px">
-            <button class="wi-action" style="flex:1;width:auto;border-radius:8px;font-size:12px;padding:6px" onclick="event.stopPropagation();openEditModal(${realIdx})">✏️ 수정</button>
-            <button class="wi-action" style="flex:1;width:auto;border-radius:8px;font-size:12px;padding:6px;color:var(--red)" onclick="event.stopPropagation();deleteWorkoutPrompt(${realIdx})">🗑️ 삭제</button>
-          </div>
-        </div>
-      </div>`;
-    list.appendChild(item);
-  });
+  console.warn('[RECOVR] LogList 모듈이 없어 목록을 그릴 수 없어요.');
 }
 
 function toggleWorkoutDetail(panelId, itemId) {
+  if (typeof LogList !== 'undefined') {
+    LogList.toggleDetail(panelId, itemId);
+    return;
+  }
   const panel = document.getElementById(panelId);
-  const idx = panelId.replace('wp-', '');
+  const idx = String(panelId || '').replace('wp-', '');
   const icon = document.getElementById('icon-' + idx);
   if (!panel) return;
   const isOpen = panel.classList.contains('open');
-  // 다른 열린 패널 모두 닫기
   document.querySelectorAll('.workout-detail-panel.open').forEach(p => {
     p.classList.remove('open');
   });
