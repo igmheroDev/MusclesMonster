@@ -18,6 +18,7 @@ MusclesMonster/
 ├── durationTimer.js    # 시간 운동 스톱워치 (세트별 시작/정지)
 ├── durationAutoSave.js # 스톱워치 실행 중 주기적 자동 저장
 ├── restTimer.js        # 세트 간 휴식 타이머 (카운트다운·진동)
+├── wakeLock.js         # 앱 사용 중 화면 꺼짐 방지 (Screen Wake Lock)
 ├── pwaUpdate.js        # PWA 새 버전 안내 배너
 ├── cardioTracker.js    # 유산소 추적 (프리셋·주간 통계)
 ├── cardioMetrics.js    # 유산소 세부 지표 (거리·칼로리·심박)
@@ -36,10 +37,10 @@ MusclesMonster/
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
 ├── backupReconnect.js  # 백업 권한 원탭 재연결 (새로고침 후 복원)
-├── sw.js               # Service Worker (PWA 캐싱, v50)
+├── sw.js               # Service Worker (PWA 캐싱, v54)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
-├── test-*.js           # 단위 테스트 17개
+├── test-*.js           # 단위 테스트 18개
 └── SESSION_LOG.md
 ```
 
@@ -118,6 +119,17 @@ MusclesMonster/
 - `CelebrateFx.igniteStreakPill()` — 스트릭 불꽃 점화
 - 운동 저장 완료 시 confetti + 토스트 (모달 닫힘 감지)
 - `prefers-reduced-motion` / cooldown으로 과한 연출·중복 방지
+
+### wakeLock.js
+- `WakeLock.init()` / `sync()` — Screen Wake Lock으로 앱이 보이는 동안 화면 유지
+- `WakeLock.saveFromForm()` / `fillForm()` — 설정 토글 연동
+- 설정 키: `settings.wakeLock.enabled` (기본 ON)
+- `visibilitychange` 시 재요청 · 미지원 브라우저는 상태 문구로 안내
+
+### 자동 백업 트리거
+- `saveWorkouts()` → `triggerAutoBackup()` (디바운스 300ms)
+- 운동 모달에서 세트 체크·운동 추가·입력 변경 시 `saveWorkoutProgress()` → 동일 경로
+- 조건: 설정 >「자동 백업 파일 연결」로 File System Access 핸들 연결 필요
 
 ### cardioTracker.js
 - `CardioTracker.isCardioExercise()` — 유산소 운동 판별 (키워드 + duration 모드)
@@ -921,6 +933,41 @@ MusclesMonster/
 - [ ] 백업 재연결 실기기(Android Chrome/PWA) 확인
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v50`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 22 — 2026-07-17 (main 머지)
+
+**앱 사용 중 화면 유지 (PR #54)**
+- 독립 모듈 `wakeLock.js` 추가 (Screen Wake Lock API)
+- 앱이 화면에 보이는 동안 꺼짐 방지 (기본 ON)
+- 설정 > **화면** >「앱 사용 중 화면 유지」토글
+- 탭 복귀(`visibilitychange`) 시 자동 재요청
+- SW 캐시 `recovr-cache-v54`, `test-wake-lock.js` 추가
+
+**자동 백업 안내 명확화**
+- 운동 추가·세트 체크 시에도 `saveWorkoutProgress` → `triggerAutoBackup`으로 파일 백업됨 (기존 동작)
+- 설정 가이드 / `BackupWriter.getSettingsGuide()` 문구를 그 동작에 맞게 수정
+
+**무결성 검사**
+- JS 문법 검사: `wakeLock.js` / `app.js` / `sw.js` / `backupWriter.js` 통과 ✓
+- 단위 테스트 18개 스위트: ALL PASSED ✓
+- SW `ASSETS` ↔ 실제 파일 일치 ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 ✓
+
+**main 머지**
+| PR | 기능 |
+|----|------|
+| #54 | 화면 유지(Wake Lock) + 자동 백업 안내 명확화 |
+
+**다음 세션 후보 작업**
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+- [ ] 화면 유지·자동 백업 실기기(Android Chrome/PWA) 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v54`
 
 **현재 앱 버전**: `1.0.0`
 
