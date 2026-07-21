@@ -1012,6 +1012,22 @@ function renderHome() {
     console.warn('[RECOVR] 프로필 요약 실패:', e);
   }
 
+  try {
+    if (typeof HomeStatusSummary !== 'undefined') {
+      const descEl = document.getElementById('overallDesc');
+      HomeStatusSummary.render({
+        settings,
+        workouts,
+        recovery,
+        recoveryPct: overallPct,
+        muscleOrder: typeof MUSCLE_ORDER !== 'undefined' ? MUSCLE_ORDER : null,
+        overallDesc: descEl ? descEl.textContent : '',
+      });
+    }
+  } catch (e) {
+    console.warn('[RECOVR] 상태 요약 실패:', e);
+  }
+
   try { renderStreak(workouts); } catch (e) { console.warn('[RECOVR] 스트릭 실패:', e); }
   try { renderWeekBar(workouts); } catch (e) { console.warn('[RECOVR] 주간바 실패:', e); }
 

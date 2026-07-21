@@ -1111,6 +1111,62 @@
     min-height: 16px;
   }
 
+  /* ===== Home status summary ===== */
+  .hss-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .hss-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .hss-header-icon { font-size: 22px; }
+  .hss-header-title {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .hss-header-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .hss-empty {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+  }
+  .hss-section {
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .hss-section:first-of-type { border-top: none; padding-top: 0; }
+  .hss-label {
+    font-size: 10px;
+    color: var(--cyan);
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .hss-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .hss-detail {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-top: 4px;
+  }
+
   .danger-btn {
     width: 100%;
     padding: 12px;
@@ -2501,6 +2557,8 @@
       <div class="week-bar" id="weekBar"></div>
     </div>
 
+    <div id="homeStatusSummary"></div>
+
     <div id="workoutGoalsCard"></div>
 
     <div id="dailyMissionCard"></div>
@@ -2887,6 +2945,44 @@
           <textarea id="profileInjuryNotes" placeholder="예: 허리 디스크 주의, 무릎 통증" onchange="UserProfile.saveFromForm()"></textarea>
         </div>
       </div>
+
+      <div class="profile-card-title" style="margin-top:16px">몸 상태 · 생활 (선택)</div>
+      <div class="profile-card-sub">필수는 아니에요. 입력하면 홈 상태 요약·생활습관 조언이 더 정확해집니다.</div>
+      <div class="profile-grid">
+        <div class="profile-field">
+          <label for="profileSleepHours">평균 수면</label>
+          <select id="profileSleepHours" onchange="UserProfile.saveFromForm()">
+            <option value="">선택 (선택)</option>
+            <option value="under5">5시간 미만</option>
+            <option value="5to6">5~6시간</option>
+            <option value="6to7">6~7시간</option>
+            <option value="7to8">7~8시간</option>
+            <option value="8plus">8시간 이상</option>
+          </select>
+        </div>
+        <div class="profile-field">
+          <label for="profileStressLevel">최근 스트레스</label>
+          <select id="profileStressLevel" onchange="UserProfile.saveFromForm()">
+            <option value="">선택 (선택)</option>
+            <option value="low">낮음</option>
+            <option value="medium">보통</option>
+            <option value="high">높음</option>
+          </select>
+        </div>
+        <div class="profile-field full">
+          <label for="profileJobActivity">평소 활동량 (직업·일상)</label>
+          <select id="profileJobActivity" onchange="UserProfile.saveFromForm()">
+            <option value="">선택 (선택)</option>
+            <option value="sedentary">앉아서 하는 일 위주</option>
+            <option value="standing">서 있거나 가벼운 활동</option>
+            <option value="physical">육체 노동·많이 움직임</option>
+          </select>
+        </div>
+        <div class="profile-field">
+          <label for="profileWaist">허리둘레 (cm)</label>
+          <input type="number" id="profileWaist" min="40" max="200" placeholder="예: 82" onchange="UserProfile.saveFromForm()">
+        </div>
+      </div>
       <div id="profileHint">기본 정보를 입력하면 회복도·추천이 나에게 맞게 조정됩니다.</div>
     </div>
 
@@ -3077,6 +3173,7 @@
 <script src="backupReconnect.js"></script>
 <script src="recommendation.js"></script>
 <script src="workoutAdvice.js"></script>
+<script src="homeStatusSummary.js"></script>
 <script src="aiCoachFallback.js"></script>
 <script src="aiCoach.js"></script>
 <script src="dailyMission.js"></script>
