@@ -33,6 +33,27 @@ const UserProfile = (() => {
     other:  { label: '기타/응답 안 함' },
   };
 
+  // 필수는 아니지만 몸 상태·생활습관 파악에 쓰는 선택 정보
+  const JOB_ACTIVITY_OPTIONS = {
+    sedentary: { label: '앉아서 하는 일 위주' },
+    standing:  { label: '서 있거나 가벼운 활동' },
+    physical:  { label: '육체 노동·많이 움직임' },
+  };
+
+  const STRESS_OPTIONS = {
+    low:    { label: '낮음' },
+    medium: { label: '보통' },
+    high:   { label: '높음' },
+  };
+
+  const SLEEP_OPTIONS = {
+    under5: { label: '5시간 미만', hours: 4.5 },
+    '5to6': { label: '5~6시간', hours: 5.5 },
+    '6to7': { label: '6~7시간', hours: 6.5 },
+    '7to8': { label: '7~8시간', hours: 7.5 },
+    '8plus': { label: '8시간 이상', hours: 8.5 },
+  };
+
   const DEFAULT_PROFILE = {
     gender: '',
     birthYear: null,
@@ -43,6 +64,10 @@ const UserProfile = (() => {
     experience: '',
     daysPerWeek: null,
     injuryNotes: '',
+    sleepHours: '',
+    jobActivity: '',
+    waistCm: null,
+    stressLevel: '',
   };
 
   const MIN_AGE = 10;
@@ -129,6 +154,16 @@ const UserProfile = (() => {
       experience: EXPERIENCE_OPTIONS[src.experience] ? src.experience : '',
       daysPerWeek: clampNumber(src.daysPerWeek, 1, 7),
       injuryNotes: typeof src.injuryNotes === 'string' ? src.injuryNotes.trim().slice(0, 200) : '',
+      sleepHours: SLEEP_OPTIONS[src.sleepHours] ? src.sleepHours : '',
+      jobActivity: JOB_ACTIVITY_OPTIONS[src.jobActivity] ? src.jobActivity : '',
+      waistCm: (() => {
+        const raw = src.waistCm;
+        if (raw === '' || raw === null || raw === undefined) return null;
+        const num = Number(raw);
+        if (Number.isNaN(num) || num < 40 || num > 200) return null;
+        return num;
+      })(),
+      stressLevel: STRESS_OPTIONS[src.stressLevel] ? src.stressLevel : '',
     };
   }
 
@@ -271,45 +306,88 @@ const UserProfile = (() => {
     return GENDER_OPTIONS[gender]?.label || '';
   }
 
+  function getSleepLabel(sleepHours) {
+    return SLEEP_OPTIONS[sleepHours]?.label || '';
+  }
+
+  function getJobActivityLabel(jobActivity) {
+    return JOB_ACTIVITY_OPTIONS[jobActivity]?.label || '';
+  }
+
+  function getStressLabel(stressLevel) {
+    return STRESS_OPTIONS[stressLevel]?.label || '';
+  }
+
+  function getBmiCategory(bmi) {
+    if (bmi == null || Number.isNaN(bmi)) return null;
+    if (bmi < 18.5) return { key: 'underweight', label: '저체중' };
+    if (bmi < 23) return { key: 'normal', label: '정상' };
+    if (bmi < 25) return { key: 'overweight', label: '과체중 주의' };
+    if (bmi < 30) return { key: 'obese1', label: '비만 1단계' };
+    return { key: 'obese2', label: '비만 2단계+' };
+  }
+
+  /** 아시아 성인 기준 허리둘레 위험 (대략) */
+  function getWaistRisk(waistCm, gender) {
+    if (waistCm == null) return null;
+    const limit = gender === 'female' ? 85 : 90;
+    if (waistCm >= limit) return { key: 'high', label: '복부 위험 구간' };
+    if (waistCm >= limit - 5) return { key: 'warn', label: '복부 경계' };
+    return { key: 'ok', label: '허리 양호' };
+  }
+
   function formatForAI(profile) {
     const p = normalize(profile);
     if (!isComplete(p)) return '[프로필] 미입력 — 설정에서 신체 정보를 입력하면 맞춤 조언이 가능합니다.';
 
     const bmi = calcBmi(p.heightCm, p.weightKg);
     const age = getAge(p);
+    const bmiCat = getBmiCategory(bmi);
     const lines = [
       `성별: ${getGenderLabel(p.gender)}`,
       `출생년: ${p.birthYear} (${age}세)`,
       `키/몸무게: ${p.heightCm}cm / ${p.weightKg}kg`,
-      `BMI: ${bmi != null ? bmi : '—'}`,
+      `BMI: ${bmi != null ? bmi : '—'}${bmiCat ? ` (${bmiCat.label})` : ''}`,
       `목표: ${getGoalLabel(p.goal)}`,
       `현재 상태: ${getConditionLabel(p.condition) || '특별한 주의 없음'}`,
       `경력: ${getExperienceLabel(p.experience)}`,
     ];
     if (p.daysPerWeek) lines.push(`주당 운동 가능: ${p.daysPerWeek}일`);
+    if (p.sleepHours) lines.push(`평균 수면: ${getSleepLabel(p.sleepHours)}`);
+    if (p.jobActivity) lines.push(`일상 활동: ${getJobActivityLabel(p.jobActivity)}`);
+    if (p.waistCm != null) {
+      const waistRisk = getWaistRisk(p.waistCm, p.gender);
+      lines.push(`허리둘레: ${p.waistCm}cm${waistRisk ? ` (${waistRisk.label})` : ''}`);
+    }
+    if (p.stressLevel) lines.push(`스트레스: ${getStressLabel(p.stressLevel)}`);
     if (p.injuryNotes) lines.push(`주의 부위/메모: ${p.injuryNotes}`);
     return lines.join('\n');
   }
 
   function getHomeSummary(profile, settings) {
     const p = normalize(profile);
-    if (!isComplete(p)) return '';
+    const parts = [];
+    const age = getAge(p);
+    if (age != null) parts.push(`${age}세`);
 
     const bmi = calcBmi(p.heightCm, p.weightKg);
-    const goalLabel = getGoalLabel(p.goal);
-    const profileFactor = getProfileRecoveryFactor(p);
-    const factorPct = Math.round((profileFactor - 1) * 100);
-    const factorText = factorPct === 0
-      ? '평균 회복 속도'
-      : factorPct > 0
-        ? `회복 ${factorPct}% 여유 필요`
-        : `회복 ${Math.abs(factorPct)}% 빠른 편`;
+    if (bmi != null) {
+      const cat = getBmiCategory(bmi);
+      parts.push(cat ? `BMI ${bmi} (${cat.label})` : `BMI ${bmi}`);
+    }
 
-    const conditionLabel = p.condition && p.condition !== 'none'
-      ? ` · ${getConditionLabel(p.condition)}`
-      : '';
-    const age = getAge(p);
-    return `${age}세 · BMI ${bmi} · ${goalLabel}${conditionLabel} · ${factorText}`;
+    if (p.goal) parts.push(getGoalLabel(p.goal));
+    if (p.condition && p.condition !== 'none') parts.push(getConditionLabel(p.condition));
+
+    if (isComplete(p)) {
+      const profileFactor = getProfileRecoveryFactor(p);
+      const factorPct = Math.round((profileFactor - 1) * 100);
+      if (factorPct === 0) parts.push('평균 회복 속도');
+      else if (factorPct > 0) parts.push(`회복 ${factorPct}% 여유 필요`);
+      else parts.push(`회복 ${Math.abs(factorPct)}% 빠른 편`);
+    }
+
+    return parts.join(' · ');
   }
 
   function readFromForm() {
@@ -333,6 +411,13 @@ const UserProfile = (() => {
       experience: getVal('profileExperience'),
       daysPerWeek: daysPerWeek === '' ? null : daysPerWeek,
       injuryNotes: getVal('profileInjuryNotes'),
+      sleepHours: getVal('profileSleepHours'),
+      jobActivity: getVal('profileJobActivity'),
+      waistCm: (() => {
+        const v = getVal('profileWaist');
+        return v === '' ? null : v;
+      })(),
+      stressLevel: getVal('profileStressLevel'),
     });
   }
 
@@ -359,6 +444,10 @@ const UserProfile = (() => {
     setVal('profileExperience', p.experience);
     setVal('profileDaysPerWeek', p.daysPerWeek);
     setVal('profileInjuryNotes', p.injuryNotes);
+    setVal('profileSleepHours', p.sleepHours);
+    setVal('profileJobActivity', p.jobActivity);
+    setVal('profileWaist', p.waistCm);
+    setVal('profileStressLevel', p.stressLevel);
 
     updateHint(p, settings);
   }
@@ -422,12 +511,20 @@ const UserProfile = (() => {
     CONDITION_OPTIONS,
     EXPERIENCE_OPTIONS,
     GENDER_OPTIONS,
+    JOB_ACTIVITY_OPTIONS,
+    STRESS_OPTIONS,
+    SLEEP_OPTIONS,
     DEFAULT_PROFILE,
     normalize,
     isComplete,
     calcBmi,
     getAge,
     getBirthYearBounds,
+    getBmiCategory,
+    getWaistRisk,
+    getSleepLabel,
+    getJobActivityLabel,
+    getStressLabel,
     getProfileRecoveryFactor,
     getRecoveryScale,
     getSuggestedBaseRecoveryHours,

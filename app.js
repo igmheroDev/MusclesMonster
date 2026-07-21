@@ -650,8 +650,13 @@ function loadSettings() {
       const merged = UserProfile.mergeIntoSettings(settings);
       // age→birthYear 마이그레이션은 즉시 저장해야 함.
       // 저장하지 않으면 해가 바뀔 때마다 age 기준으로 출생년이 다시 계산됨.
+      // setItem 실패는 무시 — 실패해도 이번 세션은 merged를 쓰고, catch로 기본값으로 떨어지면 안 됨.
       if (hadLegacyAge && merged.profile?.birthYear != null) {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+        } catch (persistErr) {
+          console.warn('[RECOVR] birthYear 마이그레이션 저장 실패:', persistErr);
+        }
       }
       return merged;
     }
@@ -1005,6 +1010,22 @@ function renderHome() {
     }
   } catch (e) {
     console.warn('[RECOVR] 프로필 요약 실패:', e);
+  }
+
+  try {
+    if (typeof HomeStatusSummary !== 'undefined') {
+      const descEl = document.getElementById('overallDesc');
+      HomeStatusSummary.render({
+        settings,
+        workouts,
+        recovery,
+        recoveryPct: overallPct,
+        muscleOrder: typeof MUSCLE_ORDER !== 'undefined' ? MUSCLE_ORDER : null,
+        overallDesc: descEl ? descEl.textContent : '',
+      });
+    }
+  } catch (e) {
+    console.warn('[RECOVR] 상태 요약 실패:', e);
   }
 
   try { renderStreak(workouts); } catch (e) { console.warn('[RECOVR] 스트릭 실패:', e); }
