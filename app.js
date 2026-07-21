@@ -642,7 +642,18 @@ function loadSettings() {
     const raw = localStorage.getItem(SETTINGS_KEY);
     const settings = raw ? JSON.parse(raw) : { baseRecoveryHours: 48 };
     if (typeof UserProfile !== 'undefined') {
-      return UserProfile.mergeIntoSettings(settings);
+      const rawProfile = settings.profile;
+      const hadLegacyAge = !!(rawProfile
+        && rawProfile.age != null
+        && rawProfile.age !== ''
+        && (rawProfile.birthYear == null || rawProfile.birthYear === ''));
+      const merged = UserProfile.mergeIntoSettings(settings);
+      // age→birthYear 마이그레이션은 즉시 저장해야 함.
+      // 저장하지 않으면 해가 바뀔 때마다 age 기준으로 출생년이 다시 계산됨.
+      if (hadLegacyAge && merged.profile?.birthYear != null) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+      }
+      return merged;
     }
     return settings;
   } catch (e) { return { baseRecoveryHours: 48 }; }

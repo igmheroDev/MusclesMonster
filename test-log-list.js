@@ -139,7 +139,7 @@ const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 assert(html.includes('logList.js'), 'html script');
 assert(sw.includes('logList.js'), 'sw asset');
-assert(sw.includes('recovr-cache-v55'), 'cache bump');
+assert(sw.includes('recovr-cache-v56'), 'cache bump');
 assert(app.includes('LogList.render'), 'app delegates render');
 assert(app.includes('LogList.toggleDetail'), 'app delegates toggle');
 

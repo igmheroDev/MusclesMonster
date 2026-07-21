@@ -71,7 +71,7 @@ for (let i = 0; i < 12; i++) {
 
 const cervicalSettings = {
   profile: UserProfile.normalize({
-    gender: 'female', age: 40, heightCm: 165, weightKg: 60,
+    gender: 'female', birthYear: new Date().getFullYear() - 40, heightCm: 165, weightKg: 60,
     goal: 'rehab', condition: 'cervical_disc', experience: 'beginner',
   }),
 };
@@ -82,7 +82,7 @@ assert(cervicalAuto === 'cervical_rehab', `목디스크 자동 추천 (${cervica
 
 const fatSettings = {
   profile: UserProfile.normalize({
-    gender: 'male', age: 35, heightCm: 175, weightKg: 92,
+    gender: 'male', birthYear: new Date().getFullYear() - 35, heightCm: 175, weightKg: 92,
     goal: 'fat_loss', condition: 'fat_loss', experience: 'under1year',
   }),
 };
@@ -130,7 +130,7 @@ if (bench?.setDetails?.length) {
 
 const cardioRec = WorkoutRecommendation.compute(historyWithCompleted, {
   profile: UserProfile.normalize({
-    gender: 'male', age: 30, heightCm: 175, weightKg: 75,
+    gender: 'male', birthYear: new Date().getFullYear() - 30, heightCm: 175, weightKg: 75,
     goal: 'fat_loss', condition: 'fat_loss', experience: 'under1year',
   }),
 });
