@@ -35,7 +35,7 @@ const UserProfile = (() => {
 
   const DEFAULT_PROFILE = {
     gender: '',
-    age: null,
+    birthYear: null,
     heightCm: null,
     weightKg: null,
     goal: '',
@@ -44,6 +44,9 @@ const UserProfile = (() => {
     daysPerWeek: null,
     injuryNotes: '',
   };
+
+  const MIN_AGE = 10;
+  const MAX_AGE = 100;
 
   const AGE_RECOVERY_FACTORS = [
     { max: 24, factor: 0.95 },
@@ -74,11 +77,51 @@ const UserProfile = (() => {
     return Math.min(max, Math.max(min, num));
   }
 
+  function clampInt(value, min, max) {
+    if (value === '' || value === null || value === undefined) return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return Math.min(max, Math.max(min, Math.round(num)));
+  }
+
+  function getCurrentYear() {
+    return new Date().getFullYear();
+  }
+
+  function getBirthYearBounds(nowYear = getCurrentYear()) {
+    return {
+      min: nowYear - MAX_AGE,
+      max: nowYear - MIN_AGE,
+    };
+  }
+
+  /** 출생년 → 연나이(현재연도 − 출생년). 월일은 없어 만나이가 아닌 연나이 기준. */
+  function getAge(profileOrBirthYear) {
+    const birthYear = typeof profileOrBirthYear === 'object' && profileOrBirthYear !== null
+      ? normalize(profileOrBirthYear).birthYear
+      : clampInt(profileOrBirthYear, getBirthYearBounds().min, getBirthYearBounds().max);
+    if (birthYear == null) return null;
+    const age = getCurrentYear() - birthYear;
+    if (age < MIN_AGE || age > MAX_AGE) return null;
+    return age;
+  }
+
+  function migrateBirthYear(src) {
+    const bounds = getBirthYearBounds();
+    const direct = clampInt(src.birthYear, bounds.min, bounds.max);
+    if (direct != null) return direct;
+
+    // 기존 age 저장값 → 출생년 마이그레이션 (한 번만 변환되면 이후 자동 갱신)
+    const legacyAge = clampInt(src.age, MIN_AGE, MAX_AGE);
+    if (legacyAge == null) return null;
+    return clampInt(getCurrentYear() - legacyAge, bounds.min, bounds.max);
+  }
+
   function normalize(profile) {
     const src = profile && typeof profile === 'object' ? profile : {};
     return {
       gender: GENDER_OPTIONS[src.gender] ? src.gender : '',
-      age: clampNumber(src.age, 10, 100),
+      birthYear: migrateBirthYear(src),
       heightCm: clampNumber(src.heightCm, 100, 250),
       weightKg: clampNumber(src.weightKg, 30, 300),
       goal: GOAL_OPTIONS[src.goal] ? src.goal : '',
@@ -91,7 +134,7 @@ const UserProfile = (() => {
 
   function isComplete(profile) {
     const p = normalize(profile);
-    return !!(p.gender && p.age && p.heightCm && p.weightKg && p.goal && p.experience);
+    return !!(p.gender && p.birthYear && p.heightCm && p.weightKg && p.goal && p.experience);
   }
 
   function calcBmi(heightCm, weightKg) {
@@ -125,7 +168,7 @@ const UserProfile = (() => {
     if (!isComplete(p)) return 1.0;
 
     const bmi = calcBmi(p.heightCm, p.weightKg);
-    const ageFactor = getAgeRecoveryFactor(p.age);
+    const ageFactor = getAgeRecoveryFactor(getAge(p));
     const expFactor = getExperienceRecoveryFactor(p.experience);
     const bmiFactor = bmi != null ? getBmiRecoveryFactor(bmi) : 1.0;
 
@@ -141,13 +184,14 @@ const UserProfile = (() => {
 
   function getSuggestedBaseRecoveryHours(profile) {
     const p = normalize(profile);
-    if (!p.age) return 48;
+    const age = getAge(p);
+    if (!age) return 48;
 
     let hours = 48;
-    if (p.age >= 60) hours = 60;
-    else if (p.age >= 50) hours = 56;
-    else if (p.age >= 40) hours = 52;
-    else if (p.age < 25) hours = 44;
+    if (age >= 60) hours = 60;
+    else if (age >= 50) hours = 56;
+    else if (age >= 40) hours = 52;
+    else if (age < 25) hours = 44;
 
     if (p.experience === 'beginner') hours += 4;
     else if (p.experience === 'under1year') hours += 2;
@@ -232,9 +276,10 @@ const UserProfile = (() => {
     if (!isComplete(p)) return '[프로필] 미입력 — 설정에서 신체 정보를 입력하면 맞춤 조언이 가능합니다.';
 
     const bmi = calcBmi(p.heightCm, p.weightKg);
+    const age = getAge(p);
     const lines = [
       `성별: ${getGenderLabel(p.gender)}`,
-      `나이: ${p.age}세`,
+      `출생년: ${p.birthYear} (${age}세)`,
       `키/몸무게: ${p.heightCm}cm / ${p.weightKg}kg`,
       `BMI: ${bmi != null ? bmi : '—'}`,
       `목표: ${getGoalLabel(p.goal)}`,
@@ -263,7 +308,8 @@ const UserProfile = (() => {
     const conditionLabel = p.condition && p.condition !== 'none'
       ? ` · ${getConditionLabel(p.condition)}`
       : '';
-    return `${p.age}세 · BMI ${bmi} · ${goalLabel}${conditionLabel} · ${factorText}`;
+    const age = getAge(p);
+    return `${age}세 · BMI ${bmi} · ${goalLabel}${conditionLabel} · ${factorText}`;
   }
 
   function readFromForm() {
@@ -272,14 +318,14 @@ const UserProfile = (() => {
       return el ? el.value : '';
     };
 
-    const age = getVal('profileAge');
+    const birthYear = getVal('profileBirthYear');
     const heightCm = getVal('profileHeight');
     const weightKg = getVal('profileWeight');
     const daysPerWeek = getVal('profileDaysPerWeek');
 
     return normalize({
       gender: getVal('profileGender'),
-      age: age === '' ? null : age,
+      birthYear: birthYear === '' ? null : birthYear,
       heightCm: heightCm === '' ? null : heightCm,
       weightKg: weightKg === '' ? null : weightKg,
       goal: getVal('profileGoal'),
@@ -297,8 +343,15 @@ const UserProfile = (() => {
       if (el) el.value = value == null ? '' : String(value);
     };
 
+    const bounds = getBirthYearBounds();
+    const birthYearInput = document.getElementById('profileBirthYear');
+    if (birthYearInput) {
+      birthYearInput.min = String(bounds.min);
+      birthYearInput.max = String(bounds.max);
+    }
+
     setVal('profileGender', p.gender);
-    setVal('profileAge', p.age);
+    setVal('profileBirthYear', p.birthYear);
     setVal('profileHeight', p.heightCm);
     setVal('profileWeight', p.weightKg);
     setVal('profileGoal', p.goal);
@@ -323,7 +376,7 @@ const UserProfile = (() => {
     if (!hint) return;
 
     const p = normalize(profile);
-    if (!p.age && !p.heightCm && !p.weightKg) {
+    if (!p.birthYear && !p.heightCm && !p.weightKg) {
       hint.textContent = '기본 정보를 입력하면 회복도·추천이 나에게 맞게 조정됩니다.';
       return;
     }
@@ -373,6 +426,8 @@ const UserProfile = (() => {
     normalize,
     isComplete,
     calcBmi,
+    getAge,
+    getBirthYearBounds,
     getProfileRecoveryFactor,
     getRecoveryScale,
     getSuggestedBaseRecoveryHours,

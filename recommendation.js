@@ -334,7 +334,10 @@ const WorkoutRecommendation = (() => {
 
     if (avgRecovery < 70 && avgRecovery >= 45) next.mobility += 20;
     if (goal === 'maintain' || goal === 'rehab') next.mobility += 12;
-    if (profile.age && profile.age >= 50) next.mobility += 10;
+    const age = typeof UserProfile !== 'undefined' && UserProfile.getAge
+      ? UserProfile.getAge(profile)
+      : null;
+    if (age && age >= 50) next.mobility += 10;
 
     if (goal === 'rehab' || condition === 'lumbar_disc') next.core_stability += 22;
     if (lowerSessions >= 2 && condition === 'lumbar_disc') next.core_stability += 10;
