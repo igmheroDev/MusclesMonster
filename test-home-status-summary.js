@@ -86,7 +86,7 @@ assert(html.includes('profileStressLevel'), '스트레스 필드');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(sw.includes('homeStatusSummary.js'), 'SW 캐시 포함');
-assert(sw.includes('recovr-cache-v58'), '캐시 버전');
+assert(sw.includes('recovr-cache-v59'), '캐시 버전');
 
 const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 assert(app.includes('HomeStatusSummary.render'), 'renderHome 연동');

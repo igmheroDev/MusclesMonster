@@ -265,7 +265,28 @@ function loadWorkouts() {
 
 function saveWorkouts(workouts) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
-  triggerAutoBackup();
+  // 파일 백업은 운동 「저장하기/수정 완료」에서만 수행 (앱 시작·진행중 자동저장과 분리)
+}
+
+/**
+ * 운동 완전 저장 제스처에서만 백업 파일 재연결 + 쓰기.
+ * 앱 시작 시 FS API를 건드리지 않아 홈 화면 깨짐을 피합니다.
+ */
+async function syncBackupAfterWorkoutSave() {
+  if (typeof BackupOnComplete === 'undefined') return;
+  try {
+    await BackupOnComplete.syncAfterWorkoutSave({
+      buildJson: () => JSON.stringify(buildBackupPayload(), null, 2),
+      getRootHandle: () => backupRootHandle,
+      setRootHandle: (h) => { backupRootHandle = h; },
+      updateStatus: updateBackupStatus,
+      hideBanner: () => {
+        if (typeof BackupReconnect !== 'undefined') BackupReconnect.hideBanner();
+      },
+    });
+  } catch (err) {
+    console.warn('[RECOVR] 운동완료 백업 동기화 실패:', err);
+  }
 }
 
 // 완료된 운동만 (진행 중 임시 기록 제외)
@@ -277,12 +298,10 @@ let backupWriteInProgress = false;
 let backupWritePending = false;
 let backupDebounceTimer = null;
 
+// 레거시: 진행중 자동저장/설정 변경에서는 파일에 쓰지 않음.
+// 실제 파일 쓰기는 syncBackupAfterWorkoutSave() / manualBackupSave() / linkBackupFile()만.
 function triggerAutoBackup() {
-  if (!backupRootHandle) return;
-  clearTimeout(backupDebounceTimer);
-  backupDebounceTimer = setTimeout(() => {
-    writeBackupFile();
-  }, 300);
+  return;
 }
 
 function buildBackupPayload() {
@@ -583,8 +602,14 @@ async function writeBackupFile() {
 
 function updateBackupGuideText() {
   const el = document.getElementById('backupGuideText');
-  if (!el || typeof BackupWriter === 'undefined') return;
-  el.textContent = BackupWriter.getSettingsGuide();
+  if (!el) return;
+  if (typeof BackupOnComplete !== 'undefined' && BackupOnComplete.getSettingsGuide) {
+    el.textContent = BackupOnComplete.getSettingsGuide();
+    return;
+  }
+  if (typeof BackupWriter !== 'undefined') {
+    el.textContent = BackupWriter.getSettingsGuide();
+  }
 }
 
 function updateBackupStatus() {
@@ -666,7 +691,6 @@ function loadSettings() {
 
 function saveSettingsToStorage(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  triggerAutoBackup();
 }
 
 // ============================================================
@@ -1906,7 +1930,6 @@ function loadTemplates() {
 
 function saveTemplates(templates) {
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-  triggerAutoBackup();
 }
 
 function populateTemplateSelect() {
@@ -2666,6 +2689,9 @@ function saveWorkout() {
   renderHome();
   renderLog();
   if (logTabMode !== 'list') renderCalendar();
+
+  // 홈 렌더 이후, 저장 버튼 제스처로만 파일 재연결·백업
+  syncBackupAfterWorkoutSave();
 }
 
 // ============================================================
@@ -2735,50 +2761,17 @@ async function onBackupReconnectResult(result) {
   updateBackupStatus();
 }
 
-// 자동 배너/재연결 훅은 홈 화면 안정성을 위해 비활성화.
-// 설정 > 연결 버튼으로만 권한을 다시 허용합니다.
+// 앱 시작 시에는 File System 권한 조회·재연결·쓰기를 하지 않습니다.
+// (과거: 시작 직후 재연결이 홈 렌더와 겹치며 화면이 갱신되지 않는 문제)
+// IndexedDB 핸들은 유지되고, 「저장하기/수정 완료」또는 설정>연결에서만 복원합니다.
 async function initBackupFromStorage() {
-  if (!isFileSystemAccessSupported()) {
-    updateBackupStatus();
-    return;
-  }
-
   try {
     if (typeof BackupReconnect !== 'undefined' && BackupReconnect.hideBanner) {
       BackupReconnect.hideBanner();
     }
-    if (typeof BackupStorage === 'undefined') {
-      updateBackupStatus();
-      return;
-    }
+  } catch (_) { /* ignore */ }
 
-    const handle = await BackupStorage.loadBackupHandle();
-    if (!handle) {
-      updateBackupStatus();
-      return;
-    }
-
-    let perm = 'prompt';
-    try {
-      if (handle.queryPermission) {
-        perm = await handle.queryPermission({ mode: 'readwrite' });
-      }
-    } catch (_) {
-      perm = 'prompt';
-    }
-
-    if (perm === 'granted') {
-      backupRootHandle = handle;
-      localStorage.setItem('recovr_backup_linked', 'true');
-    } else {
-      // 핸들은 IndexedDB에 유지. 설정에서 "연결" 시 권한만 다시 요청.
-      localStorage.setItem('recovr_backup_linked', 'true');
-      backupRootHandle = null;
-    }
-  } catch (e) {
-    console.warn('[RECOVR] 백업 파일 자동 복원 실패:', e);
-  }
-
+  backupRootHandle = null;
   updateBackupStatus();
 }
 

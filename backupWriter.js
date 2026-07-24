@@ -73,7 +73,7 @@ const BackupWriter = (() => {
     if (isChromeAndroid()) {
       return 'Android Chrome에서는 "내 파일" 앱에 RECOVR 폴더를 만들고 연결하는 것을 권장해요.';
     }
-    return '폴더/파일을 연결하면 운동 추가·세트 체크·기록 저장마다 자동 백업돼요. (Chrome/Edge)';
+    return '폴더/파일을 한 번 연결해 두면 「저장하기 / 수정 완료」할 때만 백업 파일에 저장돼요. (Chrome/Edge)';
   }
 
   function describeError(err) {

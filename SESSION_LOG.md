@@ -37,8 +37,9 @@ MusclesMonster/
 ├── celebrateFx.js      # 중간 축하 연출 (confetti·미션클리어·스트릭)
 ├── backupStorage.js    # IndexedDB 백업 핸들
 ├── backupWriter.js     # File System API 백업
-├── backupReconnect.js  # 백업 권한 원탭 재연결 (새로고침 후 복원)
-├── sw.js               # Service Worker (PWA 캐싱, v55)
+├── backupReconnect.js  # 백업 권한 원탭 재연결 (설정>연결)
+├── backupOnComplete.js # 운동 수정완료 시에만 파일 재연결·쓰기
+├── sw.js               # Service Worker (PWA 캐싱, v59)
 ├── manifest.json       # PWA 메타
 ├── icon-192.png / icon-512.png
 ├── test-*.js           # 단위 테스트 19개
@@ -135,9 +136,15 @@ MusclesMonster/
 - `buildExerciseDetailHTML()`는 캘린더 day detail과 공용 유지
 
 ### 자동 백업 트리거
-- `saveWorkouts()` → `triggerAutoBackup()` (디바운스 300ms)
-- 운동 모달에서 세트 체크·운동 추가·입력 변경 시 `saveWorkoutProgress()` → 동일 경로
+- **운동 「저장하기 / 수정 완료」(`saveWorkout`)만** 파일 재연결 + 쓰기 (`BackupOnComplete`)
+- 앱 시작 시에는 FS 권한 조회·재연결·쓰기를 **하지 않음** (홈 렌더 안정성)
+- 세트 체크·진행중 자동저장은 localStorage만 갱신 (파일 백업 안 함)
 - 조건: 설정 >「자동 백업 파일 연결」로 File System Access 핸들 연결 필요
+- 설정 >「연결」버튼으로도 수동 재연결 가능
+
+### backupOnComplete.js
+- `BackupOnComplete.syncAfterWorkoutSave(deps)` — 저장 버튼 제스처에서 권한 복원 후 쓰기
+- `BackupOnComplete.getSettingsGuide()` — 「수정 완료」시에만 백업된다는 안내
 
 ### cardioTracker.js
 - `CardioTracker.isCardioExercise()` — 유산소 운동 판별 (키워드 + duration 모드)
@@ -1008,6 +1015,55 @@ MusclesMonster/
 - [ ] 대량 기록(수백~수천) 실기기 스크롤·더보기 체감 확인
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v55`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 24 — 2026-07-21 (main 머지, 로그 후기입)
+
+**프로필 출생년 (PR #58·#59)**
+- 나이(age) → 출생년(birthYear) 필드로 변경
+- age→birthYear 마이그레이션 시 `setItem` 실패해도 설정 유실 방지
+
+**홈 상태 요약 (PR #60)**
+- `homeStatusSummary.js` — 선택 몸상태·회복 기반 홈 한 줄 요약
+- SW 캐시 `recovr-cache-v58`
+
+**백업·홈 안정화 (PR #51·#52, 세션 21 후속)**
+- 앱 시작 시 백업 자동 재연결 배너 비활성화 (홈 깨짐 방지)
+- 설정 >「연결」로만 권한 재허용
+
+**무결성**
+- main에 머지 완료 (#58~#60)
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v58`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 25 — 2026-07-24
+
+**자동 백업: 운동 수정완료 시에만 파일 연결·쓰기**
+- 원인: 앱 시작 직후 백업 파일 재연결/쓰기가 홈 렌더와 겹치면 화면이 갱신되지 않거나 에러 발생
+- 독립 모듈 `backupOnComplete.js` 추가
+- `saveWorkout()`(저장하기 / 수정 완료) **제스처 안에서만** 권한 복원 + 파일 쓰기
+- `initBackupFromStorage()`: 앱 시작 시 FS `queryPermission`/핸들 활성화 **안 함**
+- 진행중 자동저장·세트 체크·설정/템플릿 저장은 localStorage만 (파일 백업 안 함)
+- `triggerAutoBackup()` 레거시 no-op 유지
+- 설정 가이드 문구를 「수정 완료 시에만 백업」으로 변경
+- SW 캐시 `recovr-cache-v59`, `test-backup-on-complete.js` 추가
+
+**기대 효과**
+- 홈 첫 렌더와 FS API 경쟁 제거 → 시작 시 홈 깨짐·에러 감소
+- 권한 요청이 저장 버튼 사용자 제스처에 묶여 브라우저 정책에도 더 안전
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 「수정 완료」후 백업 파일 갱신·권한 팝업 확인
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v59`
 
 **현재 앱 버전**: `1.0.0`
 
