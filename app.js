@@ -1103,6 +1103,12 @@ function renderHome() {
     console.warn('[RECOVR] 히트맵 렌더 실패:', e);
   }
 
+  try {
+    if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.afterHomeRender();
+  } catch (e) {
+    console.warn('[RECOVR] 자극 히트맵 연결 실패:', e);
+  }
+
   const muscleList = document.getElementById('muscleList');
   if (!muscleList) return;
 
