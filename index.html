@@ -2556,6 +2556,7 @@
     justify-content: center;
     padding: 0;
   }
+  #eshExerciseOverlay { z-index: 1210; }
   .esh-overlay.show { display: flex; animation: fadeIn 0.18s ease; }
 
   .esh-sheet {
@@ -2569,6 +2570,68 @@
     box-shadow: 0 -8px 32px rgba(0,0,0,0.28);
   }
   .esh-sheet--list { padding-bottom: 12px; }
+  .esh-sheet--split {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: min(94vh, 820px);
+    padding-bottom: 10px;
+  }
+  .esh-sheet--split .esh-sheet-header { margin-bottom: 8px; flex-shrink: 0; }
+  .esh-sheet--split .esh-list-hint { margin-bottom: 8px; flex-shrink: 0; }
+
+  .esh-split-preview {
+    flex: 0 0 auto;
+    max-height: 48%;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    padding: 10px 10px 8px;
+    margin-bottom: 8px;
+  }
+  .esh-split-preview-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .esh-split-ex-name {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .esh-split-preview-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .esh-toggle--compact { margin-bottom: 6px; }
+  .esh-body-wrap--compact {
+    padding: 4px;
+    margin-bottom: 6px;
+    width: 100%;
+  }
+  .esh-body-wrap--compact .esh-svg {
+    width: min(132px, 36vw);
+    margin: 0 auto;
+  }
+  .esh-legend--compact {
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .esh-legend--compact .esh-legend-item { font-size: 10px; }
+  .esh-chips--compact {
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .esh-chip--compact {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
   .esh-sheet-header {
     display: flex;
     align-items: flex-start;
@@ -2597,6 +2660,14 @@
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
+  }
+  .esh-sheet--split .esh-sheet-close,
+  .esh-split-preview .esh-sheet-close {
+    background: rgba(255,255,255,0.04);
+  }
+  body.light .esh-sheet--split .esh-sheet-close,
+  body.light .esh-split-preview .esh-sheet-close {
+    background: rgba(0,0,0,0.04);
   }
   .esh-toggle {
     display: inline-flex;
@@ -2640,6 +2711,7 @@
   }
   .esh-region-label--active { fill: rgba(20,20,24,0.88); font-weight: 800; }
   .esh-region-level { font-size: 9px; font-weight: 700; }
+  .esh-body-wrap--compact .esh-region-label { font-size: 9px; }
   .esh-legend {
     display: flex;
     justify-content: center;
@@ -2722,6 +2794,11 @@
     border-radius: 12px;
     background: var(--card);
   }
+  .esh-ex-list--split {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
   .esh-ex-item {
     display: flex;
     align-items: center;
@@ -2737,6 +2814,11 @@
   }
   .esh-ex-item:last-child { border-bottom: none; }
   .esh-ex-item:active { background: var(--card-hover); }
+  .esh-ex-item.is-selected {
+    background: rgba(255,107,53,0.10);
+    box-shadow: inset 3px 0 0 var(--orange);
+  }
+  .esh-sheet--split .esh-ex-item { padding: 10px 12px; }
   .esh-ex-main { flex: 1; min-width: 0; }
   .esh-ex-name {
     font-size: 13.5px;
@@ -3378,8 +3460,8 @@
 </div>
 
 <!-- Exercise Stimulation Heatmap Sheets -->
-<div class="esh-overlay" id="eshExerciseOverlay" onclick="ExerciseStimHeatmap.closeExerciseOnOverlay(event)"></div>
 <div class="esh-overlay" id="eshMuscleOverlay" onclick="ExerciseStimHeatmap.closeMuscleOnOverlay(event)"></div>
+<div class="esh-overlay" id="eshExerciseOverlay" onclick="ExerciseStimHeatmap.closeExerciseOnOverlay(event)"></div>
 
 <!-- AI Coach Chat Modal -->
 <div class="ai-chat-overlay" id="aiChatOverlay" onclick="AiCoach.closeChatOnOverlay(event)">
