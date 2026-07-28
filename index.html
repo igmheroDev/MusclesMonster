@@ -2526,6 +2526,246 @@
     font-size: 13px;
   }
   .ex-picker-empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+  /* 운동 자극 히트맵 (ExerciseStimHeatmap) */
+  .ex-picker-item--with-stim {
+    padding-right: 8px;
+  }
+  .ex-picker-stim-btn {
+    flex-shrink: 0;
+    border: 1px solid rgba(255,107,53,0.35);
+    background: rgba(255,107,53,0.10);
+    color: var(--orange);
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    letter-spacing: -0.02em;
+    user-select: none;
+  }
+  .ex-picker-stim-btn:active { opacity: 0.75; }
+
+  .esh-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(0,0,0,0.55);
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+  .esh-overlay.show { display: flex; animation: fadeIn 0.18s ease; }
+
+  .esh-sheet {
+    width: min(480px, 100%);
+    max-height: min(92vh, 760px);
+    overflow: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 18px 18px 0 0;
+    padding: 16px 16px 22px;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.28);
+  }
+  .esh-sheet--list { padding-bottom: 12px; }
+  .esh-sheet-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .esh-sheet-kicker {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .esh-sheet-title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .esh-sheet-close {
+    border: none;
+    background: var(--card);
+    color: var(--muted);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .esh-toggle {
+    display: inline-flex;
+    gap: 4px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 10px;
+  }
+  .esh-toggle-btn {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .esh-toggle-btn.selected {
+    background: rgba(255,107,53,0.16);
+    color: var(--orange);
+  }
+  .esh-body-wrap {
+    display: flex;
+    justify-content: center;
+    background: #f7f7f8;
+    border-radius: 14px;
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+  body:not(.light) .esh-body-wrap { background: rgba(255,255,255,0.04); }
+  .esh-svg { width: min(240px, 70vw); height: auto; display: block; }
+  .esh-region { transition: fill-opacity 0.15s ease; }
+  .esh-region--primary { filter: saturate(1.05); }
+  .esh-region-label {
+    font-size: 10px;
+    font-weight: 700;
+    fill: rgba(40,40,45,0.55);
+  }
+  .esh-region-label--active { fill: rgba(20,20,24,0.88); font-weight: 800; }
+  .esh-region-level { font-size: 9px; font-weight: 700; }
+  .esh-legend {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .esh-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .esh-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .esh-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .esh-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .esh-chip--lv3 { border-color: rgba(255,59,92,0.35); background: rgba(255,59,92,0.08); }
+  .esh-chip--lv2 { border-color: rgba(255,107,53,0.35); background: rgba(255,107,53,0.08); }
+  .esh-chip--lv1 { border-color: rgba(255,214,0,0.35); background: rgba(255,214,0,0.08); }
+  .esh-chip-lv { color: var(--muted); font-weight: 600; font-size: 10px; }
+  .esh-chip-empty { font-size: 12px; color: var(--muted); padding: 4px 0 8px; }
+  .esh-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .esh-primary-btn, .esh-secondary-btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 12px;
+    font-size: 13.5px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .esh-primary-btn {
+    background: linear-gradient(135deg, var(--orange), var(--red));
+    color: #fff;
+  }
+  .esh-secondary-btn {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .esh-list-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+  .esh-ex-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 58vh;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+  }
+  .esh-ex-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    padding: 12px 12px;
+    cursor: pointer;
+  }
+  .esh-ex-item:last-child { border-bottom: none; }
+  .esh-ex-item:active { background: var(--card-hover); }
+  .esh-ex-main { flex: 1; min-width: 0; }
+  .esh-ex-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .esh-ex-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .esh-ex-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 4px 8px;
+  }
+  .esh-ex-badge--lv3 { background: rgba(255,59,92,0.14); color: var(--red); }
+  .esh-ex-badge--lv2 { background: rgba(255,107,53,0.14); color: var(--orange); }
+  .esh-ex-badge--lv1 { background: rgba(255,214,0,0.14); color: var(--yellow); }
+  .esh-empty {
+    text-align: center;
+    padding: 36px 16px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .esh-home-browse .esh-svg { width: min(220px, 64vw); }
+  .esh-home-browse .esh-region { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -3137,6 +3377,10 @@
   </div>
 </div>
 
+<!-- Exercise Stimulation Heatmap Sheets -->
+<div class="esh-overlay" id="eshExerciseOverlay" onclick="ExerciseStimHeatmap.closeExerciseOnOverlay(event)"></div>
+<div class="esh-overlay" id="eshMuscleOverlay" onclick="ExerciseStimHeatmap.closeMuscleOnOverlay(event)"></div>
+
 <!-- AI Coach Chat Modal -->
 <div class="ai-chat-overlay" id="aiChatOverlay" onclick="AiCoach.closeChatOnOverlay(event)">
   <div class="ai-chat-panel" onclick="event.stopPropagation()">
@@ -3168,6 +3412,8 @@
 <script src="cardioMetrics.js"></script>
 <script src="workoutGoals.js"></script>
 <script src="muscleHeatmap.js"></script>
+<script src="exerciseMuscleMap.js"></script>
+<script src="exerciseStimHeatmap.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>
 <script src="backupReconnect.js"></script>
@@ -3181,6 +3427,6 @@
 <script src="exercisePicker.js"></script>
 <script src="microAnim.js"></script>
 <script src="celebrateFx.js"></script>
-<script>init(); ExercisePicker.init();</script>
+<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init();</script>
 </body>
 </html>
