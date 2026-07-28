@@ -12,6 +12,7 @@ const ExerciseStimHeatmap = (() => {
   let currentView = 'front';
   let currentExercise = null;
   let currentMuscle = null;
+  let splitMode = false;
   let pickerHooked = false;
   let homeHooked = false;
   let pickerObserver = null;
@@ -146,12 +147,13 @@ const ExerciseStimHeatmap = (() => {
       <span class="esh-legend-item"><span class="esh-legend-dot" style="background:var(--yellow)"></span>협응</span>`;
   }
 
-  function buildMuscleChips(entries) {
+  function buildMuscleChips(entries, options = {}) {
     if (!entries.length) {
       return `<div class="esh-chip-empty">이 운동의 근육 매핑이 없어요</div>`;
     }
+    const compact = options.compact ? ' esh-chip--compact' : '';
     return entries.map((e) => `
-      <button type="button" class="esh-chip esh-chip--lv${e.level}"
+      <button type="button" class="esh-chip esh-chip--lv${e.level}${compact}"
         onclick="ExerciseStimHeatmap.openMuscle('${e.muscle}')">
         <span class="esh-chip-icon">${escapeHtml(e.icon)}</span>
         <span class="esh-chip-name">${escapeHtml(e.label)}</span>
@@ -159,13 +161,83 @@ const ExerciseStimHeatmap = (() => {
       </button>`).join('');
   }
 
+  function isMuscleOverlayOpen() {
+    const overlay = document.getElementById('eshMuscleOverlay');
+    return !!(overlay && overlay.classList.contains('show') && currentMuscle);
+  }
+
+  function bindViewToggle(root, stim, bodyId) {
+    if (!root) return;
+    root.querySelectorAll('.esh-toggle-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        currentView = btn.dataset.view === 'back' ? 'back' : 'front';
+        root.querySelectorAll('.esh-toggle-btn').forEach((b) => {
+          b.classList.toggle('selected', b.dataset.view === currentView);
+        });
+        const body = document.getElementById(bodyId);
+        if (body) body.innerHTML = buildStimSvg(currentView, stim);
+      });
+    });
+  }
+
+  function buildExerciseListHtml(list, selectedName) {
+    if (!list.length) {
+      return `<div class="esh-empty">이 부위를 자극하는 등록 운동이 없어요</div>`;
+    }
+    return list.map((item) => {
+      const encoded = encodeURIComponent(item.name);
+      const selected = selectedName && item.name === selectedName ? ' is-selected' : '';
+      return `
+        <button type="button" class="esh-ex-item${selected}"
+          onclick="ExerciseStimHeatmap.openExercise(decodeURIComponent('${encoded}'), { showAdd: false, fromMuscleList: true })">
+          <div class="esh-ex-main">
+            <div class="esh-ex-name">${escapeHtml(item.name)}</div>
+            <div class="esh-ex-meta">${escapeHtml(item.levelLabel)}${selected ? ' · 선택됨' : ' · 탭하면 자극 히트맵'}</div>
+          </div>
+          <span class="esh-ex-badge esh-ex-badge--lv${item.level}">${escapeHtml(item.levelLabel)}</span>
+        </button>`;
+    }).join('');
+  }
+
+  function buildSplitPreviewHtml(name, stim, entries) {
+    return `
+      <div class="esh-split-preview" id="eshSplitPreview">
+        <div class="esh-split-preview-head">
+          <div>
+            <div class="esh-sheet-kicker">자극 부위</div>
+            <div class="esh-split-ex-name">${escapeHtml(name)}</div>
+          </div>
+          <button type="button" class="esh-sheet-close" onclick="ExerciseStimHeatmap.clearSplitPreview()">접기</button>
+        </div>
+        <div class="esh-split-preview-body">
+          <div class="esh-toggle esh-toggle--compact">
+            <button type="button" class="esh-toggle-btn ${currentView === 'front' ? 'selected' : ''}" data-view="front">전면</button>
+            <button type="button" class="esh-toggle-btn ${currentView === 'back' ? 'selected' : ''}" data-view="back">후면</button>
+          </div>
+          <div class="esh-body-wrap esh-body-wrap--compact" id="eshExerciseBody">
+            ${buildStimSvg(currentView, stim)}
+          </div>
+        </div>
+        <div class="esh-legend esh-legend--compact">${buildLegend()}</div>
+        <div class="esh-chips esh-chips--compact">${buildMuscleChips(entries, { compact: true })}</div>
+      </div>`;
+  }
+
   // ── 운동 자극 미리보기 시트 ────────────────────────────────
   function openExercise(name, options = {}) {
+    if (!name) return;
+
+    const fromMuscleList = options.fromMuscleList === true || isMuscleOverlayOpen();
+    if (fromMuscleList && currentMuscle) {
+      openExerciseInSplit(name);
+      return;
+    }
+
     const overlay = document.getElementById('eshExerciseOverlay');
-    if (!overlay || !name) return;
+    if (!overlay) return;
 
     currentExercise = name;
-    currentMuscle = null;
+    splitMode = false;
     currentView = 'front';
 
     const map = getMap();
@@ -198,22 +270,79 @@ const ExerciseStimHeatmap = (() => {
       </div>`;
 
     overlay.classList.add('show');
-    overlay.querySelectorAll('.esh-toggle-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        currentView = btn.dataset.view === 'back' ? 'back' : 'front';
-        overlay.querySelectorAll('.esh-toggle-btn').forEach((b) => {
-          b.classList.toggle('selected', b.dataset.view === currentView);
-        });
-        const body = document.getElementById('eshExerciseBody');
-        if (body) body.innerHTML = buildStimSvg(currentView, stim);
-      });
-    });
+    bindViewToggle(overlay, stim, 'eshExerciseBody');
+  }
+
+  function openExerciseInSplit(name) {
+    const overlay = document.getElementById('eshMuscleOverlay');
+    const map = getMap();
+    if (!overlay || !map || !currentMuscle || !name) return;
+
+    // 별도 오버레이가 리스트 위에 가리지 않도록 닫기
+    closeExerciseStandalone();
+
+    currentExercise = name;
+    splitMode = true;
+    currentView = 'front';
+
+    const stim = map.getStimulation(name);
+    const entries = map.getStimulationEntries(name);
+    const label = getMuscleLabel(currentMuscle);
+    const icon = (typeof MUSCLE_LABELS !== 'undefined' && MUSCLE_LABELS[currentMuscle])
+      ? MUSCLE_LABELS[currentMuscle].icon
+      : '🎯';
+    const list = map.getExercisesForMuscle(currentMuscle, { minLevel: 1, limit: 36 });
+
+    overlay.innerHTML = `
+      <div class="esh-sheet esh-sheet--list esh-sheet--split" onclick="event.stopPropagation()">
+        <div class="esh-sheet-header">
+          <div>
+            <div class="esh-sheet-kicker">부위별 운동</div>
+            <div class="esh-sheet-title">${escapeHtml(icon)} ${escapeHtml(label)}</div>
+          </div>
+          <button type="button" class="esh-sheet-close" onclick="ExerciseStimHeatmap.closeMuscle()">닫기</button>
+        </div>
+        ${buildSplitPreviewHtml(name, stim, entries)}
+        <div class="esh-list-hint">다른 종목을 탭하면 위 히트맵이 바뀌어요</div>
+        <div class="esh-ex-list esh-ex-list--split">${buildExerciseListHtml(list, name)}</div>
+      </div>`;
+
+    overlay.classList.add('show');
+    bindViewToggle(overlay, stim, 'eshExerciseBody');
+
+    // 선택 항목이 보이도록 스크롤
+    const selected = overlay.querySelector('.esh-ex-item.is-selected');
+    if (selected && typeof selected.scrollIntoView === 'function') {
+      selected.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function clearSplitPreview() {
+    if (!currentMuscle) {
+      closeExercise();
+      return;
+    }
+    currentExercise = null;
+    splitMode = false;
+    openMuscle(currentMuscle);
+  }
+
+  function closeExerciseStandalone() {
+    const overlay = document.getElementById('eshExerciseOverlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      overlay.innerHTML = '';
+    }
   }
 
   function closeExercise() {
-    const overlay = document.getElementById('eshExerciseOverlay');
-    if (overlay) overlay.classList.remove('show');
+    if (splitMode && currentMuscle) {
+      clearSplitPreview();
+      return;
+    }
+    closeExerciseStandalone();
     currentExercise = null;
+    splitMode = false;
   }
 
   function closeExerciseOnOverlay(e) {
@@ -223,7 +352,9 @@ const ExerciseStimHeatmap = (() => {
   function addCurrentExercise() {
     if (!currentExercise || typeof ExercisePicker === 'undefined') return;
     const name = currentExercise;
-    closeExercise();
+    closeExerciseStandalone();
+    splitMode = false;
+    currentExercise = null;
     ExercisePicker.select(name);
   }
 
@@ -233,26 +364,16 @@ const ExerciseStimHeatmap = (() => {
     const map = getMap();
     if (!overlay || !map || !muscleKey) return;
 
+    closeExerciseStandalone();
     currentMuscle = muscleKey;
+    currentExercise = null;
+    splitMode = false;
+
     const label = getMuscleLabel(muscleKey);
     const icon = (typeof MUSCLE_LABELS !== 'undefined' && MUSCLE_LABELS[muscleKey])
       ? MUSCLE_LABELS[muscleKey].icon
       : '🎯';
     const list = map.getExercisesForMuscle(muscleKey, { minLevel: 1, limit: 36 });
-
-    const listHtml = list.length
-      ? list.map((item) => {
-        const encoded = encodeURIComponent(item.name);
-        return `
-          <button type="button" class="esh-ex-item" onclick="ExerciseStimHeatmap.openExercise(decodeURIComponent('${encoded}'), { showAdd: false })">
-            <div class="esh-ex-main">
-              <div class="esh-ex-name">${escapeHtml(item.name)}</div>
-              <div class="esh-ex-meta">${escapeHtml(item.levelLabel)} · 탭하면 자극 히트맵</div>
-            </div>
-            <span class="esh-ex-badge esh-ex-badge--lv${item.level}">${escapeHtml(item.levelLabel)}</span>
-          </button>`;
-      }).join('')
-      : `<div class="esh-empty">이 부위를 자극하는 등록 운동이 없어요</div>`;
 
     overlay.innerHTML = `
       <div class="esh-sheet esh-sheet--list" onclick="event.stopPropagation()">
@@ -263,8 +384,8 @@ const ExerciseStimHeatmap = (() => {
           </div>
           <button type="button" class="esh-sheet-close" onclick="ExerciseStimHeatmap.closeMuscle()">닫기</button>
         </div>
-        <div class="esh-list-hint">주자극 운동부터 보여줘요. 종목을 탭하면 자극 히트맵을 볼 수 있어요.</div>
-        <div class="esh-ex-list">${listHtml}</div>
+        <div class="esh-list-hint">주자극 운동부터 보여줘요. 종목을 탭하면 위쪽에 자극 히트맵이 열려요.</div>
+        <div class="esh-ex-list">${buildExerciseListHtml(list, null)}</div>
       </div>`;
 
     overlay.classList.add('show');
@@ -272,8 +393,14 @@ const ExerciseStimHeatmap = (() => {
 
   function closeMuscle() {
     const overlay = document.getElementById('eshMuscleOverlay');
-    if (overlay) overlay.classList.remove('show');
+    if (overlay) {
+      overlay.classList.remove('show');
+      overlay.innerHTML = '';
+    }
     currentMuscle = null;
+    currentExercise = null;
+    splitMode = false;
+    closeExerciseStandalone();
   }
 
   function closeMuscleOnOverlay(e) {
@@ -403,11 +530,13 @@ const ExerciseStimHeatmap = (() => {
     openExercise,
     closeExercise,
     closeExerciseOnOverlay,
+    clearSplitPreview,
     addCurrentExercise,
     openMuscle,
     closeMuscle,
     closeMuscleOnOverlay,
     enhancePickerItems,
     buildStimSvg,
+    buildSplitPreviewHtml,
   };
 })();

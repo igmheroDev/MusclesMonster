@@ -112,5 +112,64 @@ assert(svg.includes('body-map-front.png'), 'uses front body image');
 const backSvg = ExerciseStimHeatmap.buildStimSvg('back', { back: 3 });
 assert(backSvg.includes('body-map-back.png'), 'uses back body image');
 
+const splitHtml = ExerciseStimHeatmap.buildSplitPreviewHtml(
+  '벤치 프레스',
+  bench,
+  ExerciseMuscleMap.getStimulationEntries('벤치 프레스')
+);
+assert(splitHtml.includes('esh-split-preview'), 'split preview root');
+assert(splitHtml.includes('esh-body-wrap--compact'), 'compact body wrap');
+assert(splitHtml.includes('벤치 프레스'), 'split shows exercise name');
+assert(splitHtml.includes('접기'), 'split has collapse action');
+assert(splitHtml.includes('clearSplitPreview'), 'split collapse wired');
+
+// DOM: 근육 목록에서 운동 선택 시 분할 시트 (별도 오버레이 사용 안 함)
+const muscleOverlay = {
+  classList: {
+    _show: false,
+    add(c) { if (c === 'show') this._show = true; },
+    remove(c) { if (c === 'show') this._show = false; },
+    contains(c) { return c === 'show' ? this._show : false; },
+  },
+  innerHTML: '',
+  querySelector() { return null; },
+  querySelectorAll() { return []; },
+};
+const exerciseOverlay = {
+  classList: {
+    _show: false,
+    add(c) { if (c === 'show') this._show = true; },
+    remove(c) { if (c === 'show') this._show = false; },
+    contains(c) { return c === 'show' ? this._show : false; },
+  },
+  innerHTML: '',
+  querySelectorAll() { return []; },
+  querySelector() { return null; },
+};
+global.document = {
+  getElementById(id) {
+    if (id === 'eshMuscleOverlay') return muscleOverlay;
+    if (id === 'eshExerciseOverlay') return exerciseOverlay;
+    return null;
+  },
+};
+
+ExerciseStimHeatmap.openMuscle('chest');
+assert(muscleOverlay.classList.contains('show'), 'muscle overlay open');
+assert(muscleOverlay.innerHTML.includes('esh-ex-item'), 'muscle list rendered');
+assert(!muscleOverlay.innerHTML.includes('esh-split-preview'), 'no split before select');
+
+ExerciseStimHeatmap.openExercise('벤치 프레스', { showAdd: false, fromMuscleList: true });
+assert(muscleOverlay.innerHTML.includes('esh-sheet--split'), 'split sheet class');
+assert(muscleOverlay.innerHTML.includes('esh-split-preview'), 'split preview in muscle sheet');
+assert(muscleOverlay.innerHTML.includes('esh-ex-list--split'), 'shrunk list class');
+assert(muscleOverlay.innerHTML.includes('is-selected'), 'selected item marked');
+assert(!exerciseOverlay.classList.contains('show'), 'standalone exercise overlay stays closed');
+assert(exerciseOverlay.innerHTML === '', 'standalone exercise overlay empty');
+
+ExerciseStimHeatmap.clearSplitPreview();
+assert(!muscleOverlay.innerHTML.includes('esh-split-preview'), 'preview cleared');
+assert(muscleOverlay.innerHTML.includes('esh-ex-list'), 'list restored');
+
 console.log(failures === 0 ? 'ExerciseStimHeatmap tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);
