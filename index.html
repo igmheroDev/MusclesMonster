@@ -95,6 +95,12 @@
 
   html, body { height: 100%; }
 
+  /* 모바일 당겨서 새로고침(pull-to-refresh) 방지 — PullRefreshGuard와 연동 */
+  html, body {
+    overscroll-behavior-y: none;
+    overscroll-behavior: none;
+  }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -3488,6 +3494,7 @@
 <script src="durationAutoSave.js"></script>
 <script src="restTimer.js"></script>
 <script src="wakeLock.js"></script>
+<script src="pullRefreshGuard.js"></script>
 <script src="logList.js"></script>
 <script src="pwaUpdate.js"></script>
 <script src="cardioTracker.js"></script>
