@@ -239,6 +239,42 @@ const RestTimer = (() => {
     stop();
   }
 
+  function isRunning() {
+    return !!timerId;
+  }
+
+  function getResumeState() {
+    if (!timerId || !endAt) return null;
+    return {
+      endAt,
+      totalSec: Math.max(remainingSec, Math.ceil((endAt - Date.now()) / 1000)),
+    };
+  }
+
+  // 백그라운드 복귀 시 남은 시간 즉시 재계산
+  function onAppResume() {
+    if (!timerId) return;
+    tick();
+  }
+
+  // 앱 재실행 후 휴식 타이머 이어서 표시 (종료 시각 기준)
+  function resumeFromState(state) {
+    if (!state || !state.endAt) return false;
+    const leftMs = state.endAt - Date.now();
+    if (leftMs <= 0) {
+      stop();
+      return false;
+    }
+    const totalSec = clampSeconds(state.totalSec || Math.ceil(leftMs / 1000));
+    if (timerId) clearInterval(timerId);
+    remainingSec = Math.max(1, Math.ceil(leftMs / 1000));
+    endAt = state.endAt;
+    showOverlay(totalSec);
+    tick();
+    timerId = setInterval(tick, TICK_MS);
+    return true;
+  }
+
   function init() {
     if (initialized) return;
     initialized = true;
@@ -259,6 +295,10 @@ const RestTimer = (() => {
     addSeconds,
     onSetCompleted,
     onModalClose,
+    onAppResume,
+    getResumeState,
+    resumeFromState,
+    isRunning,
     fillForm,
     saveFromForm,
     selectPreset,

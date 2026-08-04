@@ -351,6 +351,14 @@ const DurationTimer = (() => {
     stopActive(true);
   }
 
+  // 백그라운드에서 타이머가 스로틀된 뒤 복귀 시 화면 숫자만 즉시 맞춤 (동작 변경 없음)
+  function onAppResume() {
+    if (!active || !active.setRowEl || !active.startedAt) return;
+    const sec = active.baseSeconds + (Date.now() - active.startedAt) / 1000;
+    updateSetDisplay(active.setRowEl, sec, true);
+    if (active.wrapEl) updateWrapTotal(active.wrapEl);
+  }
+
   function extractFromWrap(wrap) {
     if (active?.wrapEl === wrap) freezeActiveTimer();
     return readFromWrap(wrap);
@@ -380,6 +388,7 @@ const DurationTimer = (() => {
     readFromWrap,
     extractFromWrap,
     freezeActiveTimer,
+    onAppResume,
     toggleCheck,
     onModalClose,
     applyManualSeconds,
