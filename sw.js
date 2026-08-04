@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v61';
+const CACHE_NAME = 'recovr-cache-v62';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './durationAutoSave.js',
   './restTimer.js',
   './wakeLock.js',
+  './pullRefreshGuard.js',
   './logList.js',
   './pwaUpdate.js',
   './workoutGoals.js',

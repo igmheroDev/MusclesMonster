@@ -2834,6 +2834,10 @@ function init() {
   } catch (e) { /* ignore */ }
 
   try {
+    if (typeof PullRefreshGuard !== 'undefined') PullRefreshGuard.init();
+  } catch (e) { /* ignore */ }
+
+  try {
     if (typeof DurationAutoSave !== 'undefined') DurationAutoSave.init();
   } catch (e) { /* ignore */ }
 
