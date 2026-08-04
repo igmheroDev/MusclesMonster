@@ -2249,6 +2249,27 @@ function openModal() {
   attachDraftListeners();
 }
 
+// AppResume용: 진행 중 운동을 확인창 없이 바로 모달로 복원
+function resumeInProgressModal(w) {
+  if (!w) return false;
+  try {
+    editingIndex = null;
+    document.getElementById('modalTitle').textContent = '운동 기록 추가';
+    document.getElementById('saveBtn').textContent = '저장하기';
+    document.getElementById('modalOverlay').classList.add('show');
+    applyWorkoutToForm(w);
+    populateTemplateSelect();
+    attachDraftListeners();
+    if (typeof CardioTracker !== 'undefined') {
+      CardioTracker.togglePresetArea(selectedType === 'cardio');
+    }
+    return true;
+  } catch (e) {
+    console.warn('[RECOVR] resumeInProgressModal 실패:', e);
+    return false;
+  }
+}
+
 function openModalWithPrefill({ type, exercises, title }) {
   clearDraft();
   editingIndex = null;
@@ -2298,6 +2319,9 @@ function closeModal() {
   if (typeof DurationTimer !== 'undefined') DurationTimer.onModalClose();
   if (typeof RestTimer !== 'undefined') RestTimer.onModalClose();
   document.getElementById('modalOverlay').classList.remove('show');
+  if (typeof AppResume !== 'undefined' && typeof AppResume.snapshotUi === 'function') {
+    AppResume.snapshotUi('modal-close');
+  }
 }
 
 function closeModalOnOverlay(e) {
@@ -2835,6 +2859,10 @@ function init() {
 
   try {
     if (typeof PullRefreshGuard !== 'undefined') PullRefreshGuard.init();
+  } catch (e) { /* ignore */ }
+
+  try {
+    if (typeof AppResume !== 'undefined') AppResume.init();
   } catch (e) { /* ignore */ }
 
   try {
