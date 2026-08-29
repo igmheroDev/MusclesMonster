@@ -244,6 +244,68 @@ const MuscleGrowthTracker = (() => {
   }
 
   // ------------------------------------------------------------
+  // 개별 운동 기록(그날 기록)에 대한 칼로리·근성장 기여도
+  // 기록 목록/캘린더 day detail에서 "이 운동" 단위로 보여주기 위한 것으로,
+  // 홈 카드의 4주 종합 지수와는 별개로 "그 운동을 저장한 시점" 기준으로 계산한다.
+  // ------------------------------------------------------------
+  function getWorkoutContribution(workout, workouts, weightKg) {
+    if (!workout || !workout.date) return null;
+
+    const w = weightKg > 0 ? weightKg : getProfileWeightKg();
+    const calories = estimateWorkoutCalories(workout, w);
+
+    const musclesTrained = getMuscleOrder().filter((m) =>
+      (workout.exercises || []).some((ex) => getExMuscles(ex.name).includes(m))
+    );
+    if (musclesTrained.length === 0) {
+      return { calories, growthPct: null, musclesTrained: [] };
+    }
+
+    // 그 운동을 기록한 날짜까지의 기록만으로 "그 시점의" 근성장 지수를 계산
+    const asOf = toMidday(workout.date);
+    const upToDate = (workouts || []).filter((item) => item.date && toMidday(item.date) <= asOf);
+
+    const growthValues = musclesTrained
+      .map((m) => computeMuscleGrowth(upToDate, m, asOf))
+      .filter(Boolean)
+      .map((g) => g.growthPct);
+
+    const growthPct = growthValues.length
+      ? Math.round((growthValues.reduce((s, x) => s + x, 0) / growthValues.length) * 10) / 10
+      : null;
+
+    return { calories, growthPct, musclesTrained };
+  }
+
+  // 기록 목록/캘린더 day detail에 삽입할 작은 배지 HTML.
+  // app.js의 buildExerciseDetailHTML(캘린더 day detail과 공용)에서 호출한다.
+  function renderWorkoutDetailBadge(workout) {
+    if (typeof document === 'undefined' || !workout) return '';
+
+    let workouts = [];
+    try {
+      workouts = (typeof loadWorkouts === 'function') ? loadWorkouts() : [];
+    } catch (e) {
+      return '';
+    }
+
+    let contribution;
+    try {
+      contribution = getWorkoutContribution(workout, workouts);
+    } catch (e) {
+      console.warn('[RECOVR] 운동별 근성장 기여도 계산 실패:', e);
+      return '';
+    }
+    if (!contribution) return '';
+
+    const growthPart = contribution.growthPct != null
+      ? ` · 📈 근성장 지수 <b>+${contribution.growthPct}%</b>`
+      : '';
+
+    return `<div class="mgt-workout-badge">🔥 소모 칼로리 <b>${contribution.calories}kcal</b>${growthPart}</div>`;
+  }
+
+  // ------------------------------------------------------------
   // 홈 카드 렌더
   // ------------------------------------------------------------
   function getGrowthColor(pct) {
@@ -395,5 +457,7 @@ const MuscleGrowthTracker = (() => {
     getSummaryForDate,
     getTodaySummary,
     renderHomeCard,
+    getWorkoutContribution,
+    renderWorkoutDetailBadge,
   };
 })();

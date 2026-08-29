@@ -1204,3 +1204,33 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 31 — 2026-08-29
+
+**개별 운동 기록에 칼로리·근성장 배지 추가**
+- 홈 카드는 "최근 4주 종합 지수"만 보여주고, 목록/캘린더의 개별 운동 기록에는 아무 정보가 없던 부분을 보완
+- `muscleGrowthTracker.js`에 `getWorkoutContribution(workout, workouts, weightKg)` 추가
+  - 그 운동을 **저장한 날짜 시점까지의 기록만으로** 계산 (미래 데이터 누수 방지)
+  - 소모 칼로리(`estimateWorkoutCalories` 재사용) + 그 운동이 자극한 부위들의 근성장 지수 평균
+  - 자극 부위가 없는 순수 유산소 기록은 `growthPct: null` (칼로리만 표시)
+- `renderWorkoutDetailBadge(workout)` 추가 — `🔥 소모 칼로리 542kcal · 📈 근성장 지수 +0.2%` 형태의 배지 HTML 생성
+- `app.js`의 `buildExerciseDetailHTML()`(기록 목록 상세·캘린더 day detail 공용 함수) 끝에 위 배지를 추가로 붙이도록 1줄 훅 삽입 — 공용 함수라 목록/주간/월간 캘린더 모두에 자동 반영됨
+- `index.html`에 `.mgt-workout-badge` 스타일 추가
+- SW 캐시 `recovr-cache-v65`, `test-muscle-growth-tracker.js`에 개별 운동 기여도 테스트 6개 추가
+
+**무결성 검사**
+- JS 문법 검사: `app.js` / `muscleGrowthTracker.js` 통과 ✓
+- 단위 테스트 25개 스위트: ALL PASSED ✓
+- Playwright 실브라우저 e2e로 기록 목록 상세와 캘린더(월간) day detail 양쪽에서 배지가 동일하게 렌더링되는 것 확인, 콘솔 에러 없음
+
+**다음 세션 후보 작업**
+- [ ] 근성장/근손실 추정 공식에 대한 실사용자 피드백 반영 (임계값·상한값 튜닝)
+- [ ] 칼로리 추정치와 실제 웨어러블 기기 데이터 비교 검증
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v65`
+
+**현재 앱 버전**: `1.0.0`
+
+---
