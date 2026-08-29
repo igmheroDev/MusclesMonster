@@ -1068,3 +1068,139 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 26 — 2026-07-28 (main 머지, 로그 후기입)
+
+**운동 자극 히트맵 + 부위별 관련 운동 탐색 (PR #62)**
+- 독립 모듈 `exerciseStimHeatmap.js`, 매핑 데이터 `exerciseMuscleMap.js` 추가
+- `ExerciseMuscleMap.STIM_PROFILES` — 100여 개 운동의 근육별 자극 강도(1~3) 정의
+- 종목 검색/카테고리에서 선택 운동의 자극 부위를 히트맵으로 미리보기
+- 홈 근육 히트맵에서 부위 탭 시 해당 근육을 자극하는 관련 운동 목록 표시
+- `calcMuscleRecovery`(회복도 계산)는 기존과 동일하게 `getMusclesFromExerciseName`(키워드)만 사용 — `ExerciseMuscleMap`은 자극 미리보기 전용이라 회복 로직과 분리됨
+- SW 캐시 `recovr-cache-v60`, `test-exercise-stim-heatmap.js` 추가
+
+**무결성 검사**
+- 단위 테스트 스위트 통과 확인 (`test-exercise-stim-heatmap.js` 포함)
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 자극 히트맵 인터랙션(터치) 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v60`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 27 — 2026-07-28 (main 머지, 로그 후기입)
+
+**부위 목록에서 운동 선택 시 상하 분할 미리보기 (PR #63)**
+- `exerciseStimHeatmap.js` 개선: 근육 리스트 위에 축소 자극 히트맵을 상하 분할로 표시해 리스트와 한 화면에서 비교 가능하게 변경
+- 기존 별도 오버레이 방식은 리스트 뒤에 가려지는 z-index 문제가 있어 제거
+- SW 캐시 `recovr-cache-v61`
+
+**무결성 검사**
+- `test-exercise-stim-heatmap.js` 케이스 추가 및 통과 확인
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 분할 레이아웃 스크롤 체감 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v61`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 28 — 2026-08-04 (main 머지, 로그 후기입)
+
+**모바일 당겨서 새로고침(pull-to-refresh) 방지 (PR #64)**
+- 독립 모듈 `pullRefreshGuard.js` 추가
+- 운동 기록 중 화면을 아래로 끌면 브라우저가 새로고침되어 입력 중이던 세트/시간 기록이 날아가는 문제 방지
+- `overscroll-behavior` CSS + `PullRefreshGuard` 모듈(터치 제스처 감지) 이중 방어
+- SW 캐시 `recovr-cache-v62`
+
+**무결성 검사**
+- 관련 테스트 스위트 참조·통과 확인
+
+**다음 세션 후보 작업**
+- [ ] 실기기(Android/iOS 웹뷰) 당겨서 새로고침 차단 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v62`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 29 — 2026-08-04 (main 머지, 로그 후기입)
+
+**백그라운드 복귀·잠깐 종료 후 앱 재개 강화 (PR #65)**
+- 독립 모듈 `appResume.js` 추가
+- `visibilitychange` / `pageshow` / `freeze` / 시간 점프(기기 절전 등)를 감지해 복귀 시 즉시 반영:
+  - `WakeLock` 재요청, 진행 중이던 스톱워치·휴식 타이머 시간 보정
+  - 진행 중이던 운동 모달을 확인창 없이 자동 복원 (기존에는 확인 팝업 필요)
+- `durationTimer.js` / `restTimer.js`에 시간 보정을 위한 보조 함수 추가 (기존 동작에는 영향 없음)
+- SW 캐시 `recovr-cache-v63`, `test-app-resume.js` 추가
+
+**무결성 검사**
+- `test-app-resume.js` 신규 스위트 통과 확인
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 장시간 백그라운드 후 복귀 시나리오(수 시간 절전) 확인
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v63`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 30 — 2026-08-29 (main 머지)
+
+**근성장 · 근손실 추적 + 칼로리 소모 추정 (독립 모듈)**
+- 독립 모듈 `muscleGrowthTracker.js` 추가 — `calcMuscleRecovery`(app.js)는 전혀 수정하지 않음
+- 기존 "회복도"는 시간(h) 단위로 "며칠 쉬어야 하는지"만 계산하고, 손실/성장 방향은 계산하지 않던 문제를 보완
+- **칼로리 소모 추정**: 운동 타입별 MET(대사당량) × 피로도 보정 × 체중(kg) × 시간(h) 공식. 유산소는 `CardioMetrics`에 사용자가 직접 입력한 칼로리를 우선 사용
+- **근성장 지수**: 최근 4주간 부위별 훈련 빈도(이상적 주 2회 기준) + 과부하 진행도(최근 2주 vs 이전 2주 평균 볼륨)로 0~3% 추정 지수 산출
+- **근손실(디트레이닝) 지수**: 부위별 마지막 훈련일로부터 경과일 기준, 2주까지는 0%, 8주 이상은 최대 8%로 비례 산출
+- 홈 화면에 `#muscleGrowthCard` 신규 카드 추가 (근성장 +N% / 근손실 -N%), 기록이 없으면 렌더하지 않음
+- 저장 완료 시 그날 소모 칼로리를 토스트로 안내 (`recovr_growth_log_v1`에 일자별 로그 저장)
+- **체성분 실측이 아닌 훈련 패턴 기반 추정치**임을 카드 하단에 명시 (기존 회복도와 동일하게 추정 모델임을 사용자에게 안내)
+- SW 캐시 `recovr-cache-v64`, `test-muscle-growth-tracker.js` 추가 (칼로리/성장/손실/로그 저장 6개 시나리오 검증)
+
+**중요 발견 및 수정 — 모달 내부 클릭이 `document` 버블 델리게이션으로 감지 안 되던 문제 (사용자 승인 후 수정 완료)**
+- `.modal` 컨테이너가 `onclick="event.stopPropagation()"`로 오버레이 배경 클릭 시에만 모달이 닫히도록 방어하고 있음 (`index.html` 3401행, 의도된 기존 동작 — 그대로 유지)
+- 이 때문에 `#saveBtn`을 포함한 모달 내부의 모든 클릭은 **`document`까지 버블링되지 않았음**
+- `celebrateFx.js`·`microAnim.js`도 `document.addEventListener('click', fn, false)`(버블 단계)로 `#saveBtn`/`.set-check` 등을 감지하는 패턴이라, **실제로는 저장 시 "운동 기록 완료" 토스트·컨페티, 세트 체크 시 `+1 세트` XP 팝업, 저장 버튼 성공 펄스가 전혀 발동하지 않고 있었음** (Playwright 실브라우저 재현으로 확인 및 수정 후 재검증 완료)
+- `muscleGrowthTracker.js`는 처음부터 **캡처 단계**(`document.addEventListener('click', fn, true)`)로 등록해 정상 동작
+- 사용자 승인을 받아 `celebrateFx.js`·`microAnim.js`의 동일한 `document.addEventListener('click', ...)` 호출을 버블→캡처 단계로 수정 (`removeEventListener`도 동일 capture 플래그로 맞춤). 두 핸들러 모두 실제 로직은 `setTimeout`/`requestAnimationFrame`으로 지연 실행되므로 캡처 단계로 바꿔도 동작 차이 없이 안전하게 적용됨
+- 수정 후 Playwright e2e로 재검증: 세트 체크 시 `+1 세트`+컨페티, 저장 시 "운동 기록 완료 💪" 토스트, 저장 버튼 `ma-success-pulse` 효과 모두 정상 발동 확인
+- **추후 모달 내부 클릭을 감지해야 하는 신규 모듈은 반드시 캡처 단계를 사용할 것**
+
+**발견 및 수정 — 회복도(%) 음수 표시 엣지 케이스 (사용자 승인 후 수정 완료)**
+- `calcMuscleRecovery`(app.js)가 세션 시각을 항상 정오(`T12:00:00`)로 가정해서, 당일 낮 12시 이전에 운동을 저장하면 `hoursElapsed`가 음수가 되어 홈 히어로에 `-18%` 같은 음수 회복도가 표시되던 문제
+- `hoursElapsed`, `recoveryPct` 모두 `Math.max(0, ...)` 하한 클램프 추가로 수정. Playwright e2e로 저장 직후 회복도가 `0%`로 정상 표시되는 것 확인
+
+**무결성 검사**
+- JS 문법 검사: `muscleGrowthTracker.js` / `app.js` / `index.html` / `sw.js` 통과 ✓
+- 단위 테스트 25개 스위트: ALL PASSED ✓ (`test-muscle-growth-tracker.js` 신규 포함, 캐시 버전 하드코딩된 7개 테스트 파일도 v64로 동기화)
+- Playwright 기반 실브라우저 e2e로 저장→칼로리 추정→토스트→홈 카드 렌더까지 실제 클릭 흐름 검증
+- SW `ASSETS`/`NETWORK_FIRST_PATHS` ↔ 실제 파일 일치 ✓
+- `index.html` script 참조 ↔ 실제 파일 일치 ✓
+
+**main 머지**
+| PR | 기능 |
+|----|------|
+| #67 | 근성장/근손실 추적 + 칼로리 소모 추정, 모달 클릭 버블링 버그·회복도 음수 표시 버그 수정 |
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 세트 체크·저장 시 복원된 컨페티/토스트/펄스 연출 체감 확인
+- [ ] 근성장/근손실 추정 공식에 대한 실사용자 피드백 반영 (임계값·상한값 튜닝)
+- [ ] 칼로리 추정치와 실제 웨어러블 기기 데이터 비교 검증
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v64`
+
+**현재 앱 버전**: `1.0.0`
+
+---
