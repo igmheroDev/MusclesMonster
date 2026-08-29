@@ -1167,16 +1167,18 @@ MusclesMonster/
 - **체성분 실측이 아닌 훈련 패턴 기반 추정치**임을 카드 하단에 명시 (기존 회복도와 동일하게 추정 모델임을 사용자에게 안내)
 - SW 캐시 `recovr-cache-v64`, `test-muscle-growth-tracker.js` 추가 (칼로리/성장/손실/로그 저장 6개 시나리오 검증)
 
-**중요 발견 — 모달 내부 클릭은 `document` 버블 델리게이션으로 감지 불가**
-- `.modal` 컨테이너가 `onclick="event.stopPropagation()"`로 오버레이 배경 클릭 시에만 모달이 닫히도록 방어하고 있음 (`index.html` 3401행, 의도된 기존 동작 — 수정하지 않음)
-- 이 때문에 `#saveBtn`을 포함한 모달 내부의 모든 클릭은 **`document`까지 버블링되지 않음**
-- `celebrateFx.js`·`microAnim.js`도 `document.addEventListener('click', fn, false)`(버블 단계)로 `#saveBtn`을 감지하는 동일 패턴을 사용 중이라, **실제로는 모달을 통해 저장할 때 이 델리게이션이 전혀 발동하지 않을 가능성이 높음** (Playwright 기반 실브라우저 재현으로 확인). 다만 이번 세션 범위(완성 모듈 수정 금지)에 따라 두 모듈은 건드리지 않았고, 사실 확인용 참고로만 로그에 남김
-- `muscleGrowthTracker.js`는 이 문제를 피하기 위해 동일한 델리게이션을 **캡처 단계**(`document.addEventListener('click', fn, true)`)로 등록해 정상 동작 확인 (Playwright e2e로 저장 → 칼로리 토스트 → localStorage 로그 기록까지 검증 완료)
+**중요 발견 및 수정 — 모달 내부 클릭이 `document` 버블 델리게이션으로 감지 안 되던 문제 (사용자 승인 후 수정 완료)**
+- `.modal` 컨테이너가 `onclick="event.stopPropagation()"`로 오버레이 배경 클릭 시에만 모달이 닫히도록 방어하고 있음 (`index.html` 3401행, 의도된 기존 동작 — 그대로 유지)
+- 이 때문에 `#saveBtn`을 포함한 모달 내부의 모든 클릭은 **`document`까지 버블링되지 않았음**
+- `celebrateFx.js`·`microAnim.js`도 `document.addEventListener('click', fn, false)`(버블 단계)로 `#saveBtn`/`.set-check` 등을 감지하는 패턴이라, **실제로는 저장 시 "운동 기록 완료" 토스트·컨페티, 세트 체크 시 `+1 세트` XP 팝업, 저장 버튼 성공 펄스가 전혀 발동하지 않고 있었음** (Playwright 실브라우저 재현으로 확인 및 수정 후 재검증 완료)
+- `muscleGrowthTracker.js`는 처음부터 **캡처 단계**(`document.addEventListener('click', fn, true)`)로 등록해 정상 동작
+- 사용자 승인을 받아 `celebrateFx.js`·`microAnim.js`의 동일한 `document.addEventListener('click', ...)` 호출을 버블→캡처 단계로 수정 (`removeEventListener`도 동일 capture 플래그로 맞춤). 두 핸들러 모두 실제 로직은 `setTimeout`/`requestAnimationFrame`으로 지연 실행되므로 캡처 단계로 바꿔도 동작 차이 없이 안전하게 적용됨
+- 수정 후 Playwright e2e로 재검증: 세트 체크 시 `+1 세트`+컨페티, 저장 시 "운동 기록 완료 💪" 토스트, 저장 버튼 `ma-success-pulse` 효과 모두 정상 발동 확인
 - **추후 모달 내부 클릭을 감지해야 하는 신규 모듈은 반드시 캡처 단계를 사용할 것**
 
-**발견된 기존 이슈 (수정하지 않음, 참고용 기록)**
-- `calcMuscleRecovery`(app.js)의 `recoveryPct`가 하한 클램프가 없어, 정오 이전 시간대에 그날 운동을 기록하면 `hoursElapsed`가 음수가 되어 홈 히어로에 `-18%` 같은 음수 회복도가 표시됨 (재현: 오늘 날짜로 운동 저장 직후, 로컬 시간이 낮 12시 이전일 때)
-- 완성 모듈 수정 금지 규칙에 따라 이번 세션에서는 수정하지 않음. 다음 세션에서 `Math.max(0, pct)` 클램프 추가를 제안
+**발견 및 수정 — 회복도(%) 음수 표시 엣지 케이스 (사용자 승인 후 수정 완료)**
+- `calcMuscleRecovery`(app.js)가 세션 시각을 항상 정오(`T12:00:00`)로 가정해서, 당일 낮 12시 이전에 운동을 저장하면 `hoursElapsed`가 음수가 되어 홈 히어로에 `-18%` 같은 음수 회복도가 표시되던 문제
+- `hoursElapsed`, `recoveryPct` 모두 `Math.max(0, ...)` 하한 클램프 추가로 수정. Playwright e2e로 저장 직후 회복도가 `0%`로 정상 표시되는 것 확인
 
 **무결성 검사**
 - JS 문법 검사: `muscleGrowthTracker.js` / `app.js` / `index.html` / `sw.js` 통과 ✓
@@ -1186,7 +1188,7 @@ MusclesMonster/
 - `index.html` script 참조 ↔ 실제 파일 일치 ✓
 
 **다음 세션 후보 작업**
-- [ ] `calcMuscleRecovery`의 음수 회복도(%) 클램프 버그 수정 제안 (`Math.max(0, pct)`)
+- [ ] 실기기에서 세트 체크·저장 시 복원된 컨페티/토스트/펄스 연출 체감 확인
 - [ ] 근성장/근손실 추정 공식에 대한 실사용자 피드백 반영 (임계값·상한값 튜닝)
 - [ ] 칼로리 추정치와 실제 웨어러블 기기 데이터 비교 검증
 - [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
