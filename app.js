@@ -1245,11 +1245,22 @@ function buildExerciseDetailHTML(w, realIdx) {
     }
   });
 
-  return Object.entries(grouped).map(([name, sets]) => `
+  const rowsHtml = Object.entries(grouped).map(([name, sets]) => `
     <div class="exercise-detail-row" onclick="event.stopPropagation(); openEditModal(${realIdx})">
       <span class="ex-name">${name}</span>
       <span class="ex-sets">${sets.join(', ')}</span>
     </div>`).join('');
+
+  let growthBadgeHtml = '';
+  try {
+    if (typeof MuscleGrowthTracker !== 'undefined' && typeof MuscleGrowthTracker.renderWorkoutDetailBadge === 'function') {
+      growthBadgeHtml = MuscleGrowthTracker.renderWorkoutDetailBadge(w) || '';
+    }
+  } catch (e) {
+    console.warn('[RECOVR] 운동별 칼로리/근성장 배지 렌더 실패:', e);
+  }
+
+  return rowsHtml + growthBadgeHtml;
 }
 
 // 기록 목록 렌더링은 LogList 모듈로 위임

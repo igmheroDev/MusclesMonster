@@ -190,6 +190,7 @@ console.log('=== 6. 다른 모듈과의 연결 지점 확인 ===');
 {
   const appJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
   assert(appJs.includes('MuscleGrowthTracker.renderHomeCard()'), 'app.js renderHome()에서 홈 카드 렌더 훅 호출');
+  assert(appJs.includes('MuscleGrowthTracker.renderWorkoutDetailBadge'), 'app.js buildExerciseDetailHTML에서 운동별 배지 렌더 훅 호출');
 
   const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   assert(indexHtml.includes('id="muscleGrowthCard"'), 'index.html에 홈 카드 컨테이너 존재');
@@ -198,6 +199,41 @@ console.log('=== 6. 다른 모듈과의 연결 지점 확인 ===');
   const swJs = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
   assert(swJs.includes("'./muscleGrowthTracker.js'"), 'sw.js ASSETS에 등록');
   assert(swJs.includes("'/muscleGrowthTracker.js'"), 'sw.js NETWORK_FIRST_PATHS에 등록');
+}
+
+console.log('=== 7. 개별 운동 기록의 칼로리/근성장 기여도 ===');
+{
+  const workouts = [
+    { date: '2026-08-01', exercises: [{ name: '벤치 프레스', weight: 50, reps: 10, sets: 3 }] },
+    { date: '2026-08-08', exercises: [{ name: '벤치 프레스', weight: 55, reps: 10, sets: 3 }] },
+    {
+      date: '2026-08-15',
+      type: 'upper',
+      fatigue: 3,
+      duration: 60,
+      exercises: [{ name: '벤치 프레스', weight: 60, reps: 10, sets: 3 }],
+    },
+  ];
+  const { module: M } = loadModule({ loadWorkouts: () => workouts });
+
+  const target = workouts[2];
+  const contribution = M.getWorkoutContribution(target, workouts, 70);
+  assert(contribution !== null, '운동 기록이 있으면 기여도 계산됨');
+  assert(contribution.calories > 0, '기여도에 칼로리 포함');
+  assert(contribution.musclesTrained.includes('chest'), '기여도에 훈련 부위 포함');
+  assert(contribution.growthPct !== null, '훈련된 부위가 있으면 성장 지수도 함께 계산됨');
+
+  const cardioOnly = { date: '2026-08-20', type: 'cardio', duration: 20, exercises: [{ name: '러닝', mode: 'duration', durationMin: 20 }] };
+  const noMuscleContribution = M.getWorkoutContribution(cardioOnly, workouts, 70);
+  assert(noMuscleContribution.growthPct === null, '근력 부위가 없는 유산소 기록은 성장 지수가 null');
+  assert(noMuscleContribution.calories > 0, '유산소 기록도 칼로리는 계산됨');
+
+  assert(M.getWorkoutContribution(null, workouts, 70) === null, '운동 기록이 없으면 null 반환');
+
+  const badgeHtml = M.renderWorkoutDetailBadge(target);
+  assert(badgeHtml.includes('소모 칼로리'), '배지 HTML에 칼로리 문구 포함');
+  assert(badgeHtml.includes('근성장 지수'), '배지 HTML에 근성장 지수 문구 포함');
+  assert(M.renderWorkoutDetailBadge(null) === '', '운동 기록이 없으면 빈 문자열 반환');
 }
 
 console.log(`\n=== 최종: ${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'} ===`);
