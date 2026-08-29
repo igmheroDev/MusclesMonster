@@ -226,7 +226,9 @@ const MicroAnim = (() => {
     document.addEventListener('pointerdown', onPointerDown, { passive: true });
     document.addEventListener('pointerup', onPointerUp, { passive: true });
     document.addEventListener('pointercancel', onPointerUp, { passive: true });
-    document.addEventListener('click', onClick, false);
+    // 모달 내부(.modal)는 onclick="event.stopPropagation()"으로 버블 단계 전파를 막으므로,
+    // 모달 안의 저장 버튼·세트 체크 등을 감지하려면 캡처 단계에서 받아야 한다.
+    document.addEventListener('click', onClick, true);
 
     if (window.matchMedia) {
       mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -241,7 +243,7 @@ const MicroAnim = (() => {
     document.removeEventListener('pointerdown', onPointerDown);
     document.removeEventListener('pointerup', onPointerUp);
     document.removeEventListener('pointercancel', onPointerUp);
-    document.removeEventListener('click', onClick);
+    document.removeEventListener('click', onClick, true);
     if (mq) {
       if (mq.removeEventListener) mq.removeEventListener('change', onMotionChange);
       else if (mq.removeListener) mq.removeListener(onMotionChange);

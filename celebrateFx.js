@@ -471,7 +471,10 @@ const CelebrateFx = (() => {
     reducedMotion = prefersReducedMotion();
     ensureStyles();
     ensureLayer();
-    document.addEventListener('click', onClick, false);
+    // 모달 내부(.modal)는 오버레이 클릭-닫기 방지를 위해 onclick="event.stopPropagation()"을
+    // 사용해 버블 단계 전파를 막는다. 저장 버튼(#saveBtn)·세트 체크 등은 모달 안에 있어
+    // 버블 단계로는 document까지 도달하지 못하므로, 캡처 단계에서 감지한다.
+    document.addEventListener('click', onClick, true);
     watchStreakPill();
 
     if (window.matchMedia) {
@@ -484,7 +487,7 @@ const CelebrateFx = (() => {
 
   function destroy() {
     if (!initialized || typeof document === 'undefined') return;
-    document.removeEventListener('click', onClick);
+    document.removeEventListener('click', onClick, true);
     if (streakObserver) {
       streakObserver.disconnect();
       streakObserver = null;
