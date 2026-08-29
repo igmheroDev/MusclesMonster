@@ -1052,6 +1052,12 @@ function renderHome() {
     console.warn('[RECOVR] 상태 요약 실패:', e);
   }
 
+  try {
+    if (typeof MuscleGrowthTracker !== 'undefined') MuscleGrowthTracker.renderHomeCard();
+  } catch (e) {
+    console.warn('[RECOVR] 근성장/근손실 카드 렌더 실패:', e);
+  }
+
   try { renderStreak(workouts); } catch (e) { console.warn('[RECOVR] 스트릭 실패:', e); }
   try { renderWeekBar(workouts); } catch (e) { console.warn('[RECOVR] 주간바 실패:', e); }
 
