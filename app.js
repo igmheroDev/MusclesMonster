@@ -847,7 +847,9 @@ function calcMuscleRecovery(workouts, settings) {
     });
 
     if (mostRecent) {
-      const hoursElapsed = (now - mostRecentDate) / (1000 * 60 * 60);
+      // 세션 시각을 항상 정오(T12:00:00)로 가정하므로, 당일 낮 12시 이전에 저장하면
+      // 이론상 "경과 시간"이 음수가 될 수 있다. 실제로 아직 시간이 지나지 않은 것뿐이므로 0으로 클램프.
+      const hoursElapsed = Math.max(0, (now - mostRecentDate) / (1000 * 60 * 60));
       const refVol = REFERENCE_VOLUME[muscleKey] || 2000;
       const intensityFactor = mostRecent.volume / refVol; // 1.0 = average session
       // 볼륨 강도에 따라 0.5~2.0배 보정
@@ -857,7 +859,7 @@ function calcMuscleRecovery(workouts, settings) {
       const muscleBase = (MUSCLE_BASE_RECOVERY[muscleKey] || 48) * userScale;
       const recoveryHours = muscleBase * clampedFactor * fatigueScale;
 
-      const pct = Math.min(100, Math.round((hoursElapsed / recoveryHours) * 100));
+      const pct = Math.max(0, Math.min(100, Math.round((hoursElapsed / recoveryHours) * 100)));
 
       result[muscleKey] = {
         volume: mostRecent.volume,
