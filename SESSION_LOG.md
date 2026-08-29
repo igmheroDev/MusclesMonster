@@ -1068,3 +1068,88 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 26 — 2026-07-28 (main 머지, 로그 후기입)
+
+**운동 자극 히트맵 + 부위별 관련 운동 탐색 (PR #62)**
+- 독립 모듈 `exerciseStimHeatmap.js`, 매핑 데이터 `exerciseMuscleMap.js` 추가
+- `ExerciseMuscleMap.STIM_PROFILES` — 100여 개 운동의 근육별 자극 강도(1~3) 정의
+- 종목 검색/카테고리에서 선택 운동의 자극 부위를 히트맵으로 미리보기
+- 홈 근육 히트맵에서 부위 탭 시 해당 근육을 자극하는 관련 운동 목록 표시
+- `calcMuscleRecovery`(회복도 계산)는 기존과 동일하게 `getMusclesFromExerciseName`(키워드)만 사용 — `ExerciseMuscleMap`은 자극 미리보기 전용이라 회복 로직과 분리됨
+- SW 캐시 `recovr-cache-v60`, `test-exercise-stim-heatmap.js` 추가
+
+**무결성 검사**
+- 단위 테스트 스위트 통과 확인 (`test-exercise-stim-heatmap.js` 포함)
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 자극 히트맵 인터랙션(터치) 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v60`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 27 — 2026-07-28 (main 머지, 로그 후기입)
+
+**부위 목록에서 운동 선택 시 상하 분할 미리보기 (PR #63)**
+- `exerciseStimHeatmap.js` 개선: 근육 리스트 위에 축소 자극 히트맵을 상하 분할로 표시해 리스트와 한 화면에서 비교 가능하게 변경
+- 기존 별도 오버레이 방식은 리스트 뒤에 가려지는 z-index 문제가 있어 제거
+- SW 캐시 `recovr-cache-v61`
+
+**무결성 검사**
+- `test-exercise-stim-heatmap.js` 케이스 추가 및 통과 확인
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 분할 레이아웃 스크롤 체감 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v61`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 28 — 2026-08-04 (main 머지, 로그 후기입)
+
+**모바일 당겨서 새로고침(pull-to-refresh) 방지 (PR #64)**
+- 독립 모듈 `pullRefreshGuard.js` 추가
+- 운동 기록 중 화면을 아래로 끌면 브라우저가 새로고침되어 입력 중이던 세트/시간 기록이 날아가는 문제 방지
+- `overscroll-behavior` CSS + `PullRefreshGuard` 모듈(터치 제스처 감지) 이중 방어
+- SW 캐시 `recovr-cache-v62`
+
+**무결성 검사**
+- 관련 테스트 스위트 참조·통과 확인
+
+**다음 세션 후보 작업**
+- [ ] 실기기(Android/iOS 웹뷰) 당겨서 새로고침 차단 확인
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v62`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 29 — 2026-08-04 (main 머지, 로그 후기입)
+
+**백그라운드 복귀·잠깐 종료 후 앱 재개 강화 (PR #65)**
+- 독립 모듈 `appResume.js` 추가
+- `visibilitychange` / `pageshow` / `freeze` / 시간 점프(기기 절전 등)를 감지해 복귀 시 즉시 반영:
+  - `WakeLock` 재요청, 진행 중이던 스톱워치·휴식 타이머 시간 보정
+  - 진행 중이던 운동 모달을 확인창 없이 자동 복원 (기존에는 확인 팝업 필요)
+- `durationTimer.js` / `restTimer.js`에 시간 보정을 위한 보조 함수 추가 (기존 동작에는 영향 없음)
+- SW 캐시 `recovr-cache-v63`, `test-app-resume.js` 추가
+
+**무결성 검사**
+- `test-app-resume.js` 신규 스위트 통과 확인
+
+**다음 세션 후보 작업**
+- [ ] 실기기에서 장시간 백그라운드 후 복귀 시나리오(수 시간 절전) 확인
+- [ ] 전체 UI/UX 실기기 테스트 후 버그 수정
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v63`
+
+**현재 앱 버전**: `1.0.0`
+
+---
