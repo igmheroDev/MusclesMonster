@@ -1237,6 +1237,28 @@ MusclesMonster/
 
 ### 세션 32 — 2026-08-31
 
+**미션 클리어 컨페티를 "낙하"에서 "폭죽 터짐"으로 변경**
+- 사용자 피드백: 미션 클리어 등 완료 연출 시 컨페티가 화면 위에서 아래로 후두둑 떨어지는 느낌이라, 불꽃놀이처럼 펑 터지는 느낌을 원함
+- `celebrateFx.js`의 `confettiBurst()` 궤적을 원점 → `110vh`(화면 거의 전체)까지 수직 낙하하던 방식에서, 원점을 중심으로 **사방(360도) 랜덤 각도로 반경만큼 뿜어져 나갔다가** 짧게 중력으로 가라앉으며 페이드아웃되는 방식으로 교체
+  - CSS 키프레임 `cfx-confetti-fall` → `cfx-confetti-burst`로 교체 (0% 원점 → 18% 버스트 정점(`--cfx-bx`/`--cfx-by`, 확대+회전) → 100% 최종 낙하 지점(`--cfx-fx`/`--cfx-fy`, 축소+페이드)의 3단 키프레임, 구간별 `animation-timing-function`으로 "빠르게 튀어나갔다가 서서히 가라앉는" 곡선 구현)
+  - JS에서 조각별로 랜덤 각도(`angle`)·버스트 반경(`burstRadius` 55~155px)로 원형에 가까운 퍼짐을 만들고, 이후 소폭 드리프트(`settleDrift`)+중력 낙하(`gravityFall` 70~200px)만 추가해 낙하 거리를 화면 전체가 아닌 짧은 구간으로 제한
+  - `CONFETTI_MS`를 1600ms → 1150ms로 줄여 더 스냅감 있는 "펑" 타이밍으로 조정
+- 미션 클리어 풀스크린 오버레이, 운동 기록 저장, 세트/미션 체크 등 `confettiBurst()`를 호출하는 기존 트리거는 전부 그대로 유지 (호출부 수정 없음, 이펙트 내부 궤적만 교체)
+- SW 캐시 `recovr-cache-v66`, 캐시 버전을 하드코딩한 테스트 파일 7개(`test-pull-refresh-guard.js`, `test-log-list.js`, `test-home-status-summary.js`, `test-celebrate-fx.js`, `test-backup-reconnect.js`, `test-backup-on-complete.js`, `test-app-resume.js`) 동기화
+
+**무결성 검사**
+- JS 문법 검사: `celebrateFx.js` / `sw.js` 통과 ✓
+- 단위 테스트 26개 스위트: ALL PASSED ✓ (`test-celebrate-fx.js` 포함, `confettiBurst`/`showMissionClear`/`workoutSaved` 등 API 그대로 유지되는 것 확인)
+- Playwright + 시스템 Chrome으로 `index.html`을 직접 열어 `CelebrateFx.confettiBurst()`를 실행하고 40ms~1100ms 구간 스크린샷 연속 캡처로 실제 궤적 확인: 원점 주변으로 원형에 가깝게 사방으로 퍼졌다가 짧게 가라앉으며 사라지는 것을 시각적으로 검증 (기존처럼 화면 하단까지 길게 떨어지지 않음)
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v66`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 33 — 2026-08-31
+
 **세트 체크 콤보 재미 연출 신규 독립 모듈 `comboFx.js` 추가**
 - 사용자 피드백: "운동은 힘들어도 앱이라도 재미나야지, 신나게 재밌게" — 기존 확인 연출(컨페티/토스트/펄스) 외에 게임적인 재미 요소를 추가해달라는 요청
 - 세트 체크(`.set-check`, `.duration-check`)를 3초 안에 연속으로 체크하면 콤보가 쌓이고, 2콤보부터 체크박스 위에 "N 콤보!" 텍스트가 통통 튀며 뜨는 연출 추가
@@ -1275,9 +1297,11 @@ MusclesMonster/
 
 **다음 세션 후보 작업**
 - [ ] 실기기(모바일)에서 콤보 연출 체감 및 진동 패턴 강도 피드백 반영
+- [ ] 실기기(모바일)에서 새 컨페티 버스트 연출 체감 확인
 - [ ] 랜덤 응원 대사 문구 풀에 대한 실사용자 반응 확인 후 문구 추가/교체
 - [ ] 효과음(사운드) 추가 여부 검토 — Web Audio API로 짧은 소리를 코드로만 생성(오디오 파일 없이)
 - [ ] 근성장/근손실 추정 공식에 대한 실사용자 피드백 반영 (임계값·상한값 튜닝)
+- [ ] 칼로리 추정치와 실제 웨어러블 기기 데이터 비교 검증
 - [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v67`
