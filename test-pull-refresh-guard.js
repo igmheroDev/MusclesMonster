@@ -77,7 +77,7 @@ assert(
   'index css disables pull-to-refresh'
 );
 assert(sw.includes('pullRefreshGuard.js'), 'sw caches module');
-assert(sw.includes('recovr-cache-v65'), 'sw cache bump');
+assert(sw.includes('recovr-cache-v66'), 'sw cache bump');
 assert(app.includes('PullRefreshGuard.init()'), 'app init wires module');
 
 console.log(failures === 0 ? 'PullRefreshGuard tests passed ✓' : failures + ' failed');
