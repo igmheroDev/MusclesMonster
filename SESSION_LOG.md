@@ -1309,3 +1309,59 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 34 — 2026-08-31
+
+**근성장/근손실 히트맵·목록 시트에 "부위 탭 → 추천 운동" 연동 (PR #71 후속)**
+- 사용자 요청: "근손실 히트맵의 부위를 누르면 회복 히트맵처럼 추천 운동이 나오게 해줘 / 근성장·근손실지수를 누르면 부위가 나오는데 그 부위를 누르면 추천 운동도 뜨게 해줘"
+- 기존 동작 파악: `muscleHeatmap.js`(회복 히트맵)는 자체적으로 부위 탭 시 추천 운동을 열지 않고, `exerciseStimHeatmap.js`가 `#muscleHeatmapCard`에 별도 클릭 리스너(`onHomeCardClick`)를 위임해 `ExerciseStimHeatmap.openMuscle(muscle)`(부위→운동 목록 바텀시트, `#eshMuscleOverlay`)을 여는 구조. `muscleGrowthDetail.js`(근성장/근손실 히트맵·목록)에는 이 연동이 없어서 부위를 눌러도 상태 툴팁만 뜨고 추천 운동은 뜨지 않았음
+- 해결: `ExerciseStimHeatmap`/`MuscleHeatmap`은 완성된 모듈이라 전혀 수정하지 않고, `muscleGrowthDetail.js`에서 `ExerciseStimHeatmap.openMuscle()` 공개 API만 읽기 전용으로 재사용
+  - `openMuscleExercises(muscleKey)` 함수 신규 추가(모듈 공개 API로 노출): 근성장/근손실 부위별 목록 시트(`#mgdOverlay`, z-index 1220)는 추천 운동 시트(`#eshMuscleOverlay`, z-index 1200)보다 z-index가 높아 열려 있으면 추천 운동 시트를 가리므로, 먼저 `closeList()`로 목록 시트를 닫은 뒤 `ExerciseStimHeatmap.openMuscle()`을 호출
+  - **히트맵 카드**(`#muscleGrowthHeatmapCard`): 부위(`.mh-region`) 탭 시 기존 상태 툴팁(`onRegionTap`)은 그대로 유지하면서, 추가로 `openMuscleExercises()`를 호출 — 회복 히트맵에서 부위 탭 시 툴팁과 추천 운동 시트가 함께 뜨는 것과 동일한 사용자 경험
+  - **부위별 목록 시트**(근성장/근손실 지수 탭 시 뜨는 `#mgdOverlay`): 각 부위 항목(`mgd-list-item`)에 `role="button"`/`onclick`을 추가해 탭 가능하게 만들고, 탭하면 `openMuscleExercises(muscle)`을 호출해 목록 시트가 닫히고 바로 추천 운동 시트가 열림. 항목에 `mgd-list-arrow`(›) 아이콘을 추가해 탭 가능함을 시각적으로 안내
+  - 안내 문구 갱신: 히트맵 카드 하단(`부위를 탭하면 상태 확인 + 추천 운동`), 목록 시트 하단(`부위를 탭하면 추천 운동을 볼 수 있어요`)
+  - `index.html`에 `.mgd-list-item--tap`(탭 피드백, 기존 `.mgt-item--tap`과 동일한 관례) / `.mgd-list-arrow` CSS 추가
+- SW 캐시 `recovr-cache-v69`, 캐시 버전을 하드코딩한 테스트 파일 9개(`test-pull-refresh-guard.js`, `test-log-list.js`, `test-hype-fx.js`, `test-combo-fx.js`, `test-home-status-summary.js`, `test-celebrate-fx.js`, `test-backup-reconnect.js`, `test-app-resume.js`, `test-backup-on-complete.js`) 동기화
+- `test-muscle-growth-detail.js`에 신규 섹션 추가: (1) 히트맵 부위 탭 시 기존 툴팁 유지 + `ExerciseStimHeatmap.openMuscle` 호출 검증(SVG 클릭 이벤트를 모킹해 실제 버블링 흐름 재현) (2) 목록 항목 HTML에 `openMuscleExercises` 연결·화살표 표시 검증 (3) `openMuscleExercises` 호출 시 목록 시트가 자동으로 닫히는 것(z-index 충돌 방지) 검증 (4) 모듈 연결 지점 검사에 `ExerciseStimHeatmap.openMuscle` 참조 여부 추가
+
+**무결성 검사**
+- JS 문법 검사: `muscleGrowthDetail.js` / `sw.js` 통과 ✓
+- 단위 테스트 28개 스위트: ALL PASSED ✓ (`test-muscle-growth-detail.js` 확장)
+
+**다음 세션 후보 작업**
+- [ ] 실기기(모바일)에서 히트맵 탭 → 추천 운동 시트 전환 체감(두 시트가 연속으로 열리는 느낌) 확인
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v69`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 35 — 2026-08-31 (같은 PR 후속)
+
+**추천 운동 목록에 "유튜브에서 영상으로 보기" 연결 (신규 독립 모듈 `youtubeSearchLink.js`)**
+- 사용자 요청: "추천운동은 잘 알려주는데 이름만 알지 어떻게 하는지를 모르겠어. 추천운동을 누르면 유튜브에서 검색어를 넣어 나온 링크로 연결해줄래?"
+- `ExerciseStimHeatmap`(부위→추천 운동 시트)의 완성된 로직·마크업은 전혀 수정하지 않고, 신규 독립 모듈 `youtubeSearchLink.js`가 이미 렌더된 DOM에 `MutationObserver`로 "▶ 영상" 버튼만 추가로 붙이는 방식으로 연결(기존에 `exerciseStimHeatmap.js`가 `exercisePicker.js`를 확장할 때 쓴 것과 동일한 관례: `#exPickerList`를 `MutationObserver`로 감지해 `ex-picker-stim-btn`을 덧붙이는 패턴을 그대로 재사용)
+  - `YoutubeSearchLink.buildSearchUrl(name)`: `https://www.youtube.com/results?search_query=<운동명> 운동 방법` 형태의 검색 URL 생성. `open(name)`은 `window.open(url, '_blank', 'noopener')`로 새 탭에서 오픈(모바일에서 유튜브 앱이 설치돼 있으면 OS의 유니버설/앱 링크 처리로 앱이 바로 열리는 경우가 많음 — 웹에서 앱을 강제로 여는 표준 방법은 없어 이 방식이 최선)
+  - 부위별 추천 운동 목록(`#eshMuscleOverlay .esh-ex-item`) 각 항목에 "▶ 영상" 버튼 추가 — 항목 자체(자극 히트맵 미리보기 오픈)의 기존 클릭 동작은 그대로 두고, 버튼 클릭 시 `stopPropagation`으로 항목의 클릭이 발생하지 않게 함(exercisePicker.js의 `.ex-picker-item` 버튼 안에 `ex-picker-stim-btn`을 넣는 것과 동일한 "버튼 안 버튼" 관례)
+  - 운동을 선택해 펼쳐지는 분할 미리보기 헤더(`.esh-split-preview-head`)에도 동일한 버튼 추가 (접기 버튼 옆에 배치, 기존 2단 레이아웃 유지)
+  - 종목 피커의 "자극" 버튼으로 연 단일 운동 상세 시트(`#eshExerciseOverlay`)에는 "이 운동 추가"/"확인" 액션 버튼 위에 전체 폭 "▶ 유튜브에서 영상으로 보기" 버튼 추가
+  - `index.html`에 `<script src="youtubeSearchLink.js"></script>` 1줄 추가(muscleGrowthDetail.js 다음), 부트스트랩 스크립트에 `YoutubeSearchLink.init()` 1줄 추가, `.ytl-btn`/`.ytl-actions-inline`/`.ytl-video-btn` CSS 추가
+- SW 캐시 `recovr-cache-v70`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `youtubeSearchLink.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 9개 동기화
+- `test-youtube-search-link.js` 신규 추가: 검색 URL 생성, 목록/분할 미리보기/단일 상세 시트 각각에 버튼이 붙는지, 버튼 클릭이 상위 항목 클릭으로 전파되지 않는지(stopPropagation), 재렌더 시 버튼이 중복 추가되지 않는지(idempotent), 모듈 연결 지점(스크립트 태그·sw.js 등록·`ExerciseStimHeatmap` 시그니처 불변)을 검증. 실제 브라우저 DOM이 없어 `createElement`/`appendChild`/`insertBefore`/`querySelector`/이벤트 버블링을 흉내내는 최소 fake DOM을 테스트 파일 내부에 직접 구현(이 프로젝트는 별도 테스트 프레임워크·jsdom 의존성이 없는 순수 Node 스크립트 컨벤션을 따름)
+
+**무결성 검사**
+- JS 문법 검사: `youtubeSearchLink.js` / `sw.js` 통과 ✓
+- 단위 테스트 29개 스위트: ALL PASSED ✓ (`test-youtube-search-link.js` 신규 포함)
+
+**다음 세션 후보 작업**
+- [ ] 실기기(모바일 Chrome/Safari, PWA 설치 상태)에서 "▶ 영상" 버튼 탭 시 실제로 유튜브 앱으로 연결되는지 확인 (기기·브라우저별 유니버설 링크 처리 차이가 있을 수 있음)
+- [ ] 운동 종목 피커(`exercisePicker.js`)의 메인 목록에도 동일한 유튜브 링크 버튼을 붙일지 검토(사용자 요청 범위 밖이라 이번엔 보류, 제안만 기록)
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v70`
+
+**현재 앱 버전**: `1.0.0`
+
+---

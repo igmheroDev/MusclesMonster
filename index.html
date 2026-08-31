@@ -1299,6 +1299,15 @@
   .mgd-list-name { font-size: 13.5px; font-weight: 700; }
   .mgd-list-sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
   .mgd-list-pct { font-size: 15px; font-weight: 800; flex-shrink: 0; }
+  .mgd-list-item--tap { cursor: pointer; transition: background 0.15s; }
+  .mgd-list-item--tap:active { background: rgba(255,255,255,0.07); }
+  body.light .mgd-list-item--tap:active { background: rgba(0,0,0,0.05); }
+  .mgd-list-arrow {
+    font-size: 16px;
+    color: var(--muted);
+    flex-shrink: 0;
+    margin-left: -2px;
+  }
   .mgd-list-empty {
     text-align: center;
     padding: 28px 12px;
@@ -3026,6 +3035,44 @@
   }
   .esh-home-browse .esh-svg { width: min(220px, 64vw); }
   .esh-home-browse .esh-region { cursor: pointer; }
+
+  /* ===== 추천 운동 → 유튜브 검색 연결 (youtubeSearchLink.js, 독립 모듈) ===== */
+  .ytl-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    border: 1px solid rgba(255,59,92,0.35);
+    background: rgba(255,59,92,0.10);
+    color: var(--red);
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 6px 9px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .ytl-btn:active { opacity: 0.7; }
+  .ytl-actions-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .ytl-video-btn {
+    width: 100%;
+    border: 1px solid rgba(255,59,92,0.35);
+    background: rgba(255,59,92,0.08);
+    color: var(--red);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .ytl-video-btn:active { opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -3702,6 +3749,7 @@
 <script src="hypeFx.js"></script>
 <script src="muscleGrowthTracker.js"></script>
 <script src="muscleGrowthDetail.js"></script>
-<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init();</script>
+<script src="youtubeSearchLink.js"></script>
+<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init(); if (typeof YoutubeSearchLink !== 'undefined') YoutubeSearchLink.init();</script>
 </body>
 </html>
