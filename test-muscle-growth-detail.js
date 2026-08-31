@@ -220,6 +220,9 @@ console.log('=== 6. 다른 모듈과의 연결 지점 확인 ===');
   const appJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
   assert(appJs.includes('MuscleGrowthDetail.afterHomeRender()'), 'app.js renderHome()에서 부위별 상세 렌더 훅 호출');
 
+  const growthDetailJs = fs.readFileSync(path.join(__dirname, 'muscleGrowthDetail.js'), 'utf8');
+  assert(growthDetailJs.includes('ExerciseStimHeatmap.openMuscle'), '부위 탭 시 ExerciseStimHeatmap의 추천 운동 시트를 재사용 (읽기 전용 공개 API만 호출)');
+
   const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   assert(indexHtml.includes('id="muscleGrowthHeatmapCard"'), 'index.html에 히트맵 카드 컨테이너 존재');
   assert(indexHtml.includes('id="mgdOverlay"'), 'index.html에 목록 시트 오버레이 존재');
@@ -233,6 +236,93 @@ console.log('=== 6. 다른 모듈과의 연결 지점 확인 ===');
   const swJs = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
   assert(swJs.includes("'./muscleGrowthDetail.js'"), 'sw.js ASSETS에 등록');
   assert(swJs.includes("'/muscleGrowthDetail.js'"), 'sw.js NETWORK_FIRST_PATHS에 등록');
+}
+
+console.log('=== 7. 부위 탭 → 추천 운동 연동 (ExerciseStimHeatmap 재사용) ===');
+{
+  fakeComputeResult = {
+    hasData: true,
+    perMuscle: {
+      chest: { growth: { growthPct: 2.4, sessionCount: 6 }, loss: null },
+    },
+  };
+
+  const openMuscleCalls = [];
+  global.ExerciseStimHeatmap = {
+    openMuscle(muscleKey) { openMuscleCalls.push(muscleKey); },
+  };
+
+  function makeOverlay() {
+    return {
+      classList: {
+        _show: false,
+        add(c) { if (c === 'show') this._show = true; },
+        remove(c) { if (c === 'show') this._show = false; },
+        contains(c) { return c === 'show' ? this._show : false; },
+      },
+      innerHTML: '',
+    };
+  }
+  const mgdOverlay = makeOverlay();
+
+  const tooltip = { innerHTML: '', classList: { add() {}, remove() {} } };
+
+  function makeSvg() {
+    return {
+      _listeners: [],
+      addEventListener(type, fn) { this._listeners.push([type, fn]); },
+      dispatch(type, target) {
+        this._listeners.filter((l) => l[0] === type).forEach((l) => l[1]({ target }));
+      },
+    };
+  }
+  const svgEl = makeSvg();
+  const heatmapContainer = {
+    innerHTML: '',
+    querySelectorAll() { return []; },
+    querySelector(sel) { return sel === '.mh-svg' ? svgEl : null; },
+  };
+
+  global.document = {
+    getElementById(id) {
+      if (id === 'mgdOverlay') return mgdOverlay;
+      if (id === 'mgdTooltip') return tooltip;
+      if (id === 'muscleGrowthHeatmapCard') return heatmapContainer;
+      return null;
+    },
+  };
+
+  MuscleGrowthDetail.renderHeatmapCard();
+  assert(svgEl._listeners.some((l) => l[0] === 'click'), 'SVG에 클릭 리스너 연결됨');
+
+  const regionTarget = {
+    closest(sel) {
+      return sel === '.mh-region'
+        ? { dataset: { muscle: 'chest', label: '가슴', status: 'growth', pct: '2.4' } }
+        : null;
+    },
+  };
+  svgEl.dispatch('click', regionTarget);
+  assert(tooltip.innerHTML.includes('가슴'), '부위 탭 시 기존 상태 툴팁도 그대로 표시 (기존 동작 유지)');
+  assert(
+    openMuscleCalls.length === 1 && openMuscleCalls[0] === 'chest',
+    '부위 탭 시 ExerciseStimHeatmap.openMuscle 호출 (회복 히트맵과 동일한 추천 운동 연동)'
+  );
+
+  // 근성장/근손실 지수 → 부위별 목록 시트에서도 부위를 탭하면 추천 운동이 열려야 함
+  const growthList = MuscleGrowthDetail.getGrowthList({
+    chest: { growth: { growthPct: 2.4, sessionCount: 6 }, loss: null },
+  });
+  const listHtml = MuscleGrowthDetail.buildListSheetHtml('growth', growthList, {
+    icon: '📈', kicker: '근성장', title: '성장 중인 부위', color: 'var(--green)',
+    emptyText: '없음', formatPct: (p) => `+${p}%`, formatSub: (i) => `세션 ${i.sessionCount}회`,
+  });
+  assert(listHtml.includes("MuscleGrowthDetail.openMuscleExercises('chest')"), '목록 항목 탭 시 추천 운동 함수로 연결됨');
+  assert(listHtml.includes('mgd-list-arrow'), '목록 항목에 탭 가능함을 알리는 화살표 표시');
+
+  MuscleGrowthDetail.openMuscleExercises('chest');
+  assert(openMuscleCalls.length === 2 && openMuscleCalls[1] === 'chest', 'openMuscleExercises가 ExerciseStimHeatmap.openMuscle을 호출');
+  assert(!mgdOverlay.classList.contains('show'), '추천 운동 오픈 시 목록 시트는 자동으로 닫힘 (esh-overlay와 z-index 충돌 방지)');
 }
 
 console.log(`\n=== 최종: ${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'} ===`);

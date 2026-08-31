@@ -1309,3 +1309,31 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 34 — 2026-08-31
+
+**근성장/근손실 히트맵·목록 시트에 "부위 탭 → 추천 운동" 연동 (PR #71 후속)**
+- 사용자 요청: "근손실 히트맵의 부위를 누르면 회복 히트맵처럼 추천 운동이 나오게 해줘 / 근성장·근손실지수를 누르면 부위가 나오는데 그 부위를 누르면 추천 운동도 뜨게 해줘"
+- 기존 동작 파악: `muscleHeatmap.js`(회복 히트맵)는 자체적으로 부위 탭 시 추천 운동을 열지 않고, `exerciseStimHeatmap.js`가 `#muscleHeatmapCard`에 별도 클릭 리스너(`onHomeCardClick`)를 위임해 `ExerciseStimHeatmap.openMuscle(muscle)`(부위→운동 목록 바텀시트, `#eshMuscleOverlay`)을 여는 구조. `muscleGrowthDetail.js`(근성장/근손실 히트맵·목록)에는 이 연동이 없어서 부위를 눌러도 상태 툴팁만 뜨고 추천 운동은 뜨지 않았음
+- 해결: `ExerciseStimHeatmap`/`MuscleHeatmap`은 완성된 모듈이라 전혀 수정하지 않고, `muscleGrowthDetail.js`에서 `ExerciseStimHeatmap.openMuscle()` 공개 API만 읽기 전용으로 재사용
+  - `openMuscleExercises(muscleKey)` 함수 신규 추가(모듈 공개 API로 노출): 근성장/근손실 부위별 목록 시트(`#mgdOverlay`, z-index 1220)는 추천 운동 시트(`#eshMuscleOverlay`, z-index 1200)보다 z-index가 높아 열려 있으면 추천 운동 시트를 가리므로, 먼저 `closeList()`로 목록 시트를 닫은 뒤 `ExerciseStimHeatmap.openMuscle()`을 호출
+  - **히트맵 카드**(`#muscleGrowthHeatmapCard`): 부위(`.mh-region`) 탭 시 기존 상태 툴팁(`onRegionTap`)은 그대로 유지하면서, 추가로 `openMuscleExercises()`를 호출 — 회복 히트맵에서 부위 탭 시 툴팁과 추천 운동 시트가 함께 뜨는 것과 동일한 사용자 경험
+  - **부위별 목록 시트**(근성장/근손실 지수 탭 시 뜨는 `#mgdOverlay`): 각 부위 항목(`mgd-list-item`)에 `role="button"`/`onclick`을 추가해 탭 가능하게 만들고, 탭하면 `openMuscleExercises(muscle)`을 호출해 목록 시트가 닫히고 바로 추천 운동 시트가 열림. 항목에 `mgd-list-arrow`(›) 아이콘을 추가해 탭 가능함을 시각적으로 안내
+  - 안내 문구 갱신: 히트맵 카드 하단(`부위를 탭하면 상태 확인 + 추천 운동`), 목록 시트 하단(`부위를 탭하면 추천 운동을 볼 수 있어요`)
+  - `index.html`에 `.mgd-list-item--tap`(탭 피드백, 기존 `.mgt-item--tap`과 동일한 관례) / `.mgd-list-arrow` CSS 추가
+- SW 캐시 `recovr-cache-v69`, 캐시 버전을 하드코딩한 테스트 파일 9개(`test-pull-refresh-guard.js`, `test-log-list.js`, `test-hype-fx.js`, `test-combo-fx.js`, `test-home-status-summary.js`, `test-celebrate-fx.js`, `test-backup-reconnect.js`, `test-app-resume.js`, `test-backup-on-complete.js`) 동기화
+- `test-muscle-growth-detail.js`에 신규 섹션 추가: (1) 히트맵 부위 탭 시 기존 툴팁 유지 + `ExerciseStimHeatmap.openMuscle` 호출 검증(SVG 클릭 이벤트를 모킹해 실제 버블링 흐름 재현) (2) 목록 항목 HTML에 `openMuscleExercises` 연결·화살표 표시 검증 (3) `openMuscleExercises` 호출 시 목록 시트가 자동으로 닫히는 것(z-index 충돌 방지) 검증 (4) 모듈 연결 지점 검사에 `ExerciseStimHeatmap.openMuscle` 참조 여부 추가
+
+**무결성 검사**
+- JS 문법 검사: `muscleGrowthDetail.js` / `sw.js` 통과 ✓
+- 단위 테스트 28개 스위트: ALL PASSED ✓ (`test-muscle-growth-detail.js` 확장)
+
+**다음 세션 후보 작업**
+- [ ] 실기기(모바일)에서 히트맵 탭 → 추천 운동 시트 전환 체감(두 시트가 연속으로 열리는 느낌) 확인
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v69`
+
+**현재 앱 버전**: `1.0.0`
+
+---

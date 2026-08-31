@@ -254,26 +254,42 @@ const MuscleGrowthDetail = (() => {
       </svg>`;
   }
 
+  // ------------------------------------------------------------
+  // 부위 탭 → 추천 운동 (ExerciseStimHeatmap의 완성된 "부위→운동" 시트를
+  // 읽기 전용 공개 API로만 재사용. ExerciseStimHeatmap/MuscleHeatmap 코드는 수정하지 않음)
+  // ------------------------------------------------------------
+  function openMuscleExercises(muscleKey) {
+    if (!muscleKey) return;
+    // mgd-overlay(z-index 1220)가 esh-overlay(z-index 1200)보다 위에 있어
+    // 목록 시트가 열린 상태로는 추천 운동 시트가 가려지므로 먼저 닫는다
+    closeList();
+    if (typeof ExerciseStimHeatmap !== 'undefined' && typeof ExerciseStimHeatmap.openMuscle === 'function') {
+      ExerciseStimHeatmap.openMuscle(muscleKey);
+    }
+  }
+
   function onRegionTap(e) {
     const region = e.target.closest('.mh-region');
     if (!region) return;
     const tip = document.getElementById('mgdTooltip');
-    if (!tip) return;
+    if (tip) {
+      const label = region.dataset.label || '';
+      const status = region.dataset.status;
+      const pct = region.dataset.pct;
 
-    const label = region.dataset.label || '';
-    const status = region.dataset.status;
-    const pct = region.dataset.pct;
+      let statusText = '기록 없음';
+      let statusClass = '';
+      if (status === 'growth') { statusText = `성장 +${pct}% · 훈련 패턴 양호`; statusClass = 'good'; }
+      else if (status === 'loss') { statusText = `손실 -${pct}% · 훈련 필요`; statusClass = 'low'; }
+      else if (status === 'neutral') { statusText = '정체 · 최근 변화 없음'; statusClass = 'mid'; }
 
-    let statusText = '기록 없음';
-    let statusClass = '';
-    if (status === 'growth') { statusText = `성장 +${pct}% · 훈련 패턴 양호`; statusClass = 'good'; }
-    else if (status === 'loss') { statusText = `손실 -${pct}% · 훈련 필요`; statusClass = 'low'; }
-    else if (status === 'neutral') { statusText = '정체 · 최근 변화 없음'; statusClass = 'mid'; }
+      tip.innerHTML = `<span class="mh-tip-label">${label}</span><span class="mh-tip-status ${statusClass}">${statusText}</span>`;
+      tip.classList.add('visible');
+      clearTimeout(tip._hideTimer);
+      tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 2800);
+    }
 
-    tip.innerHTML = `<span class="mh-tip-label">${label}</span><span class="mh-tip-status ${statusClass}">${statusText}</span>`;
-    tip.classList.add('visible');
-    clearTimeout(tip._hideTimer);
-    tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 2800);
+    openMuscleExercises(region.dataset.muscle);
   }
 
   function setView(view) {
@@ -309,7 +325,7 @@ const MuscleGrowthDetail = (() => {
           <div class="mh-tooltip" id="mgdTooltip"></div>
         </div>
         <div class="mh-legend">${buildLegend()}</div>
-        <div class="mh-sub">${viewLabel} 보기 · 부위를 탭하면 상태 확인 · 위 지수를 탭하면 목록으로 봐요</div>
+        <div class="mh-sub">${viewLabel} 보기 · 부위를 탭하면 상태 확인 + 추천 운동 · 위 지수를 탭하면 목록으로 봐요</div>
       </div>`;
 
     container.querySelectorAll('[data-mgd-view]').forEach((btn) => {
@@ -366,13 +382,16 @@ const MuscleGrowthDetail = (() => {
     const label = getMuscleLabel(item.muscle);
     const icon = getMuscleIcon(item.muscle);
     return `
-      <div class="mgd-list-item">
+      <div class="mgd-list-item mgd-list-item--tap" role="button" tabindex="0"
+        aria-label="${label} 추천 운동 보기"
+        onclick="MuscleGrowthDetail.openMuscleExercises('${item.muscle}')">
         <div class="mgd-list-icon">${icon}</div>
         <div class="mgd-list-main">
           <div class="mgd-list-name">${label}</div>
           <div class="mgd-list-sub">${config.formatSub(item)}</div>
         </div>
         <div class="mgd-list-pct" style="color:${config.color}">${config.formatPct(item.pct)}</div>
+        <div class="mgd-list-arrow" aria-hidden="true">›</div>
       </div>`;
   }
 
@@ -391,7 +410,7 @@ const MuscleGrowthDetail = (() => {
           <button type="button" class="mgd-sheet-close" onclick="MuscleGrowthDetail.closeList()">닫기</button>
         </div>
         <div class="mgd-list">${items}</div>
-        <div class="mgd-hint">체성분 실측이 아닌 훈련 패턴 기반 추정치예요.</div>
+        <div class="mgd-hint">부위를 탭하면 추천 운동을 볼 수 있어요 · 체성분 실측이 아닌 훈련 패턴 기반 추정치예요.</div>
       </div>`;
   }
 
@@ -451,6 +470,7 @@ const MuscleGrowthDetail = (() => {
     openList,
     closeList,
     closeListOnOverlay,
+    openMuscleExercises,
     getGrowthList,
     getLossList,
     getMuscleVisual,
