@@ -10,7 +10,7 @@ const CelebrateFx = (() => {
   const LAYER_ID = 'celebrateFxLayer';
 
   const CONFETTI_COUNT = 42;
-  const CONFETTI_MS = 1600;
+  const CONFETTI_MS = 1150;
   const OVERLAY_MS = 2200;
   const XP_MS = 900;
   const STREAK_MS = 1100;
@@ -135,8 +135,7 @@ const CelebrateFx = (() => {
         height: 12px;
         border-radius: 2px;
         opacity: 0.95;
-        animation-name: cfx-confetti-fall;
-        animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+        animation-name: cfx-confetti-burst;
         animation-fill-mode: forwards;
         will-change: transform, opacity;
       }
@@ -185,9 +184,21 @@ const CelebrateFx = (() => {
         0%, 100% { transform: translateY(0) scale(1) rotate(-4deg); }
         50% { transform: translateY(-4px) scale(1.08) rotate(4deg); }
       }
-      @keyframes cfx-confetti-fall {
-        0%   { transform: translate3d(0,0,0) rotate(0deg); opacity: 1; }
-        100% { transform: translate3d(var(--cfx-dx), 110vh, 0) rotate(var(--cfx-rot)); opacity: 0; }
+      @keyframes cfx-confetti-burst {
+        0%   {
+          transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg);
+          opacity: 1;
+          animation-timing-function: cubic-bezier(0.12, 0.85, 0.25, 1);
+        }
+        18% {
+          transform: translate3d(var(--cfx-bx), var(--cfx-by), 0) scale(1.15) rotate(var(--cfx-rot-mid));
+          opacity: 1;
+          animation-timing-function: cubic-bezier(0.45, 0, 0.6, 1);
+        }
+        100% {
+          transform: translate3d(var(--cfx-fx), var(--cfx-fy), 0) scale(0.75) rotate(var(--cfx-rot));
+          opacity: 0;
+        }
       }
       @keyframes cfx-xp-float {
         0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
@@ -265,14 +276,29 @@ const CelebrateFx = (() => {
     for (let i = 0; i < count; i++) {
       const piece = document.createElement('span');
       piece.className = 'cfx-confetti';
-      const dx = (Math.random() - 0.5) * window.innerWidth * 0.9;
+
+      // 폭죽처럼 원점에서 사방으로 펑 터진 뒤 짧게 낙하하며 사라지는 궤적
+      const angle = Math.random() * Math.PI * 2;
+      const burstRadius = 55 + Math.random() * 100;
+      const bx = Math.cos(angle) * burstRadius;
+      const by = Math.sin(angle) * burstRadius * 0.75;
+      const settleDrift = (Math.random() - 0.5) * 50;
+      const gravityFall = 70 + Math.random() * 130;
+      const fx = bx + settleDrift;
+      const fy = by + gravityFall;
+      const rotMid = (Math.random() * 200 - 100) + 'deg';
       const rot = (Math.random() * 720 - 360) + 'deg';
-      const delay = Math.random() * 180;
-      const dur = CONFETTI_MS + Math.random() * 500;
-      piece.style.left = originX + (Math.random() - 0.5) * 40 + 'px';
+      const delay = Math.random() * 120;
+      const dur = CONFETTI_MS + Math.random() * 400;
+
+      piece.style.left = originX + 'px';
       piece.style.top = originY + 'px';
       piece.style.background = COLORS[i % COLORS.length];
-      piece.style.setProperty('--cfx-dx', dx + 'px');
+      piece.style.setProperty('--cfx-bx', bx + 'px');
+      piece.style.setProperty('--cfx-by', by + 'px');
+      piece.style.setProperty('--cfx-fx', fx + 'px');
+      piece.style.setProperty('--cfx-fy', fy + 'px');
+      piece.style.setProperty('--cfx-rot-mid', rotMid);
       piece.style.setProperty('--cfx-rot', rot);
       piece.style.animationDuration = dur + 'ms';
       piece.style.animationDelay = delay + 'ms';
