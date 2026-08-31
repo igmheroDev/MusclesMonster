@@ -1337,3 +1337,31 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 35 — 2026-08-31 (같은 PR 후속)
+
+**추천 운동 목록에 "유튜브에서 영상으로 보기" 연결 (신규 독립 모듈 `youtubeSearchLink.js`)**
+- 사용자 요청: "추천운동은 잘 알려주는데 이름만 알지 어떻게 하는지를 모르겠어. 추천운동을 누르면 유튜브에서 검색어를 넣어 나온 링크로 연결해줄래?"
+- `ExerciseStimHeatmap`(부위→추천 운동 시트)의 완성된 로직·마크업은 전혀 수정하지 않고, 신규 독립 모듈 `youtubeSearchLink.js`가 이미 렌더된 DOM에 `MutationObserver`로 "▶ 영상" 버튼만 추가로 붙이는 방식으로 연결(기존에 `exerciseStimHeatmap.js`가 `exercisePicker.js`를 확장할 때 쓴 것과 동일한 관례: `#exPickerList`를 `MutationObserver`로 감지해 `ex-picker-stim-btn`을 덧붙이는 패턴을 그대로 재사용)
+  - `YoutubeSearchLink.buildSearchUrl(name)`: `https://www.youtube.com/results?search_query=<운동명> 운동 방법` 형태의 검색 URL 생성. `open(name)`은 `window.open(url, '_blank', 'noopener')`로 새 탭에서 오픈(모바일에서 유튜브 앱이 설치돼 있으면 OS의 유니버설/앱 링크 처리로 앱이 바로 열리는 경우가 많음 — 웹에서 앱을 강제로 여는 표준 방법은 없어 이 방식이 최선)
+  - 부위별 추천 운동 목록(`#eshMuscleOverlay .esh-ex-item`) 각 항목에 "▶ 영상" 버튼 추가 — 항목 자체(자극 히트맵 미리보기 오픈)의 기존 클릭 동작은 그대로 두고, 버튼 클릭 시 `stopPropagation`으로 항목의 클릭이 발생하지 않게 함(exercisePicker.js의 `.ex-picker-item` 버튼 안에 `ex-picker-stim-btn`을 넣는 것과 동일한 "버튼 안 버튼" 관례)
+  - 운동을 선택해 펼쳐지는 분할 미리보기 헤더(`.esh-split-preview-head`)에도 동일한 버튼 추가 (접기 버튼 옆에 배치, 기존 2단 레이아웃 유지)
+  - 종목 피커의 "자극" 버튼으로 연 단일 운동 상세 시트(`#eshExerciseOverlay`)에는 "이 운동 추가"/"확인" 액션 버튼 위에 전체 폭 "▶ 유튜브에서 영상으로 보기" 버튼 추가
+  - `index.html`에 `<script src="youtubeSearchLink.js"></script>` 1줄 추가(muscleGrowthDetail.js 다음), 부트스트랩 스크립트에 `YoutubeSearchLink.init()` 1줄 추가, `.ytl-btn`/`.ytl-actions-inline`/`.ytl-video-btn` CSS 추가
+- SW 캐시 `recovr-cache-v70`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `youtubeSearchLink.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 9개 동기화
+- `test-youtube-search-link.js` 신규 추가: 검색 URL 생성, 목록/분할 미리보기/단일 상세 시트 각각에 버튼이 붙는지, 버튼 클릭이 상위 항목 클릭으로 전파되지 않는지(stopPropagation), 재렌더 시 버튼이 중복 추가되지 않는지(idempotent), 모듈 연결 지점(스크립트 태그·sw.js 등록·`ExerciseStimHeatmap` 시그니처 불변)을 검증. 실제 브라우저 DOM이 없어 `createElement`/`appendChild`/`insertBefore`/`querySelector`/이벤트 버블링을 흉내내는 최소 fake DOM을 테스트 파일 내부에 직접 구현(이 프로젝트는 별도 테스트 프레임워크·jsdom 의존성이 없는 순수 Node 스크립트 컨벤션을 따름)
+
+**무결성 검사**
+- JS 문법 검사: `youtubeSearchLink.js` / `sw.js` 통과 ✓
+- 단위 테스트 29개 스위트: ALL PASSED ✓ (`test-youtube-search-link.js` 신규 포함)
+
+**다음 세션 후보 작업**
+- [ ] 실기기(모바일 Chrome/Safari, PWA 설치 상태)에서 "▶ 영상" 버튼 탭 시 실제로 유튜브 앱으로 연결되는지 확인 (기기·브라우저별 유니버설 링크 처리 차이가 있을 수 있음)
+- [ ] 운동 종목 피커(`exercisePicker.js`)의 메인 목록에도 동일한 유튜브 링크 버튼을 붙일지 검토(사용자 요청 범위 밖이라 이번엔 보류, 제안만 기록)
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v70`
+
+**현재 앱 버전**: `1.0.0`
+
+---
