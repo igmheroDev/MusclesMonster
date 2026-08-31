@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v67';
+const CACHE_NAME = 'recovr-cache-v68';
 const ASSETS = [
   './',
   './index.html',
@@ -40,6 +40,7 @@ const ASSETS = [
   './comboFx.js',
   './hypeFx.js',
   './muscleGrowthTracker.js',
+  './muscleGrowthDetail.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -82,6 +83,7 @@ const NETWORK_FIRST_PATHS = [
   '/comboFx.js',
   '/hypeFx.js',
   '/muscleGrowthTracker.js',
+  '/muscleGrowthDetail.js',
   '/sw.js',
 ];
 

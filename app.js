@@ -1060,6 +1060,12 @@ function renderHome() {
     console.warn('[RECOVR] 근성장/근손실 카드 렌더 실패:', e);
   }
 
+  try {
+    if (typeof MuscleGrowthDetail !== 'undefined') MuscleGrowthDetail.afterHomeRender();
+  } catch (e) {
+    console.warn('[RECOVR] 근성장/근손실 부위별 히트맵 렌더 실패:', e);
+  }
+
   try { renderStreak(workouts); } catch (e) { console.warn('[RECOVR] 스트릭 실패:', e); }
   try { renderWeekBar(workouts); } catch (e) { console.warn('[RECOVR] 주간바 실패:', e); }
 

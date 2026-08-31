@@ -1227,6 +1227,91 @@
   .mgt-workout-badge b {
     color: var(--text);
   }
+  .mgt-item--tap { cursor: pointer; transition: background 0.15s; }
+  .mgt-item--tap:active { background: rgba(255,255,255,0.07); }
+  body.light .mgt-item--tap:active { background: rgba(0,0,0,0.05); }
+
+  /* ===== 근성장/근손실 부위별 목록 시트 (mgd-*, 독립 모듈) ===== */
+  .mgd-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1220;
+    background: rgba(0,0,0,0.55);
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .mgd-overlay.show { display: flex; animation: fadeIn 0.18s ease; }
+  .mgd-sheet {
+    width: min(480px, 100%);
+    max-height: min(80vh, 640px);
+    overflow: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 18px 18px 0 0;
+    padding: 16px 16px 22px;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.28);
+  }
+  .mgd-sheet-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .mgd-sheet-kicker {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .mgd-sheet-title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .mgd-sheet-close {
+    border: none;
+    background: var(--card);
+    color: var(--muted);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mgd-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .mgd-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+  }
+  .mgd-list-icon { font-size: 18px; flex-shrink: 0; }
+  .mgd-list-main { flex: 1; min-width: 0; }
+  .mgd-list-name { font-size: 13.5px; font-weight: 700; }
+  .mgd-list-sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .mgd-list-pct { font-size: 15px; font-weight: 800; flex-shrink: 0; }
+  .mgd-list-empty {
+    text-align: center;
+    padding: 28px 12px;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .mgd-hint {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 12px;
+  }
 
   /* ===== 콤보 최고 기록 카드 (comboFx.js) ===== */
   .cbf-best-card {
@@ -2976,6 +3061,8 @@
 
     <div id="muscleGrowthCard"></div>
 
+    <div id="muscleGrowthHeatmapCard"></div>
+
     <div id="workoutGoalsCard"></div>
 
     <div id="dailyMissionCard"></div>
@@ -3560,6 +3647,9 @@
 <div class="esh-overlay" id="eshMuscleOverlay" onclick="ExerciseStimHeatmap.closeMuscleOnOverlay(event)"></div>
 <div class="esh-overlay" id="eshExerciseOverlay" onclick="ExerciseStimHeatmap.closeExerciseOnOverlay(event)"></div>
 
+<!-- ===================== 근성장/근손실 부위별 목록 시트 ===================== -->
+<div class="mgd-overlay" id="mgdOverlay" onclick="MuscleGrowthDetail.closeListOnOverlay(event)"></div>
+
 <!-- AI Coach Chat Modal -->
 <div class="ai-chat-overlay" id="aiChatOverlay" onclick="AiCoach.closeChatOnOverlay(event)">
   <div class="ai-chat-panel" onclick="event.stopPropagation()">
@@ -3611,6 +3701,7 @@
 <script src="comboFx.js"></script>
 <script src="hypeFx.js"></script>
 <script src="muscleGrowthTracker.js"></script>
+<script src="muscleGrowthDetail.js"></script>
 <script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init();</script>
 </body>
 </html>

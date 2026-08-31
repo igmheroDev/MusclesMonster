@@ -155,7 +155,7 @@ const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(html.includes('hypeFx.js'), 'html script');
 assert(sw.includes('hypeFx.js'), 'sw asset');
-assert(sw.includes('recovr-cache-v67'), 'sw cache bump');
+assert(sw.includes('recovr-cache-v68'), 'sw cache bump');
 
 console.log(failures === 0 ? 'HypeFx tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);

@@ -354,17 +354,18 @@ const MuscleGrowthTracker = (() => {
       <div class="section-title"><span>근성장 · 근손실 추적</span></div>
       <div class="mgt-card">
         <div class="mgt-row">
-          <div class="mgt-item">
+          <div class="mgt-item mgt-item--tap" data-mgt-type="growth" role="button" tabindex="0" aria-label="부위별 근성장 목록 보기">
             <div class="mgt-label">📈 근성장 지수</div>
             <div class="mgt-value" style="color:${getGrowthColor(growthPct)}">+${growthPct}%</div>
             <div class="mgt-desc">최근 4주 훈련 빈도·과부하 기준</div>
           </div>
-          <div class="mgt-item">
+          <div class="mgt-item mgt-item--tap" data-mgt-type="loss" role="button" tabindex="0" aria-label="부위별 근손실 목록 보기">
             <div class="mgt-label">📉 근손실 지수</div>
             <div class="mgt-value" style="color:${getLossColor(lossPct)}">-${lossPct}%</div>
             <div class="mgt-desc">장기 미훈련 부위 기준</div>
           </div>
         </div>
+        <div class="mgt-hint">지수를 탭하면 부위별 목록을 볼 수 있어요 · 아래 히트맵에서도 확인 가능해요.</div>
         <div class="mgt-hint">체성분 실측이 아닌 훈련 패턴 기반 추정치예요.</div>
       </div>`;
   }
@@ -459,5 +460,9 @@ const MuscleGrowthTracker = (() => {
     renderHomeCard,
     getWorkoutContribution,
     renderWorkoutDetailBadge,
+    // 다른 독립 모듈(예: MuscleGrowthDetail)이 자체 매직넘버 없이
+    // 동일한 상한값 기준으로 시각화할 수 있도록 읽기 전용으로 노출
+    MAX_GROWTH_PCT,
+    MAX_LOSS_PCT,
   };
 })();
