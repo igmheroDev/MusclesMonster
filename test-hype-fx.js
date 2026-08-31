@@ -16,15 +16,13 @@ function makeEl(tag) {
   const el = {
     tagName: String(tag).toUpperCase(),
     id: '',
-    style: {
-      setProperty(k, v) { this[k] = v; },
-    },
+    style: {},
     children: [],
     parentNode: null,
     offsetWidth: 10,
-    hidden: false,
     innerHTML: '',
     textContent: '',
+    disabled: false,
     getBoundingClientRect() {
       return { left: 40, top: 80, width: 28, height: 28 };
     },
@@ -38,12 +36,7 @@ function makeEl(tag) {
       child.parentNode = null;
       return child;
     },
-    querySelector(sel) {
-      if (sel === '#cfxStreak' || sel === '#cfxTitle' || sel === '#cfxSub') {
-        return makeEl('div');
-      }
-      return null;
-    },
+    querySelector() { return null; },
     querySelectorAll() { return []; },
     closest() { return null; },
     addEventListener() {},
@@ -78,17 +71,9 @@ global.window = {
     };
   },
   setTimeout: global.setTimeout,
+  clearTimeout: global.clearTimeout,
   requestAnimationFrame(cb) { return setTimeout(cb, 0); },
 };
-
-try {
-  Object.defineProperty(global, 'navigator', {
-    value: { vibrate() { return true; } },
-    configurable: true,
-  });
-} catch (e) {
-  global.navigator.vibrate = () => true;
-}
 
 global.document = {
   readyState: 'complete',
@@ -118,56 +103,59 @@ global.document = {
   querySelectorAll() { return []; },
 };
 
-const CelebrateFx = new Function(
-  fs.readFileSync(path.join(__dirname, 'celebrateFx.js'), 'utf8') + '; return CelebrateFx;'
+const HypeFx = new Function(
+  fs.readFileSync(path.join(__dirname, 'hypeFx.js'), 'utf8') + '; return HypeFx;'
 )();
 
-assert(typeof CelebrateFx.init === 'function', 'init exists');
-assert(typeof CelebrateFx.confettiBurst === 'function', 'confettiBurst exists');
-assert(typeof CelebrateFx.floatXp === 'function', 'floatXp exists');
-assert(typeof CelebrateFx.showMissionClear === 'function', 'showMissionClear exists');
-assert(typeof CelebrateFx.workoutSaved === 'function', 'workoutSaved exists');
-assert(typeof CelebrateFx.igniteStreakPill === 'function', 'igniteStreakPill exists');
-assert(typeof CelebrateFx.showToast === 'function', 'showToast exists');
+assert(typeof HypeFx.init === 'function', 'init exists');
+assert(typeof HypeFx.hypeOnCheck === 'function', 'hypeOnCheck exists');
+assert(typeof HypeFx.hypeOnSave === 'function', 'hypeOnSave exists');
+assert(typeof HypeFx.prefersReducedMotion === 'function', 'prefersReducedMotion exists');
 
-const cfg = CelebrateFx.getConfig();
-assert(cfg.styleId === 'celebrate-fx-styles', 'style id');
-assert(cfg.overlayId === 'celebrateFxOverlay', 'overlay id');
-assert(cfg.confettiCount === 42, 'confetti count');
-assert(cfg.colors.length >= 4, 'palette');
-assert(cfg.cooldownMs >= 1000, 'cooldown');
+const cfg = HypeFx.getConfig();
+assert(cfg.styleId === 'hype-fx-styles', 'style id');
+assert(cfg.layerId === 'hypeFxLayer', 'layer id');
+assert(cfg.checkCooldownMs >= 1000, 'check cooldown sane');
+assert(cfg.saveCooldownMs >= 1000, 'save cooldown sane');
+assert(cfg.checkPhraseCount >= 6, 'has a good variety of check phrases');
+assert(cfg.savePhraseCount >= 6, 'has a good variety of save phrases');
 
-CelebrateFx.ensureStyles();
-assert(!!document.getElementById('celebrate-fx-styles'), 'styles injected');
-assert(String(document.getElementById('celebrate-fx-styles').textContent).includes('cfx-confetti'), 'confetti css');
-
-assert(CelebrateFx.confettiBurst({ count: 5 }) === true, 'confetti runs');
-const layer = document.getElementById('celebrateFxLayer');
-assert(!!layer, 'layer created');
-assert(layer.children.length >= 5, 'confetti pieces appended');
+HypeFx.ensureStyles();
+assert(!!document.getElementById('hype-fx-styles'), 'styles injected');
+assert(String(document.getElementById('hype-fx-styles').textContent).includes('hfx-bubble'), 'bubble css present');
 
 const anchor = makeEl('div');
-assert(CelebrateFx.floatXp(anchor, '+1 세트') === true, 'xp float');
+const layer = () => document.getElementById('hypeFxLayer');
 
-assert(CelebrateFx.showToast('운동 기록 완료') === true, 'toast');
-assert(CelebrateFx.showMissionClear({ streak: 3, title: '미션 클리어!' }) === true, 'mission clear');
-assert(!!document.getElementById('celebrateFxOverlay'), 'overlay created');
-assert(document.getElementById('celebrateFxOverlay').classList.contains('show'), 'overlay shown');
+assert(HypeFx.hypeOnCheck(anchor) === true, 'first check hype fires');
+assert(!!layer() && layer().children.length === 1, 'check bubble appended');
+assert(typeof layer().children[0].textContent === 'string' && layer().children[0].textContent.length > 0, 'bubble has text');
 
-assert(CelebrateFx.showMissionClear({ streak: 3 }) === false, 'cooldown blocks spam');
+// 쿨다운 안에는 다시 뜨지 않는다
+assert(HypeFx.hypeOnCheck(anchor) === false, 'cooldown blocks repeated check hype');
+assert(layer().children.length === 1, 'no extra bubble appended during cooldown');
 
-CelebrateFx.hideMissionClear();
-assert(!document.getElementById('celebrateFxOverlay').classList.contains('show'), 'overlay hidden');
+// 쿨다운이 지나면 다시 뜬다
+const originalNow = Date.now;
+try {
+  Date.now = () => originalNow() + 10000;
+  assert(HypeFx.hypeOnCheck(anchor) === true, 'check hype fires again after cooldown');
+} finally {
+  Date.now = originalNow;
+}
 
-assert(CelebrateFx.prefersReducedMotion() === false, 'reduced motion default off');
-CelebrateFx.destroy();
+assert(HypeFx.hypeOnSave() === true, 'save hype fires');
+assert(HypeFx.hypeOnSave() === false, 'save cooldown blocks repeat');
+
+assert(HypeFx.prefersReducedMotion() === false, 'reduced motion default off');
+HypeFx.destroy();
 
 // static wiring checks
 const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(html.includes('celebrateFx.js'), 'html script');
-assert(sw.includes('celebrateFx.js'), 'sw asset');
+assert(html.includes('hypeFx.js'), 'html script');
+assert(sw.includes('hypeFx.js'), 'sw asset');
 assert(sw.includes('recovr-cache-v67'), 'sw cache bump');
 
-console.log(failures === 0 ? 'CelebrateFx tests passed ✓' : failures + ' failed');
+console.log(failures === 0 ? 'HypeFx tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);

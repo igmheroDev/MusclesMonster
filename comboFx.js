@@ -8,11 +8,14 @@
 const ComboFx = (() => {
   const STYLE_ID = 'combo-fx-styles';
   const LAYER_ID = 'comboFxLayer';
+  const HOME_CARD_ID = 'comboBestCard';
+  const BEST_STORAGE_KEY = 'recovr_combo_best_v1';
 
   const COMBO_WINDOW_MS = 3000; // 이 시간 안에 다음 체크가 오면 콤보 유지
   const POP_MS = 900;
   const FLASH_MS = 260;
   const FLASH_MIN_COMBO = 7; // 이 콤보부터 화면 전체 플래시 추가
+  const RECORD_MIN_COMBO = 2; // 이 콤보부터 "최고 기록"으로 인정
 
   const CHECK_SELECTORS = '.set-check, .duration-check';
 
@@ -30,6 +33,8 @@ const ComboFx = (() => {
   let comboCount = 0;
   let comboTimer = null;
   let lastCheckAt = 0;
+  let bestCombo = 0;
+  let bestLoaded = false;
 
   function prefersReducedMotion() {
     try {
@@ -43,6 +48,25 @@ const ComboFx = (() => {
     try {
       if (navigator.vibrate) navigator.vibrate(pattern);
     } catch (e) { /* ignore */ }
+  }
+
+  function loadBest() {
+    if (bestLoaded) return bestCombo;
+    bestLoaded = true;
+    try {
+      const raw = localStorage.getItem(BEST_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      bestCombo = (parsed && typeof parsed.best === 'number' && parsed.best > 0) ? parsed.best : 0;
+    } catch (e) {
+      bestCombo = 0;
+    }
+    return bestCombo;
+  }
+
+  function saveBest(value) {
+    try {
+      localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify({ best: value, updatedAt: new Date().toISOString() }));
+    } catch (e) { /* 저장 실패는 무시 - 다음 콤보에서 다시 시도됨 */ }
   }
 
   function ensureStyles() {
@@ -100,6 +124,25 @@ const ComboFx = (() => {
         pointer-events: none;
         animation: cbf-flash-fade ${FLASH_MS}ms ease-out forwards;
       }
+      .cbf-record {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform: translate(-50%, 0);
+        white-space: nowrap;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        color: #ffd600;
+        text-shadow: 0 0 14px rgba(255, 214, 0, 0.6);
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: rgba(10, 10, 15, 0.55);
+        border: 1px solid rgba(255, 214, 0, 0.4);
+        pointer-events: none;
+        animation: cbf-record-pop ${POP_MS + 400}ms cubic-bezier(0.22, 1.4, 0.36, 1) both;
+        will-change: transform, opacity;
+      }
 
       @keyframes cbf-combo-pop {
         0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.4) rotate(-6deg); }
@@ -111,10 +154,17 @@ const ComboFx = (() => {
         0%   { opacity: 0.5; }
         100% { opacity: 0; }
       }
+      @keyframes cbf-record-pop {
+        0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.6); }
+        30%  { opacity: 1; transform: translate(-50%, -4px) scale(1.1); }
+        70%  { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -30px) scale(0.95); }
+      }
 
       @media (prefers-reduced-motion: reduce) {
         .cbf-combo,
-        .cbf-flash {
+        .cbf-flash,
+        .cbf-record {
           animation: none !important;
           display: none !important;
         }
@@ -205,11 +255,76 @@ const ComboFx = (() => {
     comboTimer = window.setTimeout(resetCombo, COMBO_WINDOW_MS);
 
     if (comboCount >= 2) popupCombo(anchorEl, comboCount);
+    checkNewRecord(anchorEl);
     return comboCount;
+  }
+
+  // 이번 콤보가 역대 최고 기록을 넘었는지 확인하고, 넘었다면 저장 + 신기록 연출을 띄운다.
+  function checkNewRecord(anchorEl) {
+    loadBest();
+    if (comboCount <= bestCombo || comboCount < RECORD_MIN_COMBO) return false;
+    bestCombo = comboCount;
+    saveBest(bestCombo);
+    renderHomeCard();
+    announceRecord(anchorEl);
+    return true;
+  }
+
+  function announceRecord(anchorEl) {
+    if (reducedMotion || typeof document === 'undefined') return false;
+    ensureStyles();
+    const layer = ensureLayer();
+    const rect = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : null;
+    const centerX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+    const safeX = Math.min(Math.max(centerX, 84), window.innerWidth - 84);
+    const topY = rect ? rect.top - 48 : window.innerHeight * 0.3;
+
+    const badge = document.createElement('div');
+    badge.className = 'cbf-record';
+    badge.textContent = `🏆 최고 기록 경신! ${bestCombo}콤보`;
+    badge.style.left = safeX + 'px';
+    badge.style.top = topY + 'px';
+    layer.appendChild(badge);
+    window.setTimeout(() => {
+      if (badge.parentNode) badge.parentNode.removeChild(badge);
+    }, POP_MS + 400);
+
+    if (typeof CelebrateFx !== 'undefined' && typeof CelebrateFx.confettiBurst === 'function') {
+      CelebrateFx.confettiBurst({ count: 20, x: safeX, y: Math.max(topY, 40) });
+    }
+    return true;
+  }
+
+  // 홈 화면의 #comboBestCard에 최고 콤보 기록을 렌더링한다.
+  // muscleGrowthTracker.js 등 기존 모듈과 동일한 "독립 카드 렌더" 패턴.
+  function renderHomeCard() {
+    if (typeof document === 'undefined') return;
+    const container = document.getElementById(HOME_CARD_ID);
+    if (!container) return;
+
+    loadBest();
+    if (bestCombo < RECORD_MIN_COMBO) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="cbf-best-card">
+        <div class="cbf-best-icon">🏆</div>
+        <div class="cbf-best-text">
+          <div class="cbf-best-label">최고 콤보</div>
+          <div class="cbf-best-value">${bestCombo}<span>콤보</span></div>
+        </div>
+      </div>`;
   }
 
   function getCombo() {
     return comboCount;
+  }
+
+  function getBestCombo() {
+    loadBest();
+    return bestCombo;
   }
 
   function onClick(e) {
@@ -264,8 +379,11 @@ const ComboFx = (() => {
     return {
       styleId: STYLE_ID,
       layerId: LAYER_ID,
+      homeCardId: HOME_CARD_ID,
+      bestStorageKey: BEST_STORAGE_KEY,
       comboWindowMs: COMBO_WINDOW_MS,
       flashMinCombo: FLASH_MIN_COMBO,
+      recordMinCombo: RECORD_MIN_COMBO,
       tierCount: TIERS.length,
       checkSelectors: CHECK_SELECTORS,
     };
@@ -277,6 +395,8 @@ const ComboFx = (() => {
     registerCheck,
     resetCombo,
     getCombo,
+    getBestCombo,
+    renderHomeCard,
     prefersReducedMotion,
     getConfig,
     ensureStyles,

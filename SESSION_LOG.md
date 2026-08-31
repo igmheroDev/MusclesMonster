@@ -1253,13 +1253,34 @@ MusclesMonster/
 - 단위 테스트 27개 스위트: ALL PASSED ✓ (`test-combo-fx.js` 신규 포함)
 - Playwright + 시스템 Chrome으로 `index.html`을 직접 열어 `ComboFx.registerCheck()`를 반복 호출해 2/4/7/10콤보 단계별 실제 렌더링을 스크린샷으로 확인. 10콤보 단계에서 텍스트가 화면 밖으로 살짝 넘칠 수 있는 것을 발견해 팝업 x좌표에 안전 영역 클램프(가장자리에서 84px 이상 확보)를 추가하고 재검증
 
+**이어서 — 콤보 최고 기록 저장/표시 + 랜덤 응원 대사 추가 (같은 세션, 같은 PR)**
+- 사용자 요청: "콤보최고 기록 표시 / 랜덤 응원 대사를 넣자"
+- **콤보 최고 기록**: `comboFx.js`에 `localStorage`(`recovr_combo_best_v1`) 기반 최고 콤보 기록 저장 기능 추가
+  - 콤보가 역대 최고를 넘어서면(`RECORD_MIN_COMBO=2`부터 인정) 저장 + "🏆 최고 기록 경신! N콤보" 전용 배지 연출 + `CelebrateFx.confettiBurst()`를 선택적으로 호출해 축하 컨페티 추가(모듈이 없어도 안전하게 동작하도록 `typeof CelebrateFx !== 'undefined'` 가드 — muscleGrowthTracker.js가 `CelebrateFx.showToast()`를 재사용하는 것과 동일한 기존 관례)
+  - 홈 화면에 `#comboBestCard` 플레이스홀더를 추가(`index.html`, `muscleGrowthCard`와 동일한 패턴)하고, `ComboFx.renderHomeCard()`가 "🏆 최고 콤보 N콤보" 카드를 렌더링. 기록이 없으면 카드를 비워 숨김
+  - `app.js`의 기존 `renderHome()` 훅 클러스터(`DailyMission.renderHomeCard()` 다음)에 `ComboFx.renderHomeCard()` 호출을 1줄 추가 — 이 프로젝트의 모든 홈 카드 모듈이 등록되는 기존 확장 지점을 그대로 재사용(기존 로직 변경 없음)
+  - 카드 CSS는 `mgt-card`와 동일하게 `index.html`의 메인 스타일시트에 정적으로 추가(일회성 이펙트가 아닌 상시 카드이므로 `celebrateFx.js`류의 동적 `ensureStyles()` 패턴과는 다르게, 기존 `muscleGrowthCard`와 동일한 관례를 따름)
+- **랜덤 응원 대사**: 신규 독립 모듈 `hypeFx.js` 추가
+  - 세트 체크 시 말풍선으로 짧은 응원 한마디(예: "좋아 좋아!", "괴물 모드 ON 🐲")가 체크박스 위에 뜸 (쿨다운 4초, 매번 뜨면 시끄러우므로 빈도 제한)
+  - 운동 저장 시 화면 상단에 조금 더 긴 축하 문구(예: "오늘도 자신을 이겼다 💪", "한 걸음 더 괴물이 됐다 🐲")가 배너로 뜸. `celebrateFx.js`의 "운동 기록 완료 💪" 하단 토스트(~1.45초)와 겹치지 않도록 1.6초 지연 + 화면 상단 배치로 위치/타이밍을 분리(muscleGrowthTracker.js가 동일 토스트와 겹치지 않도록 `TOAST_DELAY_MS=1700`을 쓰는 기존 관례와 동일한 접근)
+  - 같은 문구가 연달아 두 번 뜨지 않도록 직전 인덱스를 피해서 랜덤 선택
+  - `comboFx.js`/`celebrateFx.js`와 동일한 독립 모듈 패턴(자체 style/layer, 캡처 단계 클릭 위임, `prefers-reduced-motion` 대응)
+- SW 캐시 `recovr-cache-v67`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `hypeFx.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 8개 동기화
+- `test-combo-fx.js`에 최고 기록 저장/갱신/갱신 실패(더 낮은 콤보)/새로고침 후 복원(별도 모듈 인스턴스로 `localStorage` 영속성 검증) 테스트 추가, `test-hype-fx.js` 신규 추가(문구 풀 크기/쿨다운/쿨다운 해제 후 재발동/정적 연동 검증)
+
+**무결성 검사 (2차)**
+- JS 문법 검사: `comboFx.js` / `hypeFx.js` / `app.js` / `sw.js` 통과 ✓
+- 단위 테스트 29개 스위트: ALL PASSED ✓ (`test-combo-fx.js` 확장, `test-hype-fx.js` 신규 포함)
+- Playwright + 시스템 Chrome으로 `index.html`을 직접 열어: (1) 콤보 5 달성 시 "🏆 최고 기록 경신" 배지 + 컨페티 렌더 확인, (2) `#comboBestCard`가 홈 화면에 정상 렌더(스크롤 후 확인, 기존 카드들과 동일한 스타일) (3) 페이지 새로고침 후에도 `localStorage`에서 최고 기록(5콤보)이 복원되는 것 확인 (4) 세트 체크 시 응원 말풍선, 저장 시 상단 배너가 각각 올바른 위치에 렌더되고 기존 컨페티/토스트와 겹치지 않는 것 확인 (5) 콘솔 에러 0건 확인
+
 **다음 세션 후보 작업**
 - [ ] 실기기(모바일)에서 콤보 연출 체감 및 진동 패턴 강도 피드백 반영
-- [ ] 콤보 최고 기록 저장/통계 카드 노출 여부 검토 (요청 시 별도 독립 모듈로)
+- [ ] 랜덤 응원 대사 문구 풀에 대한 실사용자 반응 확인 후 문구 추가/교체
+- [ ] 효과음(사운드) 추가 여부 검토 — Web Audio API로 짧은 소리를 코드로만 생성(오디오 파일 없이)
 - [ ] 근성장/근손실 추정 공식에 대한 실사용자 피드백 반영 (임계값·상한값 튜닝)
 - [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
-**현재 sw.js 캐시 버전**: `recovr-cache-v66`
+**현재 sw.js 캐시 버전**: `recovr-cache-v67`
 
 **현재 앱 버전**: `1.0.0`
 

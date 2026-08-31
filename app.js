@@ -1106,6 +1106,12 @@ function renderHome() {
   }
 
   try {
+    if (typeof ComboFx !== 'undefined' && typeof ComboFx.renderHomeCard === 'function') ComboFx.renderHomeCard();
+  } catch (e) {
+    console.warn('[RECOVR] 콤보 최고 기록 카드 렌더 실패:', e);
+  }
+
+  try {
     if (typeof MuscleHeatmap !== 'undefined') MuscleHeatmap.render(recovery, active);
   } catch (e) {
     console.warn('[RECOVR] 히트맵 렌더 실패:', e);

@@ -83,6 +83,13 @@ try {
   global.navigator.vibrate = () => true;
 }
 
+const storage = {};
+global.localStorage = {
+  getItem(k) { return Object.prototype.hasOwnProperty.call(storage, k) ? storage[k] : null; },
+  setItem(k, v) { storage[k] = String(v); },
+  removeItem(k) { delete storage[k]; },
+};
+
 global.document = {
   readyState: 'complete',
   head: makeEl('head'),
@@ -172,14 +179,67 @@ ComboFx.resetCombo();
 assert(ComboFx.getCombo() === 0, 'resetCombo clears streak');
 
 assert(ComboFx.prefersReducedMotion() === false, 'reduced motion default off');
+
+// ------------------------------------------------------------
+// 콤보 최고 기록 저장/표시 (독립된 storage/모듈 인스턴스로 검증)
+// ------------------------------------------------------------
+Object.keys(storage).forEach((k) => delete storage[k]);
+const bestCard = makeEl('div');
+bestCard.id = 'comboBestCard';
+
+const ComboFxA = new Function(
+  fs.readFileSync(path.join(__dirname, 'comboFx.js'), 'utf8') + '; return ComboFx;'
+)();
+
+assert(ComboFxA.getBestCombo() === 0, '최초에는 최고 기록 없음');
+ComboFxA.renderHomeCard();
+assert(bestCard.innerHTML === '', '기록이 없으면 홈 카드 비워둠');
+
+const anchor2 = makeEl('div');
+ComboFxA.registerCheck(anchor2);
+let n2 = ComboFxA.registerCheck(anchor2); // 2콤보 달성 -> 첫 최고 기록
+assert(n2 === 2, '2콤보 달성');
+assert(ComboFxA.getBestCombo() === 2, '2콤보가 최초 최고 기록으로 저장됨');
+assert(String(bestCard.innerHTML).includes('2'), '홈 카드에 최고 기록 숫자 표시');
+
+// 더 낮은 콤보로는 기록이 깎이지 않는다
+const originalNow2 = Date.now;
+try {
+  Date.now = () => originalNow2() + 10000; // 콤보 창 만료 후 새 스트릭 시작
+  n2 = ComboFxA.registerCheck(anchor2);
+  assert(n2 === 1, '새 스트릭 1콤보');
+} finally {
+  Date.now = originalNow2;
+}
+assert(ComboFxA.getBestCombo() === 2, '1콤보는 기존 최고 기록(2)을 갈아치우지 못함');
+
+// 더 높은 콤보로 갱신
+n2 = ComboFxA.registerCheck(anchor2);
+n2 = ComboFxA.registerCheck(anchor2);
+n2 = ComboFxA.registerCheck(anchor2);
+n2 = ComboFxA.registerCheck(anchor2);
+assert(n2 === 5, '5콤보 달성');
+assert(ComboFxA.getBestCombo() === 5, '5콤보로 최고 기록 갱신');
+assert(String(bestCard.innerHTML).includes('5'), '홈 카드가 갱신된 최고 기록을 표시');
+
+// localStorage에 실제로 저장되어, 모듈을 다시 로드해도(=새로고침 시뮬레이션) 유지된다
+const ComboFxReloaded = new Function(
+  fs.readFileSync(path.join(__dirname, 'comboFx.js'), 'utf8') + '; return ComboFx;'
+)();
+assert(ComboFxReloaded.getBestCombo() === 5, '새로고침 후에도 최고 기록이 localStorage에서 복원됨');
+
 ComboFx.destroy();
 
 // static wiring checks
 const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(html.includes('comboFx.js'), 'html script');
+assert(html.includes('comboBestCard'), 'html home card placeholder');
 assert(sw.includes('comboFx.js'), 'sw asset');
-assert(sw.includes('recovr-cache-v66'), 'sw cache bump');
+assert(sw.includes('recovr-cache-v67'), 'sw cache bump');
+
+const appJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
+assert(appJs.includes('ComboFx.renderHomeCard'), 'app.js에 홈 카드 렌더 훅 연결됨');
 
 console.log(failures === 0 ? 'ComboFx tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);
