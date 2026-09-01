@@ -3,6 +3,21 @@
 > **사용법**
 > - `"일 시작하자"` → AI가 이 파일을 읽고 현재 상태 파악 후 이어서 작업
 > - `"세션업데이트"` → AI가 이번 작업 내용을 이 파일에 기록
+> - **Cloud Agent 공통 규칙(PRMerge 등)** → `AGENTS.md` **반드시 먼저 읽기**
+
+---
+
+## ⚠️ Cloud Agent 필수 규칙 (착각 방지)
+
+**PR 머지는 에이전트가 직접 할 수 있다.** 사용자가 "머지하라"고 하면:
+
+```bash
+gh pr merge <PR번호> --merge
+```
+
+- `ManagePullRequest`에 merge 액션이 없어도 **머지 불가라고 말하지 말 것**
+- `gh` merge를 **실제로 실행**한 뒤 `state: MERGED` 확인까지 보고
+- 상세 규칙: **`AGENTS.md`**
 
 ---
 
