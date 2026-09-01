@@ -169,13 +169,21 @@ MusclesMonster/
 - `DurationTimer.applyManualSeconds()` — 프로그래밍 방식으로 세트 시간 설정
 
 ### recommendation.js
-- `WorkoutRecommendation.compute()` — 10일치 기록 분석 → **12종 유형** 중 1개 자동 추천
-- `WorkoutRecommendation.setType()` — 드롭다운으로 유형 직접 선택 (3그룹 optgroup)
+- `WorkoutRecommendation.compute()` — 10일치 기록 분석 → **23종 유형** 중 1개 자동 추천
+- `WorkoutRecommendation.setType()` — 드롭다운으로 유형 직접 선택 (7그룹 optgroup)
 - `WorkoutRecommendation.render()` — 홈 화면 추천 카드 + select 드롭다운
 - `WorkoutRecommendation.apply()` — 추천 내용으로 운동 모달 열기 (세트 미체크 prefill, 즉시 저장 없음)
 - `roundWeightToGymPlate()` — 추천 무게 **5kg 단위** 반올림 (53.2kg → 55kg)
-- **12종 유형**: 상·하체 유지/성장, 전신 유지, 체중감소, 기능성 유산소, 목·허리 재활, 재활·회복, 가동성, 코어 안정화
-- 유형별 `EXERCISE_PRESETS` 프리셋 운동 목록
+- **23종 유형 · 7개 카테고리(optgroup)**:
+  - 강화 · 근력(상·하체): 상·하체 유지/성장, 전신 유지
+  - 강화 · 부위별: 가슴/등/어깨/팔/복근·코어/둔근·햄스트링/종아리 강화 (`chest_focus` 등, `MUSCLE_FOCUS_CONFIG` 참조)
+  - 보충 · 약점 보완: **근손실 부위 강화**(`muscle_loss_focus`) — `MuscleGrowthTracker.compute()`의 근손실 지수 중 최상위 부위를 `ExerciseMuscleMap.getExercisesForMuscle()`로 매칭해 추천, 데이터 없으면 정적 폴백 루틴
+  - 기능성: 밸런스·안정성 / 파워·순발력 / 근지구력 강화
+  - 다이어트 · 체형: 체중감소, 기능성 유산소
+  - 모빌리티: 가동성·스트레칭
+  - 재활 · 회복: 목·허리 재활, 재활·회복, 코어 안정화
+- `scoreFocusRecommendations()` — 부위별 강화/보충/기능성 점수를 `scoreExtendedRecommendations()`와 분리된 함수로 독립 채점(기존 점수 로직 미수정). 목·허리디스크 등 재활 필요 상태에서는 강화형 추천 전체를 억제해 재활 유형이 항상 우선되도록 함
+- 유형별 `EXERCISE_PRESETS` 프리셋 운동 목록 (부위별 강화는 기록 우선 → `ExerciseMuscleMap` → 정적 폴백 순으로 종목 선정)
 - 선택값 `localStorage` 키: `recovr_rec_selected_v1`
 
 ### muscleHeatmap.js
@@ -1361,6 +1369,36 @@ MusclesMonster/
 - [ ] 앱 버전 1.1.0 정식 릴리스 검토
 
 **현재 sw.js 캐시 버전**: `recovr-cache-v70`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 36 — 2026-09-01
+
+**추천 운동 목록에 "근손실 부위 강화" + 부위별/기능성 강화 유형 대거 추가, 카테고리(optgroup) 재구성**
+- 사용자 요청: "추천운동 만들어주는 리스트 중에 근손실되는 부위강화 하는 추천 리스트도 추가해줘. 또 다른 추천리스트도 부위별이나 기능성 등으로 추가해줘. 리스트가 많다면 카테고리를 나눠도 좋겠네. 재활 보충 강화, 모빌리티 다이어트 등등"
+- 기존 동작 파악: `recommendation.js`(12종 유형, 3그룹 optgroup)와 `muscleGrowthDetail.js`가 이미 노출한 `MuscleGrowthTracker`(근성장/근손실 지수)·`ExerciseMuscleMap`(부위→운동 매핑)을 읽기 전용으로 재사용할 수 있음을 확인. 기존 완성 함수(`scoreStrengthRecommendations`/`scoreExtendedRecommendations`/`buildSuggestedExercises`의 기존 분기 등)는 전혀 수정하지 않고, 전부 새 함수/새 분기로 **추가**만 하는 방식으로 개발
+- **근손실 부위 강화** (`muscle_loss_focus`, 카테고리 `reinforce`): `MuscleGrowthTracker.compute()`의 부위별 근손실 지수 중 손실이 가장 큰 부위를 찾아 `ExerciseMuscleMap.getExercisesForMuscle()`로 해당 부위 운동을 추천. 근손실 데이터가 없으면(장기 미훈련 부위가 없거나 모듈 미로드) 방치되기 쉬운 부위 위주의 정적 폴백 루틴(`EXERCISE_PRESETS.muscle_loss_focus`) 사용
+- **부위별 강화** 7종 신규 추가(`chest_focus`/`back_focus`/`shoulder_focus`/`arm_focus`/`abs_focus`/`glute_ham_focus`/`calf_focus`, 카테고리 `focus`): `MUSCLE_FOCUS_CONFIG`로 유형→근육 키를 매핑. 새 헬퍼 `daysSinceLastMuscleTraining()`/`countMuscleSessions()`로 부위별 마지막 훈련 경과일을 계산해, 다른 부위 평균 대비 상대적으로 오래 방치된 부위(경과일이 평균의 1.25배 이상 & 4일 이상)에 가중치를 부여하는 `scoreFocusRecommendations()` 신설. 추천 종목은 (1) 해당 부위 기록이 충분하면 기록 기반 → (2) 부족하면 `ExerciseMuscleMap` → (3) 그래도 없으면 정적 프리셋 순으로 선정(`buildMuscleFocusExercises()`)
+- **기능성 강화** 3종 신규 추가(`balance_stability`/`power_explosive`/`endurance_boost`, 카테고리 `functional`): 정적 프리셋 기반. 목표(근력)·최근 주간 세션 수·나이·경력 등 가벼운 프로필 가중치만 적용
+- **안전 우선 원칙 유지**: 목·허리디스크 등 재활이 필요한 상태로 감지되면(`detectEffectiveCondition`) 신규 강화형 유형(부위별 강화·근손실 부위 강화·기능성 강화) 점수를 전부 억제해, 기존 재활 유형이 항상 최우선으로 추천되도록 함(기존 세션3 테스트의 목디스크 자동 추천 시나리오가 그대로 통과하는 것으로 확인)
+- **카테고리 재구성**: 기존 3그룹(근력·상하체 / 체형·유산소 / 재활·회복) → 7그룹(강화·근력(상·하체) / 강화·부위별 / 보충·약점 보완 / 기능성 / 다이어트·체형 / 모빌리티 / 재활·회복)으로 재편. `모빌리티`를 재활 그룹에서 분리해 단독 그룹으로 이동
+- `buildReason()`/`getTipForType()`에 신규 카테고리(`reinforce`/`focus`/`functional`)별 안내 문구 분기 추가(기존 `rehab`/`cardio`/`mobility` 분기는 그대로 유지)
+- `buildStats()`가 반환하는 `stats`에 `muscleFocusStats`(부위별 방치 정보)·`muscleLossInfo`(근손실 최상위 부위) 필드 추가(기존 필드는 그대로 유지, 추가만 함). `buildSuggestedExercises(workouts, id, stats)`로 시그니처에 `stats` 파라미터 추가(내부 전용 함수라 외부 API 영향 없음)
+- SW 캐시 `recovr-cache-v71`, 캐시 버전을 하드코딩한 테스트 파일 9개(`test-pull-refresh-guard.js`, `test-log-list.js`, `test-hype-fx.js`, `test-combo-fx.js`, `test-home-status-summary.js`, `test-celebrate-fx.js`, `test-backup-reconnect.js`, `test-app-resume.js`, `test-backup-on-complete.js`) 동기화
+- `test-recommendation-focus-types.js` 신규 추가: (1) 신규 유형 메타·카테고리 그룹 존재 검증 (2) 근손실 부위(가슴) 감지 → `muscle_loss_focus` 점수 상승 → `ExerciseMuscleMap` 기반 맞춤 운동 추천 검증 (3) 근손실 미감지 시 정적 폴백 루틴 검증 (4) 상대적으로 방치된 부위(종아리) 강화 점수가 다른 부위보다 높게 나오는지 검증 (5) 부위별 강화의 기록 기반 종목 선정 검증 (6) 목디스크 등 재활 상태에서 강화형 추천이 억제되고 재활 유형이 최우선 유지되는지 검증 (7) 정적 검사
+
+**무결성 검사**
+- JS 문법 검사: `recommendation.js` / `sw.js` 통과 ✓
+- 단위 테스트 30개 스위트: ALL PASSED ✓ (기존 `test-recommendation-types.js` 그대로 통과 확인 + `test-recommendation-focus-types.js` 신규 포함)
+
+**다음 세션 후보 작업**
+- [ ] 신규 유형(부위별 강화·근손실 부위 강화·기능성 강화) 홈 카드 UI를 실제 브라우저에서 열어 optgroup 7개·드롭다운 스크롤 UX 확인 (Playwright 브라우저 미사용 환경이라 이번엔 Node 단위 테스트로만 검증)
+- [ ] 부위별 강화 점수식(평균 대비 1.25배 임계값)에 대한 실사용자 데이터 기반 튜닝
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v71`
 
 **현재 앱 버전**: `1.0.0`
 
