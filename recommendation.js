@@ -17,6 +17,19 @@ const WorkoutRecommendation = (() => {
   const UPPER_MUSCLES = WorkoutUtils.UPPER_MUSCLES;
   const LOWER_MUSCLES = WorkoutUtils.LOWER_MUSCLES;
 
+  // 부위별 강화 유형 → 대응 근육 키 (app.js MUSCLE_ORDER 기준, 읽기 전용 참조)
+  const MUSCLE_FOCUS_CONFIG = {
+    chest_focus:     { muscles: ['chest'] },
+    back_focus:      { muscles: ['back'] },
+    shoulder_focus:  { muscles: ['shoulder'] },
+    arm_focus:       { muscles: ['biceps', 'triceps'] },
+    abs_focus:       { muscles: ['core'] },
+    glute_ham_focus: { muscles: ['hamstrings'] },
+    calf_focus:      { muscles: ['calves'] },
+  };
+  const MUSCLE_FOCUS_NEGLECT_MIN_DAYS = 4;
+  const MUSCLE_FOCUS_NEGLECT_RATIO = 1.25;
+
   const TYPE_META = {
     upper_maintain:   { label: '상체 유지',       icon: '🔄', workoutType: 'upper',  mode: 'maintain',   accent: 'var(--cyan)',   category: 'strength' },
     upper_growth:     { label: '상체 성장',       icon: '📈', workoutType: 'upper',  mode: 'growth',     accent: 'var(--cyan)',   category: 'strength' },
@@ -30,12 +43,33 @@ const WorkoutRecommendation = (() => {
     rehab_general:    { label: '재활·회복',       icon: '🩹', workoutType: 'full',   mode: 'rehab',      accent: 'var(--green)',  category: 'rehab' },
     mobility:         { label: '가동성·스트레칭', icon: '🤸', workoutType: 'full',   mode: 'mobility',   accent: 'var(--green)',  category: 'wellness' },
     core_stability:   { label: '코어 안정화',     icon: '🎯', workoutType: 'full',   mode: 'rehab',      accent: 'var(--orange)', category: 'rehab' },
+
+    // 근손실(디트레이닝) 부위 보충 강화 — MuscleGrowthTracker의 손실 지수와 연동
+    muscle_loss_focus:{ label: '근손실 부위 강화', icon: '🛡️', workoutType: 'full', mode: 'reinforce',  accent: 'var(--red)',    category: 'reinforce' },
+
+    // 부위별 강화 (근력 강화의 세부 분할)
+    chest_focus:      { label: '가슴 강화',       icon: '🫁', workoutType: 'upper',  mode: 'focus',      accent: 'var(--cyan)',   category: 'focus' },
+    back_focus:       { label: '등 강화',         icon: '🔵', workoutType: 'upper',  mode: 'focus',      accent: 'var(--cyan)',   category: 'focus' },
+    shoulder_focus:   { label: '어깨 강화',       icon: '🟡', workoutType: 'upper',  mode: 'focus',      accent: 'var(--cyan)',   category: 'focus' },
+    arm_focus:        { label: '팔(이두·삼두) 강화', icon: '💪', workoutType: 'upper', mode: 'focus',     accent: 'var(--cyan)',   category: 'focus' },
+    abs_focus:        { label: '복근·코어 강화', icon: '🔶', workoutType: 'full',   mode: 'focus',      accent: 'var(--orange)', category: 'focus' },
+    glute_ham_focus:  { label: '둔근·햄스트링 강화', icon: '🍑', workoutType: 'lower', mode: 'focus',    accent: 'var(--orange)', category: 'focus' },
+    calf_focus:       { label: '종아리 강화',     icon: '🦶', workoutType: 'lower',  mode: 'focus',      accent: 'var(--orange)', category: 'focus' },
+
+    // 기능성 강화
+    balance_stability:{ label: '밸런스·안정성',   icon: '⚖️', workoutType: 'full',  mode: 'functional', accent: 'var(--green)',  category: 'functional' },
+    power_explosive:  { label: '파워·순발력',     icon: '⚡', workoutType: 'full',   mode: 'functional', accent: 'var(--green)',  category: 'functional' },
+    endurance_boost:  { label: '근지구력 강화',   icon: '🔋', workoutType: 'full',   mode: 'functional', accent: 'var(--green)',  category: 'functional' },
   };
 
   const TYPE_GROUPS = [
-    { label: '근력 · 상·하체', ids: ['upper_growth', 'upper_maintain', 'lower_growth', 'lower_maintain', 'full_maintain'] },
-    { label: '체형 · 유산소', ids: ['fat_loss', 'functional_cardio'] },
-    { label: '재활 · 회복', ids: ['cervical_rehab', 'lumbar_rehab', 'rehab_general', 'core_stability', 'mobility'] },
+    { label: '강화 · 근력(상·하체)', ids: ['upper_growth', 'upper_maintain', 'lower_growth', 'lower_maintain', 'full_maintain'] },
+    { label: '강화 · 부위별', ids: ['chest_focus', 'back_focus', 'shoulder_focus', 'arm_focus', 'abs_focus', 'glute_ham_focus', 'calf_focus'] },
+    { label: '보충 · 약점 보완', ids: ['muscle_loss_focus'] },
+    { label: '기능성', ids: ['balance_stability', 'power_explosive', 'endurance_boost'] },
+    { label: '다이어트 · 체형', ids: ['fat_loss', 'functional_cardio'] },
+    { label: '모빌리티', ids: ['mobility'] },
+    { label: '재활 · 회복', ids: ['cervical_rehab', 'lumbar_rehab', 'rehab_general', 'core_stability'] },
   ];
 
   const TYPE_ORDER = TYPE_GROUPS.flatMap(g => g.ids);
@@ -105,6 +139,84 @@ const WorkoutRecommendation = (() => {
       { name: '레그 프레스', reps: 12, sets: 3, weight: '' },
       { name: '숄더 프레스', reps: 10, sets: 3, weight: '' },
     ],
+    // 근손실(디트레이닝) 감지 시 기본 보충 루틴 — 자주 방치되는 부위 위주 (MuscleGrowthTracker 미연동 시 폴백)
+    muscle_loss_focus: [
+      { name: '벤트오버 바벨로우', reps: 10, sets: 3, weight: '' },
+      { name: '리어 델트 플라이', reps: 12, sets: 3, weight: '' },
+      { name: '힙 쓰러스트', reps: 12, sets: 3, weight: '' },
+      { name: '케이블 크런치', reps: 15, sets: 3, weight: '' },
+      { name: '스탠딩 카프레이즈', reps: 15, sets: 3, weight: '' },
+    ],
+    chest_focus: [
+      { name: '벤치 프레스', reps: 10, sets: 4, weight: '' },
+      { name: '인클라인 벤치 프레스', reps: 10, sets: 3, weight: '' },
+      { name: '펙덱 플라이', reps: 12, sets: 3, weight: '' },
+      { name: '푸시업', reps: 15, sets: 3, weight: '' },
+      { name: '케이블 크로스오버', reps: 12, sets: 3, weight: '' },
+    ],
+    back_focus: [
+      { name: '랫 풀다운', reps: 10, sets: 4, weight: '' },
+      { name: '시티드 케이블 로우', reps: 10, sets: 3, weight: '' },
+      { name: '벤트오버 바벨로우', reps: 10, sets: 3, weight: '' },
+      { name: '백 익스텐션', reps: 12, sets: 3, weight: '' },
+      { name: '풀업', reps: 8, sets: 3, weight: '' },
+    ],
+    shoulder_focus: [
+      { name: '덤벨 숄더 프레스', reps: 10, sets: 4, weight: '' },
+      { name: '덤벨 사이드 레터럴 레이즈', reps: 12, sets: 3, weight: '' },
+      { name: '프론트 레이즈', reps: 12, sets: 3, weight: '' },
+      { name: '페이스 풀', reps: 12, sets: 3, weight: '' },
+      { name: '리어 델트 플라이', reps: 12, sets: 3, weight: '' },
+    ],
+    arm_focus: [
+      { name: '바벨 컬', reps: 10, sets: 3, weight: '' },
+      { name: '해머 컬', reps: 10, sets: 3, weight: '' },
+      { name: '로프 트라이셉스 푸시다운', reps: 12, sets: 3, weight: '' },
+      { name: '오버헤드 트라이셉스 익스텐션', reps: 12, sets: 3, weight: '' },
+      { name: '케이블 컬', reps: 10, sets: 3, weight: '' },
+    ],
+    abs_focus: [
+      { name: '케이블 크런치', reps: 15, sets: 3, weight: '' },
+      { name: '행잉 레그레이즈', reps: 12, sets: 3, weight: '' },
+      { name: '러시안 트위스트', reps: 20, sets: 3, weight: '' },
+      { name: '플랭크', mode: 'duration', durationMin: 1 },
+      { name: '에이비 휠', reps: 10, sets: 3, weight: '' },
+    ],
+    glute_ham_focus: [
+      { name: '힙 쓰러스트', reps: 12, sets: 4, weight: '' },
+      { name: '루마니안 데드리프트', reps: 10, sets: 3, weight: '' },
+      { name: '글루트 브릿지', reps: 15, sets: 3, weight: '' },
+      { name: '레그컬', reps: 12, sets: 3, weight: '' },
+      { name: '백 익스텐션', reps: 12, sets: 3, weight: '' },
+    ],
+    calf_focus: [
+      { name: '스탠딩 카프레이즈', reps: 15, sets: 4, weight: '' },
+      { name: '시티드 카프레이즈', reps: 15, sets: 3, weight: '' },
+      { name: '레그프레스 카프레이즈', reps: 15, sets: 3, weight: '' },
+      { name: '동키 카프레이즈', reps: 15, sets: 3, weight: '' },
+      { name: '싱글 레그 카프레이즈', reps: 12, sets: 3, weight: '' },
+    ],
+    balance_stability: [
+      { name: '싱글 레그 데드리프트', reps: 10, sets: 3, weight: '' },
+      { name: '버드독', reps: 10, sets: 3, weight: '' },
+      { name: '사이드 플랭크', mode: 'duration', durationMin: 1 },
+      { name: '힙 서클', reps: 10, sets: 2, weight: '' },
+      { name: '한발 스쿼트', reps: 8, sets: 3, weight: '' },
+    ],
+    power_explosive: [
+      { name: '점프 스쿼트', reps: 10, sets: 4, weight: '' },
+      { name: '박스 점프', reps: 8, sets: 4, weight: '' },
+      { name: '버피', reps: 10, sets: 3, weight: '' },
+      { name: '케틀벨 스윙', reps: 12, sets: 3, weight: '' },
+      { name: '메디신볼 슬램', reps: 10, sets: 3, weight: '' },
+    ],
+    endurance_boost: [
+      { name: '스쿼트', reps: 20, sets: 3, weight: '' },
+      { name: '푸시업', reps: 20, sets: 3, weight: '' },
+      { name: '마운틴 클라이머', mode: 'duration', durationMin: 1 },
+      { name: '버피', reps: 15, sets: 3, weight: '' },
+      { name: '로잉머신', mode: 'duration', durationMin: 10 },
+    ],
   };
 
   const TIPS = {
@@ -114,6 +226,9 @@ const WorkoutRecommendation = (() => {
     cardio: '호흡이 약간 빨라질 정도의 중강도로 20~30분 목표로 해보세요',
     rehab: '통증이 없는 범위에서 천천히, 자세에 집중하세요. 불편하면 즉시 중단하세요',
     mobility: '호흡을 길게 유지하며 가동 범위를 서서히 넓혀보세요',
+    reinforce: '오래 방치된 부위예요. 가벼운 무게로 자극을 다시 익힌다는 느낌으로 시작하세요',
+    focus: '해당 부위 위주로 볼륨을 늘리되, 다른 부위 회복을 해치지 않는 선에서 진행하세요',
+    functional: '동작의 질(속도·균형·호흡)에 집중하고, 무게보다 컨트롤을 우선하세요',
   };
 
   let currentRecommendation = null;
@@ -174,6 +289,70 @@ const WorkoutRecommendation = (() => {
 
   function countRegionSessions(workouts, region) {
     return workouts.filter(w => sessionMatchesRegion(w, region)).length;
+  }
+
+  function workoutHitsMuscles(workout, muscleKeys) {
+    return (workout.exercises || []).some(ex => {
+      const muscles = getMusclesFromExerciseName(ex.name);
+      return muscles.some(m => muscleKeys.includes(m));
+    });
+  }
+
+  // 특정 근육 조합(부위별 강화용) 기준 마지막 훈련 경과일. 기록이 없으면 99(=daysSinceLastRegionSession과 동일 규칙)
+  function daysSinceLastMuscleTraining(workouts, muscleKeys) {
+    let latest = null;
+    workouts.forEach(w => {
+      if (!workoutHitsMuscles(w, muscleKeys)) return;
+      const d = new Date(`${w.date}T12:00:00`);
+      if (!latest || d > latest) latest = d;
+    });
+    if (!latest) return 99;
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    return Math.floor((today - latest) / (1000 * 60 * 60 * 24));
+  }
+
+  function countMuscleSessions(workouts, muscleKeys) {
+    return workouts.filter(w => workoutHitsMuscles(w, muscleKeys)).length;
+  }
+
+  // 부위별 강화 유형(MUSCLE_FOCUS_CONFIG)의 방치 정도를 부위별로 계산
+  function computeMuscleFocusStats(workouts, recovery) {
+    const recent = WorkoutUtils.getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
+    const result = {};
+    Object.keys(MUSCLE_FOCUS_CONFIG).forEach(id => {
+      const muscles = MUSCLE_FOCUS_CONFIG[id].muscles;
+      result[id] = {
+        recPct: getRegionRecoveryAvg(recovery, muscles),
+        daysSince: daysSinceLastMuscleTraining(workouts, muscles),
+        sessions: countMuscleSessions(recent, muscles),
+      };
+    });
+    return result;
+  }
+
+  // MuscleGrowthTracker(독립 모듈)의 근손실 지수 중 가장 손실이 큰 부위를 조회 (읽기 전용 참조, 모듈 미로드 시 null)
+  function computeMuscleLossInfo(workouts) {
+    if (typeof MuscleGrowthTracker === 'undefined' || typeof MuscleGrowthTracker.compute !== 'function') return null;
+    try {
+      const result = MuscleGrowthTracker.compute(workouts, new Date());
+      if (!result || !result.hasData) return null;
+      const perMuscle = result.perMuscle || {};
+      const topLoss = Object.keys(perMuscle)
+        .map(muscle => ({ muscle, loss: perMuscle[muscle] && perMuscle[muscle].loss }))
+        .filter(x => x.loss && x.loss.lossPct > 0)
+        .sort((a, b) => b.loss.lossPct - a.loss.lossPct)[0];
+      if (!topLoss) return null;
+      return {
+        muscle: topLoss.muscle,
+        pct: topLoss.loss.lossPct,
+        daysSince: topLoss.loss.daysSince,
+        overallLossPct: result.overallLossPct,
+      };
+    } catch (e) {
+      console.warn('[RECOVR] 근손실 지수 조회 실패 (추천에는 폴백 루틴 사용):', e);
+      return null;
+    }
   }
 
   function getRegionVolume(workouts, muscleKeys) {
@@ -356,6 +535,59 @@ const WorkoutRecommendation = (() => {
     return next;
   }
 
+  // 부위별 강화(보충)·기능성 강화 점수 — scoreExtendedRecommendations와 별개 함수로 분리해
+  // 기존 로직을 건드리지 않고 새 유형만 독립적으로 채점한다.
+  function scoreFocusRecommendations(scores, stats, settings) {
+    const next = { ...scores };
+    const profile = typeof UserProfile !== 'undefined'
+      ? UserProfile.normalize(settings?.profile)
+      : {};
+    const condition = detectEffectiveCondition(profile);
+    const focusStats = stats.muscleFocusStats || {};
+
+    // 근력 운동 부위 중 상대적으로 오래 방치된 부위를 찾아 "부위별 강화"에 가중치 부여
+    const trained = Object.keys(focusStats)
+      .map(id => ({ id, ...focusStats[id] }))
+      .filter(e => e.daysSince < 90);
+
+    if (trained.length >= 3) {
+      const avgDays = trained.reduce((sum, e) => sum + e.daysSince, 0) / trained.length;
+      const maxDays = Math.max(...trained.map(e => e.daysSince));
+      trained.forEach(e => {
+        if (e.daysSince >= MUSCLE_FOCUS_NEGLECT_MIN_DAYS && e.daysSince > avgDays * MUSCLE_FOCUS_NEGLECT_RATIO) {
+          next[e.id] = (next[e.id] || 0) + 18;
+          if (e.daysSince === maxDays) next[e.id] += 10;
+        }
+        if (e.sessions === 0 && e.daysSince >= 3) next[e.id] = (next[e.id] || 0) + 8;
+      });
+    }
+
+    // 근손실(디트레이닝) 지수가 감지되면 "근손실 부위 강화"에 우선순위 부여
+    if (stats.muscleLossInfo) {
+      next.muscle_loss_focus = (next.muscle_loss_focus || 0) + Math.round(stats.muscleLossInfo.overallLossPct * 6);
+    }
+
+    // 기능성 강화 3종: 프로필·최근 패턴 기반 가벼운 가중치
+    if (profile.goal === 'strength') next.power_explosive = (next.power_explosive || 0) + 14;
+    if (stats.weekSessionCount >= 4) next.endurance_boost = (next.endurance_boost || 0) + 10;
+    const age = typeof UserProfile !== 'undefined' && UserProfile.getAge
+      ? UserProfile.getAge(profile)
+      : null;
+    if (age && age >= 45) next.balance_stability = (next.balance_stability || 0) + 12;
+    if (profile.experience === 'beginner') next.balance_stability = (next.balance_stability || 0) + 8;
+
+    // 목·허리디스크 등 안전 우선 상태에서는 강화형 추천을 억제해 재활 유형이 우선되도록 함
+    if (condition === 'cervical_disc' || condition === 'lumbar_disc') {
+      Object.keys(MUSCLE_FOCUS_CONFIG).forEach(id => { next[id] = (next[id] || 0) - 25; });
+      next.muscle_loss_focus = (next.muscle_loss_focus || 0) - 20;
+      next.balance_stability = (next.balance_stability || 0) - 20;
+      next.power_explosive = (next.power_explosive || 0) - 30;
+      next.endurance_boost = (next.endurance_boost || 0) - 20;
+    }
+
+    return next;
+  }
+
   function countWeekSessions(workouts) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 7);
@@ -411,6 +643,32 @@ const WorkoutRecommendation = (() => {
       return `최근 ${LOOKBACK_DAYS}일 유산소 ${sessions}회(${cardioMin}분) · 기능성 유산소 보강 추천${goalSuffix()}`;
     }
 
+    if (meta.category === 'reinforce') {
+      const lossInfo = stats.muscleLossInfo;
+      if (lossInfo) {
+        const label = getMuscleLossLabel(lossInfo.muscle);
+        return `${label} 근손실 지수 -${lossInfo.pct}% · ${lossInfo.daysSince}일째 미훈련 → 해당 부위 보충 강화 추천${goalSuffix()}`;
+      }
+      return `방치되기 쉬운 부위를 보충하는 루틴이에요 · 근손실 지수는 데이터가 더 쌓이면 반영돼요${goalSuffix()}`;
+    }
+
+    if (meta.category === 'focus') {
+      const focus = stats.muscleFocusStats?.[id];
+      if (focus && focus.daysSince < 90) {
+        return `해당 부위 ${focus.daysSince}일째 미훈련 · 최근 ${LOOKBACK_DAYS}일 ${focus.sessions}회 → 집중 강화 추천${goalSuffix()}`;
+      }
+      return `${meta.label} 루틴으로 부위별 균형을 맞춰보세요${goalSuffix()}`;
+    }
+
+    if (meta.category === 'functional') {
+      const functionalDesc = {
+        balance_stability: '밸런스·안정성이 흔들리기 쉬운 시기예요',
+        power_explosive: '순발력·파워 트레이닝으로 퍼포먼스를 높여보세요',
+        endurance_boost: '고반복·저중량으로 근지구력을 길러보세요',
+      };
+      return `${functionalDesc[id] || '기능성 강화 루틴 추천'}${goalSuffix()}`;
+    }
+
     if (meta.mode === 'mobility') {
       return `평균 회복 ${Math.round(stats.avgRecovery)}% · 가동성·스트레칭으로 몸 풀기 추천${goalSuffix()}`;
     }
@@ -428,6 +686,13 @@ const WorkoutRecommendation = (() => {
       return `${regionLabel} 회복 ${recPct}% · 마지막 ${regionLabel} 운동 ${daysSince}일 전 · 최근 ${LOOKBACK_DAYS}일 ${sessions}회 → 점진적 과부하 추천${goalSuffix()}`;
     }
     return `${regionLabel} 회복 ${recPct}% · 최근 ${LOOKBACK_DAYS}일 ${sessions}회 운동 → 평소 루틴 유지 추천${goalSuffix()}`;
+  }
+
+  function getMuscleLossLabel(muscleKey) {
+    if (typeof MUSCLE_LABELS !== 'undefined' && MUSCLE_LABELS[muscleKey]) {
+      return MUSCLE_LABELS[muscleKey].name;
+    }
+    return muscleKey;
   }
 
   function getTipForType(id) {
@@ -512,11 +777,79 @@ const WorkoutRecommendation = (() => {
     return normalizePrefillWeights(prefill);
   }
 
-  function buildSuggestedExercises(workouts, id) {
+  // ExerciseMuscleMap(독립 모듈)에서 특정 근육 자극 운동을 뽑아 prefill 형태로 변환 (기본 세트값 적용)
+  function buildExercisesFromMuscleMap(muscleKeys, mode) {
+    if (typeof ExerciseMuscleMap === 'undefined' || typeof ExerciseMuscleMap.getExercisesForMuscle !== 'function') {
+      return [];
+    }
+    const seen = new Set();
+    const picked = [];
+    muscleKeys.forEach(muscle => {
+      ExerciseMuscleMap.getExercisesForMuscle(muscle, { minLevel: 2, limit: MAX_SUGGESTED_EXERCISES })
+        .forEach(item => {
+          if (seen.has(item.name) || picked.length >= MAX_SUGGESTED_EXERCISES) return;
+          seen.add(item.name);
+          picked.push(exerciseToPrefill({ name: item.name, reps: 10, sets: 3, weight: '' }, mode));
+        });
+    });
+    return picked;
+  }
+
+  // 근손실 지수 상위 부위를 ExerciseMuscleMap으로 조회, 데이터가 없으면 정적 폴백 루틴 사용
+  function buildMuscleLossFocusExercises(stats, meta) {
+    const lossInfo = stats?.muscleLossInfo;
+    if (lossInfo) {
+      const fromMap = buildExercisesFromMuscleMap([lossInfo.muscle], meta.mode);
+      if (fromMap.length >= 3) return fromMap;
+    }
+    return (EXERCISE_PRESETS.muscle_loss_focus || [])
+      .slice(0, MAX_SUGGESTED_EXERCISES)
+      .map(ex => exerciseToPrefill(ex, meta.mode));
+  }
+
+  // 부위별 강화: 해당 부위 기록이 충분하면 기록 기반, 아니면 ExerciseMuscleMap → 정적 폴백 순으로 사용
+  function buildMuscleFocusExercises(workouts, id, meta) {
+    const muscles = MUSCLE_FOCUS_CONFIG[id]?.muscles || [];
+    const muscleWorkouts = workouts.filter(w => workoutHitsMuscles(w, muscles));
+
+    if (muscleWorkouts.length > 0) {
+      const freq = new Map();
+      muscleWorkouts.forEach(w => {
+        (w.exercises || []).forEach(ex => {
+          if (!ex.name?.trim()) return;
+          if (!getMusclesFromExerciseName(ex.name).some(m => muscles.includes(m))) return;
+          const key = ex.name.trim();
+          freq.set(key, (freq.get(key) || 0) + 1);
+        });
+      });
+      const ranked = [...freq.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+      const fromHistory = ranked
+        .slice(0, MAX_SUGGESTED_EXERCISES)
+        .map(name => exerciseToPrefill(getRepresentativeExercise(muscleWorkouts, name), meta.mode));
+      if (fromHistory.length >= 3) return fromHistory;
+    }
+
+    const fromMap = buildExercisesFromMuscleMap(muscles, meta.mode);
+    if (fromMap.length >= 3) return fromMap;
+
+    return (EXERCISE_PRESETS[id] || [])
+      .slice(0, MAX_SUGGESTED_EXERCISES)
+      .map(ex => exerciseToPrefill(ex, meta.mode));
+  }
+
+  function buildSuggestedExercises(workouts, id, stats) {
     const meta = TYPE_META[id];
     const presets = EXERCISE_PRESETS[id];
 
-    if (presets && (meta.category === 'rehab' || meta.category === 'cardio' || meta.mode === 'mobility')) {
+    if (id === 'muscle_loss_focus') {
+      return buildMuscleLossFocusExercises(stats, meta);
+    }
+
+    if (meta.category === 'focus') {
+      return buildMuscleFocusExercises(workouts, id, meta);
+    }
+
+    if (presets && (meta.category === 'rehab' || meta.category === 'cardio' || meta.category === 'functional' || meta.mode === 'mobility')) {
       return presets
         .slice(0, MAX_SUGGESTED_EXERCISES)
         .map(ex => exerciseToPrefill(ex, meta.mode));
@@ -565,7 +898,7 @@ const WorkoutRecommendation = (() => {
       ...meta,
       reason: buildReason(typeId, stats, settings),
       tip: getTipForType(typeId),
-      exercises: buildSuggestedExercises(workouts, typeId),
+      exercises: buildSuggestedExercises(workouts, typeId, stats),
       stats,
     };
   }
@@ -575,6 +908,8 @@ const WorkoutRecommendation = (() => {
     const recent = WorkoutUtils.getWorkoutsInLookback(workouts, LOOKBACK_DAYS);
     const weekRecent = WorkoutUtils.getWorkoutsInLookback(workouts, 7);
     const weekSessionCount = countWeekSessions(workouts);
+    const muscleFocusStats = computeMuscleFocusStats(workouts, recovery);
+    const muscleLossInfo = computeMuscleLossInfo(workouts);
 
     const allMuscles = [...UPPER_MUSCLES, ...LOWER_MUSCLES];
     const activeMuscles = allMuscles.filter(m => recovery[m]?.lastDate);
@@ -597,11 +932,14 @@ const WorkoutRecommendation = (() => {
       avgRecovery,
       historyDays: getHistorySpanDays(workouts),
       weekSessionCount,
+      muscleFocusStats,
+      muscleLossInfo,
     };
 
     let scores = scoreStrengthRecommendations(stats);
     scores = applyProfileScores(scores, settings, weekSessionCount);
     scores = scoreExtendedRecommendations(scores, stats, settings);
+    scores = scoreFocusRecommendations(scores, stats, settings);
     const autoTypeId = getBestTypeId(scores);
     const selectedTypeId = loadSelectedTypeId() || autoTypeId;
 
@@ -715,5 +1053,7 @@ const WorkoutRecommendation = (() => {
     buildStats,
     scoreStrengthRecommendations,
     scoreExtendedRecommendations,
+    scoreFocusRecommendations,
+    MUSCLE_FOCUS_CONFIG,
   };
 })();
