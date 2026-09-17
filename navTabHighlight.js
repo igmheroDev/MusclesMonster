@@ -33,9 +33,9 @@ const NavTabHighlight = (() => {
     style.textContent = `
       nav .nav-item[data-view] {
         position: relative;
-        border-radius: 12px;
-        margin: 0 3px;
-        transition: color 0.15s ease, background 0.15s ease;
+        isolation: isolate;
+        z-index: 0;
+        transition: color 0.15s ease;
       }
       nav .nav-item[data-view]::before {
         content: '';
@@ -49,38 +49,56 @@ const NavTabHighlight = (() => {
         transform: translateX(-50%);
         transition: width 0.18s ease;
         pointer-events: none;
+        z-index: 1;
+      }
+      nav .nav-item[data-view]::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 2px;
+        bottom: 2px;
+        width: 64px;
+        max-width: calc(100% - 4px);
+        transform: translateX(-50%);
+        border-radius: 14px;
+        background: transparent;
+        pointer-events: none;
+        z-index: -1;
+        transition: background 0.15s ease;
       }
       nav .nav-item[data-view="home"] {
         --nth-accent: var(--green);
-        --nth-fill: rgba(0, 255, 157, 0.16);
+        --nth-fill: rgba(0, 255, 157, 0.22);
       }
       nav .nav-item[data-view="log"] {
         --nth-accent: var(--cyan);
-        --nth-fill: rgba(0, 229, 255, 0.16);
+        --nth-fill: rgba(0, 229, 255, 0.22);
       }
       nav .nav-item[data-view="stats"] {
         --nth-accent: var(--violet);
-        --nth-fill: rgba(167, 139, 250, 0.16);
+        --nth-fill: rgba(167, 139, 250, 0.22);
       }
       nav .nav-item[data-view="settings"] {
         --nth-accent: var(--orange);
-        --nth-fill: rgba(255, 107, 53, 0.16);
+        --nth-fill: rgba(255, 107, 53, 0.22);
       }
       nav .nav-item[data-view].active {
         color: var(--nth-accent);
-        background: var(--nth-fill);
         font-weight: 800;
       }
       nav .nav-item[data-view].active::before {
-        width: 22px;
+        width: 28px;
+      }
+      nav .nav-item[data-view].active::after {
+        background: var(--nth-fill);
       }
       nav .nav-item[data-view].active .ni-icon {
         transform: translateY(-1px) scale(1.08);
       }
-      body.light nav .nav-item[data-view="home"] { --nth-fill: rgba(0, 165, 113, 0.16); }
-      body.light nav .nav-item[data-view="log"] { --nth-fill: rgba(0, 145, 168, 0.16); }
-      body.light nav .nav-item[data-view="stats"] { --nth-fill: rgba(139, 108, 214, 0.16); }
-      body.light nav .nav-item[data-view="settings"] { --nth-fill: rgba(230, 87, 31, 0.16); }
+      body.light nav .nav-item[data-view="home"] { --nth-fill: rgba(0, 165, 113, 0.20); }
+      body.light nav .nav-item[data-view="log"] { --nth-fill: rgba(0, 145, 168, 0.20); }
+      body.light nav .nav-item[data-view="stats"] { --nth-fill: rgba(139, 108, 214, 0.20); }
+      body.light nav .nav-item[data-view="settings"] { --nth-fill: rgba(230, 87, 31, 0.20); }
     `;
     const head = document.head || document.documentElement;
     head.appendChild(style);
