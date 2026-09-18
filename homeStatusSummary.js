@@ -32,7 +32,7 @@ const HomeStatusSummary = (() => {
     return { label: '회복 완료', tip: '컨디션이 좋아요. 목표에 맞는 본운동을 진행해도 됩니다.' };
   }
 
-  function buildLifestyleTips(profile, adviceItems) {
+  function buildLifestyleTips(profile) {
     const tips = [];
     const p = typeof UserProfile !== 'undefined' ? UserProfile.normalize(profile) : (profile || {});
 
@@ -59,11 +59,6 @@ const HomeStatusSummary = (() => {
       } else if (bmi != null && bmi < 18.5) {
         tips.push('체중이 낮은 편이에요. 근력 운동과 충분한 식사로 기초 체력을 쌓아보세요.');
       }
-    }
-
-    if (Array.isArray(adviceItems) && adviceItems.length) {
-      const first = adviceItems[0];
-      if (first?.message) tips.push(first.message);
     }
 
     if (!tips.length) {
@@ -142,6 +137,22 @@ const HomeStatusSummary = (() => {
     }
   }
 
+  function buildAnalysis(adviceItems) {
+    if (!Array.isArray(adviceItems) || !adviceItems.length) {
+      return {
+        title: '기록을 더 모으는 중이에요',
+        summary: '운동을 2회 이상 기록하면 최근 패턴을 분석해 조언을 드려요.',
+        items: [],
+      };
+    }
+
+    return {
+      title: adviceItems[0].title || '최근 운동 패턴 분석',
+      summary: adviceItems[0].message || '',
+      items: adviceItems.slice(1, 4).map((item) => item.message).filter(Boolean),
+    };
+  }
+
   function build(ctx) {
     const settings = ctx?.settings || {};
     const profile = settings.profile || {};
@@ -154,7 +165,8 @@ const HomeStatusSummary = (() => {
 
     const status = buildStatusLines(profile, recoveryPct, ctx?.overallDesc);
     const workout = buildWorkoutRecLine(settings, ctx?.workouts);
-    const lifestyle = buildLifestyleTips(profile, adviceItems);
+    const analysis = buildAnalysis(adviceItems);
+    const lifestyle = buildLifestyleTips(profile);
 
     const hasBody = typeof UserProfile !== 'undefined'
       && (UserProfile.calcBmi(profile.heightCm, profile.weightKg) != null
@@ -166,6 +178,7 @@ const HomeStatusSummary = (() => {
     return {
       status,
       workout,
+      analysis,
       lifestyle,
       emptyHint: hasBody
         ? null
@@ -182,6 +195,21 @@ const HomeStatusSummary = (() => {
       </div>`;
   }
 
+  function renderAnalysis(analysis) {
+    return `
+      <div class="hss-section hss-analysis">
+        <div class="hss-label-row">
+          <div class="hss-label">분석 조언</div>
+          <div class="hss-source" id="hssInsightSource" data-state="local">로컬 분석 · 최근 14일</div>
+        </div>
+        <div class="hss-title" id="hssInsightTitle">${escapeHtml(analysis.title)}</div>
+        <div class="hss-detail" id="hssInsightSummary">${escapeHtml(analysis.summary)}</div>
+        <ul class="hss-advice-list" id="hssInsightList">
+          ${(analysis.items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+        </ul>
+      </div>`;
+  }
+
   function render(ctx) {
     const container = document.getElementById('homeStatusSummary');
     if (!container) return null;
@@ -194,13 +222,14 @@ const HomeStatusSummary = (() => {
         <div class="hss-header">
           <span class="hss-header-icon">📋</span>
           <div>
-            <div class="hss-header-title">내 상태 요약</div>
-            <div class="hss-header-sub">프로필 · 회복 · 추천을 한눈에</div>
+            <div class="hss-header-title">내 상태 요약 · 운동 조언</div>
+            <div class="hss-header-sub">최근 기록 · 회복 · 추천을 한눈에</div>
           </div>
         </div>
         ${data.emptyHint ? `<div class="hss-empty">${escapeHtml(data.emptyHint)}</div>` : ''}
         ${renderSection('지금 상태', data.status.title, data.status.detail || data.status.tip)}
         ${renderSection('추천 운동', data.workout.title, data.workout.detail)}
+        ${renderAnalysis(data.analysis)}
         ${renderSection('생활습관', '오늘 챙기면 좋은 것', lifestyleText)}
       </div>`;
 

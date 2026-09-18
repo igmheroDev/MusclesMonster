@@ -1041,14 +1041,16 @@ function renderHome() {
   try {
     if (typeof HomeStatusSummary !== 'undefined') {
       const descEl = document.getElementById('overallDesc');
-      HomeStatusSummary.render({
+      const summaryContext = {
         settings,
         workouts,
         recovery,
         recoveryPct: overallPct,
         muscleOrder: typeof MUSCLE_ORDER !== 'undefined' ? MUSCLE_ORDER : null,
         overallDesc: descEl ? descEl.textContent : '',
-      });
+      };
+      HomeStatusSummary.render(summaryContext);
+      if (typeof HomeCoachInsight !== 'undefined') HomeCoachInsight.render(summaryContext);
     }
   } catch (e) {
     console.warn('[RECOVR] 상태 요약 실패:', e);
