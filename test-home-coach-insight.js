@@ -153,7 +153,7 @@ const context = {
   assert(!html.includes('id="workoutAdviceCard"'), '별도 운동 조언 카드 제거');
   assert(app.includes('HomeCoachInsight.render(summaryContext)'), '홈 렌더 연결');
   assert(sw.includes('./homeCoachInsight.js'), 'SW 캐시 연결');
-  assert(sw.includes('recovr-cache-v74'), 'SW 캐시 버전');
+  assert(sw.includes('recovr-cache-v75'), 'SW 캐시 버전');
 
   require('child_process').execFileSync('node', ['--check', path.join(__dirname, 'homeCoachInsight.js')]);
   console.log(`\n=== 최종: ${failures === 0 ? 'ALL PASSED ✓' : `${failures} FAILED ✗`} ===`);
