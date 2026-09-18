@@ -97,7 +97,7 @@ const rest = fs.readFileSync(path.join(__dirname, 'restTimer.js'), 'utf8');
 
 assert(indexHtml.includes('appResume.js'), 'index loads module');
 assert(sw.includes('appResume.js'), 'sw caches module');
-assert(sw.includes('recovr-cache-v73'), 'sw cache bump');
+assert(sw.includes('recovr-cache-v74'), 'sw cache bump');
 assert(app.includes('AppResume.init()'), 'app wires init');
 assert(app.includes('function resumeInProgressModal'), 'app exposes restore helper');
 assert(app.includes("AppResume.snapshotUi('modal-close')"), 'closeModal updates resume snapshot');

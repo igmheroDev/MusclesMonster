@@ -69,6 +69,7 @@ const built = HomeStatusSummary.build({
 assert(built.status.title.includes('회복'), '상태 타이틀에 회복');
 assert(built.status.detail.includes('BMI'), '상태에 BMI');
 assert(built.workout.title.includes('하체'), '추천 운동 반영');
+assert(built.analysis.title.length > 0, '운동 조언이 상태 요약에 통합');
 assert(built.lifestyle.some((t) => t.includes('수면') || t.includes('허리')), '생활습관에 선택 필드 반영');
 assert(!built.emptyHint, '프로필 있으면 emptyHint 없음');
 
@@ -86,7 +87,7 @@ assert(html.includes('profileStressLevel'), '스트레스 필드');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(sw.includes('homeStatusSummary.js'), 'SW 캐시 포함');
-assert(sw.includes('recovr-cache-v73'), '캐시 버전');
+assert(sw.includes('recovr-cache-v74'), '캐시 버전');
 const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 assert(app.includes('HomeStatusSummary.render'), 'renderHome 연동');
 
