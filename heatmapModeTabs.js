@@ -159,8 +159,25 @@ const HeatmapModeTabs = (() => {
     return true;
   }
 
+  function fillEmptyGrowthPanel() {
+    if (typeof document === 'undefined' || !document.getElementById) return false;
+    const panel = document.getElementById('muscleGrowthHeatmapCard');
+    if (!panel) return false;
+    if (panel.querySelector && panel.querySelector('.mh-card')) return false;
+    panel.innerHTML = `
+      <div class="mh-card mh-card--empty">
+        <div class="mh-accent-bar" style="background:linear-gradient(90deg, var(--red) 0%, var(--orange) 35%, var(--muted) 55%, var(--green) 100%)"></div>
+        <div class="mh-header">
+          <div class="mh-title">🔥 근성장 · 근손실 히트맵</div>
+        </div>
+        <div class="mh-empty-hint">운동을 기록하면 성장·손실 부위가 여기에 표시돼요.</div>
+      </div>`;
+    return true;
+  }
+
   function afterHomeRender() {
     ensureStyles();
+    fillEmptyGrowthPanel();
     applyMode();
   }
 

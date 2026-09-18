@@ -134,10 +134,12 @@ global.document = {
   readyState: 'loading',
   head,
   documentElement: makeEl('html'),
-  getElementById(id) {
-    if (id === 'heatmapModeHost') return host;
-    return createdElements.find((e) => e.id === id) || null;
-  },
+    getElementById(id) {
+      if (id === 'heatmapModeHost') return host;
+      if (id === 'muscleGrowthHeatmapCard') return growthPanel;
+      if (id === 'muscleHeatmapCard') return recoveryPanel;
+      return createdElements.find((e) => e.id === id) || null;
+    },
   createElement(tag) {
     const el = makeEl(tag);
     createdElements.push(el);
@@ -195,6 +197,12 @@ host._listeners.filter((l) => l[0] === 'click').forEach((l) => {
   });
 });
 assert(!recoveryPanel.getAttribute('hidden'), '클릭으로 회복 복귀');
+
+console.log('=== 3b. 성장 데이터 없을 때도 패널이 비지 않음 ===');
+growthPanel.children = [];
+delete growthPanel.innerHTML;
+HeatmapModeTabs.afterHomeRender();
+assert(String(growthPanel.innerHTML || '').includes('근성장 · 근손실 히트맵'), '빈 성장 패널에 안내 카드');
 
 console.log('=== 4. 기존 히트맵 모듈은 수정하지 않음 ===');
 const mh = fs.readFileSync(path.join(__dirname, 'muscleHeatmap.js'), 'utf8');
