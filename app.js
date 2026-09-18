@@ -1129,6 +1129,12 @@ function renderHome() {
     console.warn('[RECOVR] 자극 히트맵 연결 실패:', e);
   }
 
+  try {
+    if (typeof HeatmapModeTabs !== 'undefined') HeatmapModeTabs.afterHomeRender();
+  } catch (e) {
+    console.warn('[RECOVR] 히트맵 모드 탭 동기화 실패:', e);
+  }
+
   const muscleList = document.getElementById('muscleList');
   if (!muscleList) return;
 

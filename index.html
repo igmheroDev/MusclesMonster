@@ -3108,7 +3108,15 @@
 
     <div id="muscleGrowthCard"></div>
 
-    <div id="muscleGrowthHeatmapCard"></div>
+    <!-- 히트맵 인근 탭: 홈 헤더/하단 네비가 아니라 바디맵 바로 위에서 회복↔성장·손실 전환 -->
+    <div id="heatmapModeHost" class="hmt-host">
+      <div class="hmt-tabs" role="tablist" aria-label="히트맵 보기">
+        <button type="button" class="hmt-tab selected" role="tab" id="hmtTabRecovery" data-hmt-mode="recovery" aria-controls="muscleHeatmapCard" aria-selected="true">회복</button>
+        <button type="button" class="hmt-tab" role="tab" id="hmtTabGrowth" data-hmt-mode="growth" aria-controls="muscleGrowthHeatmapCard" aria-selected="false" tabindex="-1">성장·손실</button>
+      </div>
+      <div id="muscleHeatmapCard" role="tabpanel" data-hmt-panel="recovery" aria-labelledby="hmtTabRecovery"></div>
+      <div id="muscleGrowthHeatmapCard" role="tabpanel" data-hmt-panel="growth" aria-labelledby="hmtTabGrowth" hidden></div>
+    </div>
 
     <div id="workoutGoalsCard"></div>
 
@@ -3126,7 +3134,6 @@
     <div class="section-title">
       <span>부위별 회복 상태</span>
     </div>
-    <div id="muscleHeatmapCard"></div>
     <div id="muscleList"></div>
 
   </div>
@@ -3751,6 +3758,7 @@
 <script src="muscleGrowthDetail.js"></script>
 <script src="youtubeSearchLink.js"></script>
 <script src="navTabHighlight.js"></script>
-<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init(); if (typeof YoutubeSearchLink !== 'undefined') YoutubeSearchLink.init();</script>
+<script src="heatmapModeTabs.js"></script>
+<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init(); if (typeof YoutubeSearchLink !== 'undefined') YoutubeSearchLink.init(); if (typeof HeatmapModeTabs !== 'undefined') HeatmapModeTabs.init();</script>
 </body>
 </html>
