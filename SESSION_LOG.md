@@ -1418,3 +1418,120 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 37 — 2026-09-18
+
+**정적 리스트 3곳에 탭 인터랙션 추가 (신규 독립 모듈 `listQuickActions.js`)**
+- 사용자 요청: "홈 탭의 부위별 회복 상태 리스트(코어·어깨·삼두 등)와 통계 탭의 개인 기록(PR) 리스트(스쿼트·레그프레스 등)를 눌러도 아무 반응이 없다. 눌렀을 때 회복 상태나 관련 운동을 보여주면 좋겠다. 다른 인터랙션 없는 곳은 없나?"
+- 기존 동작 파악: `app.js`의 `renderHome()`(`#muscleList`)/`renderWeeklyFrequency()`(`#freqList`)/`renderPRList()`(`#prList`)가 렌더하는 `.muscle-card`들은 순수 정보 표시용 `<div>`일 뿐 `onclick`/`role`이 전혀 없어 탭해도 반응이 없었음. 반면 `exerciseStimHeatmap.js`는 이미 "부위 → 관련 운동 목록"(`openMuscle`)과 "운동 → 자극 부위 히트맵"(`openExercise`) 바텀시트를 완성해서 히트맵·근성장 목록 등 다른 곳에서 재사용 중이었음
+- 위 세 리스트가 정확히 어떤 정보인지 확인: `#muscleList`="부위별 회복 상태"(코어/어깨/삼두 등 회복 % 카드, 홈), `#freqList`="주간 부위별 빈도"(통계), `#prList`="🏆 개인 기록(PR)"(스쿼트/레그프레스 등 최고 무게·e1RM, 통계)
+- 완성된 렌더 로직(`app.js`)과 완성된 시트 로직(`exerciseStimHeatmap.js`)은 전혀 수정하지 않고, 신규 독립 모듈 `listQuickActions.js`로 두 모듈을 매니저 참조로만 연결:
+  - `#muscleList` 카드 탭 → 카드의 `.mc-name` 텍스트(예: "코어")를 `MUSCLE_LABELS`와 대조해 부위 키를 역추적한 뒤 `ExerciseStimHeatmap.openMuscle(muscleKey)` 호출 → 그 부위를 자극하는 추천 운동 목록이 뜸(회복 %/추세는 이미 카드 자체에 표시돼 있으므로, 탭 시에는 "관련 운동"을 추가로 보여주는 것이 자연스러움)
+  - `#freqList` 행 탭 → 동일한 방식으로 부위 키를 역추적해 `openMuscle()` 호출
+  - `#prList` 카드 탭 → `.mc-name`(운동명)을 그대로 `ExerciseStimHeatmap.openExercise(name, { showAdd: false })`에 전달 → 그 운동이 자극하는 부위 히트맵 미리보기가 뜸("이 운동 추가" 버튼은 통계 화면 맥락에 맞지 않아 숨김)
+  - `app.js`에 `data-*` 속성을 새로 추가하지 않고, 이미 화면에 보이는 텍스트만 읽기 전용으로 활용(부위명은 `MUSCLE_LABELS` 11개가 서로 겹치지 않는 고유 문자열이라 오매칭 없음) → app.js를 단 1바이트도 건드리지 않고 완전히 독립적으로 구현
+  - 리스트는 `innerHTML` 통째 교체 방식이라, 컨테이너(`#muscleList`/`#freqList`/`#prList`)에 클릭/키보드(Enter·Space) 이벤트를 1회만 위임 등록하고, `MutationObserver`로 재렌더될 때마다 새 카드에 `role="button"`/`tabindex="0"`을 다시 부여(기존 `exerciseStimHeatmap.js`의 `exPickerList` 감시 패턴과 동일한 관례)
+  - `ensureStyles()`로 커서 포인터 + 우측 "›" 화살표(탭 가능 표시) + 포커스 아웃라인을 동적 주입(`heatmapModeTabs.js`와 동일한 관례). `index.html`의 기존 스타일시트는 건드리지 않음
+- `index.html`에 `<script src="listQuickActions.js"></script>` 1줄 추가(heatmapModeTabs.js 다음, ExerciseStimHeatmap 로드 이후) + 부트스트랩에 `ListQuickActions.init()` 1줄 추가
+- SW 캐시 `recovr-cache-v75`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `listQuickActions.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 12개 동기화
+- `test-list-quick-actions.js` 신규 추가: 부위 라벨→키 역추적, 스타일 주입, 3개 리스트 각각 클릭/키보드(Enter) 인터랙션, 재렌더 후 재적용, 완성 모듈(app.js/exerciseStimHeatmap.js/muscleHeatmap.js) 미참조·미수정 검증, 스크립트 등록·sw.js 캐시 버전 등 정적 연동 검사
+
+**실브라우저 검증 (Playwright + 시스템 Chrome, headless)**
+- 스쿼트·레그프레스·벤치 프레스로 운동 기록을 심어 실제로 페이지를 열고 클릭까지 수행: 홈 "대퇴사두" 카드 탭 → `🦵 대퇴사두` 추천 운동 시트(21개 종목) 정상 오픈, 통계 "레그프레스"/"스쿼트" PR 카드 탭 → 해당 운동의 자극 부위 시트 정상 오픈("이 운동 추가" 버튼 숨김 확인), 통계 "대퇴사두" 빈도 행 탭 → 동일 부위 추천 운동 시트 오픈. 콘솔 에러/경고 0건
+- 스크린샷으로 카드 우측 "›" 화살표가 기존 회복%/뱃지 레이아웃을 가리지 않고 자연스럽게 표시되는 것 확인
+
+**다른 인터랙션 없는 곳(발견했지만 이번 세션 범위 밖 — 제안만 기록)**
+- [ ] "🏆 개인 기록 (PR)" 카드를 탭했을 때, 단순 자극 부위 미리보기보다 **그 운동의 기록 추이(무게/e1RM 그래프)** 를 보여주는 편이 "PR" 리스트의 맥락에 더 잘 맞을 수 있음 — 별도 데이터 시각화(추이 차트) 모듈이 필요해 이번 세션 범위 밖으로 보류
+- [ ] 통계 "최근 추세"(`#trendChart`) 막대 그래프도 막대를 탭하면 그날의 운동 상세로 이동하면 좋을 것 같음(현재는 순수 시각화)
+- [ ] 통계 "유산소 세부 지표"/"유산소 기구별"(`cardioMetricsStats`/`cardioMachineList`) 카드들도 탭 인터랙션이 없어 보임(모듈 소유가 `cardioMetrics.js`/`cardioTracker.js`라 이번 세션에서는 손대지 않음)
+
+**무결성 검사**
+- JS 문법 검사: 전체 `*.js` 파일 통과 ✓
+- 단위 테스트 31개 스위트: ALL PASSED ✓ (`test-list-quick-actions.js` 신규 포함)
+
+**다음 세션 후보 작업**
+- [ ] PR 리스트 탭 시 자극 부위 미리보기 대신/추가로 운동별 기록 추이 그래프를 보여주는 기능 검토
+- [ ] 유산소 통계 카드들에도 탭 인터랙션 추가할지 검토
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v75`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 38 — 2026-09-19 (같은 PR 후속)
+
+**통계 유산소 카드 2곳에도 탭 인터랙션 추가 (신규 독립 모듈 `cardioListQuickActions.js`)**
+- 사용자 요청: 직전 세션에서 제안만 하고 보류했던 3가지 중 "3번 — 통계 유산소 세부 지표/유산소 기구별 카드"를 추천 방향대로 진행해달라고 요청
+- 대상: 통계 "이번 주 유산소 기구별"(`#cardioMachineList`, `cardioTracker.js`의 `renderMachineBreakdown()`)과 "유산소 세부 지표"(`#cardioMetricsStats`, `cardioMetrics.js`의 `renderStatsCard()`) — 둘 다 정보만 표시하는 정적 카드로, 클릭 핸들러가 전혀 없었음
+- 완성된 `cardioTracker.js`/`cardioMetrics.js`는 전혀 수정하지 않고, 신규 독립 모듈 `cardioListQuickActions.js`가 두 모듈의 기존 공개 API만 매니저 참조로 재사용해 탭 시 상세 시트를 새로 추가:
+  - **기구별 카드**(예: "🪜 천국의 계단 20분") 행 탭 → 그 기구의 최근 세션 목록(날짜·시간·거리/칼로리/심박 세부 지표가 있으면 함께) 바텀시트 표시. `CardioTracker.isCardioExercise`/`getExerciseMinutes`/`getWeeklyStats`/`formatMinutes`, `CardioMetrics.formatSummary` 재사용
+  - **세부 지표 카드**(주간 거리/칼로리/평균 심박 3개 타일) 탭 → 3개 타일 중 어떤 걸 탭해도 "이번 주 세션별 기록" 하나의 시트로 안내(세 숫자가 결국 같은 세션 데이터에서 나온 집계이므로 하나로 통합하는 게 자연스럽다고 판단). `CardioMetrics.normalizeMetrics`/`hasAny`/`formatSummary` 재사용
+  - **중요 발견**: 애초에 `CardioMetrics.getCardioExercises()`를 재사용하려 했으나 이 함수는 모듈 내부 전용(공개 API에 미노출)이라 런타임 에러(`is not a function`) 발생 — Playwright 실브라우저 검증 중 발견해 수정. `cardioMetrics.js`를 건드리는 대신, 이미 공개된 `CardioTracker.isCardioExercise()` + `CardioMetrics.normalizeMetrics/hasAny/formatSummary()`만으로 동일한 목록을 직접 재구성하도록 변경(완성 모듈 미수정 원칙 유지). 이후 단위 테스트의 `CardioMetrics` 목업에서도 `getCardioExercises`를 의도적으로 제외해, 앞으로 비공개 API에 실수로 의존하면 목업만으로 즉시 테스트가 실패하도록 방지책 마련
+  - 시트 UI는 `exerciseStimHeatmap.js`가 이미 정의한 `.esh-overlay`/`.esh-sheet`류 CSS를 그대로 재사용(전용 오버레이 `#cqaOverlay` 1개 div만 `index.html`에 추가, 신규 CSS 클래스 없음)
+  - 데이터가 없는 상태(`#cardioMetricsStats`가 안내 문구 카드 1개만 렌더할 때)는 `.stats-grid` 존재 여부로 구분해 탭 인터랙션을 부여하지 않음(탭 가능해 보이는 커서/포커스 스타일도 `.stats-grid .stat-card`로 스코프해 빈 상태엔 적용 안 되게 함)
+- `index.html`에 `<script src="cardioListQuickActions.js"></script>` 1줄 + `#cqaOverlay` div 1줄 + 부트스트랩에 `CardioListQuickActions.init()` 1줄 추가
+- SW 캐시 `recovr-cache-v76`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `cardioListQuickActions.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 13개 동기화
+- `test-cardio-list-quick-actions.js` 신규 추가: 행 텍스트→운동명 추출, 스타일 주입(데이터 있을 때만 스코프), 기구별/세부지표 카드 각각 클릭·키보드(Enter) 인터랙션, 지표 없는 세션은 세부지표 목록에서 제외되는지, 데이터 없는 상태로 전환 시 탭 무반응, 완성 모듈(cardioTracker.js/cardioMetrics.js) 미참조·미수정 검증, 스크립트·오버레이·sw.js 캐시 버전 등 정적 연동 검사
+
+**실브라우저 검증 (Playwright + 시스템 Chrome, headless)**
+- 유산소 운동(천국의 계단: 거리·칼로리·심박 포함, 로잉머신: 지표 없음)을 심어 실제 클릭까지 수행: "천국의 계단" 기구 카드 탭 → 최근 세션 시트("이번 주 합계 20분", "9/19 · 20분 · 1.5km · 220kcal · 심박 150") 정상 오픈, "주간 거리"/"주간 칼로리" 등 세부 지표 타일 탭 → "이번 주 세션별 기록" 시트에 지표가 있는 천국의 계단 세션만 정상 표시(로잉머신은 지표가 없어 제외됨을 확인). 콘솔 에러/경고 0건
+
+**무결성 검사**
+- JS 문법 검사: 전체 `*.js` 파일 통과 ✓
+- 단위 테스트 32개 스위트: ALL PASSED ✓ (`test-cardio-list-quick-actions.js` 신규 포함)
+
+**다음 세션 후보 작업**
+- [ ] PR 리스트 탭 시 자극 부위 미리보기 대신/추가로 운동별 기록 추이 그래프를 보여주는 기능 검토 (직전 세션에서 제안한 1번 항목, 아직 미착수)
+- [ ] 통계 "최근 추세" 막대그래프 탭 시 그날 상세로 이동하는 기능 검토 (직전 세션에서 제안한 2번 항목, 아직 미착수)
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v76`
+
+**현재 앱 버전**: `1.0.0`
+
+---
+
+### 세션 39 — 2026-09-19 (같은 PR 후속)
+
+**직전 세션에서 보류했던 마지막 두 항목 완료 + main 머지 요청**
+
+**1) PR 카드 탭 → 자극 부위 대신/보조로 "기록 추이" 그래프 (신규 독립 모듈 `prTrendDetail.js`)**
+- 사용자 요청: "진행해, 모든것을 완벽히 완료되면 메인에 머지해" → 직전 세션 "다음 세션 후보 작업" 1번(PR 리스트 탭 시 자극 부위 미리보기 대신/추가로 기록 추이 그래프)을 진행
+- `app.js`의 `renderPRList()`는 전혀 수정하지 않고, 그 함수가 쓰는 것과 동일한 이미 공개된 전역 함수(`getCompletedWorkouts`/`calcE1RM`/`getExerciseVolume`)만으로 세션별 최고 무게·e1RM·볼륨 집계 로직을 `prTrendDetail.js` 안에서 독립적으로 재현(`renderPRList`의 세트별 후보 산출 방식과 동일: `setDetails`가 있으면 세트별로, 없으면 대표 weight/reps 1건)
+- PR 카드를 탭하면 최근 8세션의 e1RM 막대그래프 + 전체 기간 최고 무게/e1RM/세션 볼륨 통계 타일을 보여주는 새 바텀시트(`#prTrendOverlay`, 기존 `.esh-overlay`/`.esh-sheet`/`.stats-grid`/`.stat-card` CSS 재사용, 신규 CSS 클래스 없음)가 열림
+- **자극 부위 정보는 삭제가 아니라 보조 동선으로 유지**: 시트 하단에 "🎯 이 운동의 자극 부위 보기" 버튼을 두어, 누르면 기존 `ExerciseStimHeatmap.openExercise(name, {showAdd:false})`를 그대로 재사용해 자극 부위 히트맵으로 이동(대체가 아니라 두 정보 모두 접근 가능하게 함)
+- `listQuickActions.js`의 `activatePrListCard()`만 수정(내가 지난 세션에 만든 모듈이라 이번 후속 요청에 맞춰 조정하는 것은 "완성 모듈 임의 수정 금지" 원칙 위반이 아님): `PrTrendDetail`이 로드돼 있으면 `PrTrendDetail.open(name)`으로 위임하고, 없는 환경에서는 기존 `ExerciseStimHeatmap.openExercise` 폴백을 그대로 유지
+- `index.html`에 `<script src="prTrendDetail.js"></script>`(listQuickActions.js보다 먼저 로드) + `#prTrendOverlay` div 1줄 추가
+- `test-pr-trend-detail.js` 신규 추가: `renderPRList()`와 동일한 세션별 집계 검증(날짜 오름차순, 최고 무게/e1RM/볼륨), 기록 없는 운동은 빈 배열/안내 문구, 시트 HTML 구성, open/close/closeOnOverlay, 자극 부위 보기 버튼(showAdd:false 유지) 검증, 완성 모듈(app.js/exerciseStimHeatmap.js) 미참조·미수정 검증, 정적 연동 검사
+- `test-list-quick-actions.js` 갱신: PR 카드 탭 → `PrTrendDetail.open()` 호출 검증 + `PrTrendDetail` 미로드 환경에서의 폴백 동작 검증 추가
+
+**2) 통계 추세 막대그래프 탭 → 그날 상세로 이동 (신규 독립 모듈 `trendChartQuickActions.js`)**
+- 대상: 통계 "최근 추세"(`#trendChart`, `app.js`의 `renderTrendChart()`)와 "유산소 추세"(`#cardioTrendChart`, `cardioTracker.js`의 `renderTrendChart()`/`getCardioTrend()`) — 둘 다 순수 시각화 막대라 탭해도 반응 없었음
+- 두 렌더 함수는 전혀 수정하지 않고, "몇 번째 막대가 어떤 workout인지"를 알아내기 위해 실제 렌더 로직과 동일한 정렬/자르기 규칙(완료 기록을 날짜 오름차순 정렬 후 최근 8개, 유산소는 이미 공개된 `CardioTracker.isCardioWorkout()` 필터 추가)을 독립적으로 재현
+- 막대를 탭하면 기록(Log) 탭의 "목록" 뷰로 이동해 그 날짜의 카드를 자동으로 펼치고 스크롤 + 1.5초간 시안색 테두리로 하이라이트. **캘린더(주간/월간) 뷰 대신 목록 뷰로 이동하는 방식을 선택**했는데, 캘린더 뷰로 이동하려면 `app.js`의 `let calWeekDate`(모듈 스코프에 걸쳐 있지만 공개 getter/setter가 없는 내부 상태)를 다른 스크립트에서 직접 재할당해야 해 안정성이 떨어지는 반면, 이미 완성돼 있는 `logList.js`(`LogList`)는 `sortWithIndex`/`getVisibleCount`/`loadMore`/`toggleDetail`을 전부 공개 API로 노출하고 있어 원하는 날짜의 카드를 정확히 찾아 펼치는 것까지 완전히 공개 API만으로 가능했음
+- 같은 날짜에 기록이 여러 건 있을 수 있는 엣지 케이스까지 고려: 막대의 워크아웃 객체를 완료 기록 배열(`getCompletedWorkouts()`)에서 참조 동일성(`indexOf`)으로 찾은 뒤, `loadWorkouts()`(진행중 포함 원본 배열)에서 진행중 기록을 건너뛰며 위치 기반으로 원본 인덱스를 역산(`completedIndexToRawIndex`)해 완전히 정확한 카드(`wi-{realIdx}`)를 특정 — 단순 날짜 문자열 매칭이 아니라 실제 그 막대에 해당하는 정확한 기록을 항상 찾음
+- 페이지네이션(`LogList`는 40개씩 더보기) 밖에 있는 오래된 기록도 필요한 만큼 `LogList.loadMore()`를 반복 호출해 자동으로 노출시킨 뒤 펼침
+- `ensureStyles()`로 막대 컬럼에 커서 포인터·active/focus 스타일과 하이라이트 애니메이션(`@keyframes tcqaFlash`, `box-shadow`만 사용해 기존 카드 배경을 해치지 않음)을 동적 주입
+- `index.html`에 `<script src="trendChartQuickActions.js"></script>`(logList.js 로드 이후) + 부트스트랩에 `TrendChartQuickActions.init()` 추가
+- `test-trend-chart-quick-actions.js` 신규 추가: 정렬 규칙 재현 검증, 진행중 기록이 섞인 상황에서의 `completedIndexToRawIndex` 위치 역산 검증, a11y 속성 부여, 막대 클릭/키보드(Enter) → `switchView`/`setLogTab`/`LogList.toggleDetail` 호출 검증, 페이지 밖 카드도 자동 더보기 후 노출되는지 검증, 하이라이트 부여·타이머로 제거되는지 검증, 완성 모듈(app.js/logList.js/cardioTracker.js) 미참조·미수정 검증, 정적 연동 검사
+
+**공통**
+- SW 캐시 `recovr-cache-v77`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `prTrendDetail.js`/`trendChartQuickActions.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 13개 동기화
+
+**실브라우저 검증 (Playwright + 시스템 Chrome, headless)**
+- 스쿼트 6주치(60→90kg 점증) + 유산소 2건을 심어 실제 클릭까지 수행: "스쿼트" PR 카드 탭 → 기록 추이 시트(6세션 e1RM 막대 70→105, 최고 무게 90kg/최고 e1RM 105.0kg/최고 세션 볼륨 1,350kg) 정상 오픈 → "자극 부위 보기" 버튼 탭 → 기존 자극 부위 히트맵 시트로 정상 전환. "최근 추세" 8개 막대 중 3번째 탭 → 목록 탭으로 이동해 정확히 그 날짜(8/8) 카드가 펼쳐지고 시안색 테두리로 하이라이트됨을 확인. "유산소 추세" 막대 탭도 동일하게 정확한 유산소 세션 카드가 펼쳐짐을 확인. 콘솔 에러/경고 0건(스크린샷으로 최종 확인)
+
+**무결성 검사**
+- JS 문법 검사: 전체 `*.js` 파일 통과 ✓
+- 단위 테스트 34개 스위트: ALL PASSED ✓ (`test-pr-trend-detail.js`/`test-trend-chart-quick-actions.js` 신규 포함)
+
+**머지**
+- 사용자 요청대로 이번 PR을 `main`에 머지 진행(아래 머지 결과 참고)
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v77`
+
+**현재 앱 버전**: `1.0.0`
+
+---
