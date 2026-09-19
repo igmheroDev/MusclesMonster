@@ -4,16 +4,27 @@
 // ============================================================
 
 const ExercisePicker = (() => {
+  // 상체가 가슴/등/어깨/팔로 세분화된 것과 동일한 수준으로, 하체도
+  // "하체" 하나로 뭉치지 않고 부위별(대퇴사두/둔근·햄스트링/내전·외전근/종아리)로
+  // 나눈다. 라벨은 app.js의 MUSCLE_LABELS를 그대로 재사용해 홈/통계 화면의
+  // 부위 명칭과 항상 일치하도록 함(하드코딩 이중 관리 방지).
+  function muscleLabel(key, fallback) {
+    return (typeof MUSCLE_LABELS !== 'undefined' && MUSCLE_LABELS[key]) ? MUSCLE_LABELS[key].name : fallback;
+  }
+
   const CATEGORY_CHIPS = [
-    { id: 'all',      label: '전체' },
-    { id: 'chest',    label: '가슴' },
-    { id: 'back',     label: '등' },
-    { id: 'shoulder', label: '어깨' },
-    { id: 'lower',    label: '하체' },
-    { id: 'arms',     label: '팔' },
-    { id: 'core',     label: '코어' },
-    { id: 'cardio',   label: '유산소' },
-    { id: 'mobility', label: '스트레칭' },
+    { id: 'all',        label: '전체' },
+    { id: 'chest',      label: muscleLabel('chest', '가슴') },
+    { id: 'back',       label: muscleLabel('back', '등') },
+    { id: 'shoulder',   label: muscleLabel('shoulder', '어깨') },
+    { id: 'quads',      label: muscleLabel('quads', '대퇴사두') },
+    { id: 'hamstrings', label: muscleLabel('hamstrings', '둔근/햄스트링') },
+    { id: 'adductors',  label: muscleLabel('adductors', '내전/외전근') },
+    { id: 'calves',     label: muscleLabel('calves', '종아리') },
+    { id: 'arms',       label: '팔' },
+    { id: 'core',       label: muscleLabel('core', '코어') },
+    { id: 'cardio',     label: '유산소' },
+    { id: 'mobility',   label: '스트레칭' },
   ];
 
   const EQUIPMENT_OPTIONS = [
@@ -27,7 +38,9 @@ const ExercisePicker = (() => {
     { id: 'other',      label: '기타' },
   ];
 
-  const LOWER_MUSCLES = new Set(['quads', 'hamstrings', 'adductors', 'calves']);
+  // 하체 부위는 상체(가슴/등/어깨)처럼 개별 칩으로 나누므로 우선순위만 정의.
+  // (한 운동이 여러 하체 부위를 동시에 매칭하는 경우 이 순서로 대표 부위 결정)
+  const LOWER_MUSCLE_PRIORITY = ['quads', 'hamstrings', 'adductors', 'calves'];
   const ARM_MUSCLES = new Set(['biceps', 'triceps', 'forearms']);
 
   const CHOSUNG = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
@@ -78,7 +91,8 @@ const ExercisePicker = (() => {
     if (muscles.includes('chest')) return 'chest';
     if (muscles.includes('back')) return 'back';
     if (muscles.includes('shoulder')) return 'shoulder';
-    if (muscles.some(m => LOWER_MUSCLES.has(m))) return 'lower';
+    const lowerMatch = LOWER_MUSCLE_PRIORITY.find(m => muscles.includes(m));
+    if (lowerMatch) return lowerMatch;
     if (muscles.some(m => ARM_MUSCLES.has(m))) return 'arms';
     if (muscles.includes('core')) return 'core';
     return 'all';
