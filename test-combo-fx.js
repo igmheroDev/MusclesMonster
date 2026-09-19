@@ -236,7 +236,7 @@ const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(html.includes('comboFx.js'), 'html script');
 assert(html.includes('comboBestCard'), 'html home card placeholder');
 assert(sw.includes('comboFx.js'), 'sw asset');
-assert(sw.includes('recovr-cache-v76'), 'sw cache bump');
+assert(sw.includes('recovr-cache-v77'), 'sw cache bump');
 
 const appJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 assert(appJs.includes('ComboFx.renderHomeCard'), 'app.js에 홈 카드 렌더 훅 연결됨');

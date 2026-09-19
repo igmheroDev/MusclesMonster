@@ -13,7 +13,8 @@
 // 이벤트 위임(delegation)으로 덧붙인다.
 //   - 회복 상태 카드(부위) 탭  → ExerciseStimHeatmap.openMuscle(muscle)
 //   - 주간 빈도 카드(부위) 탭  → ExerciseStimHeatmap.openMuscle(muscle)
-//   - 개인 기록 카드(운동) 탭  → ExerciseStimHeatmap.openExercise(name)
+//   - 개인 기록 카드(운동) 탭  → PrTrendDetail.open(name) (기록 추이 그래프,
+//     PrTrendDetail 미로드 시에만 ExerciseStimHeatmap.openExercise로 폴백)
 // ============================================================
 
 const ListQuickActions = (() => {
@@ -198,7 +199,9 @@ const ListQuickActions = (() => {
 
   // ------------------------------------------------------------
   // 통계 "🏆 개인 기록 (PR)" (#prList)
-  // 운동 카드를 탭하면 그 운동의 자극 부위 히트맵을 미리 보여준다.
+  // 운동 카드를 탭하면 그 운동의 기록 추이(무게/e1RM 그래프) 시트를 보여준다
+  // (PrTrendDetail 모듈, 자극 부위 히트맵은 그 시트 내 보조 버튼으로 이동).
+  // PrTrendDetail이 로드되지 않은 경우에만 기존 자극 부위 미리보기로 폴백한다.
   // ------------------------------------------------------------
   function enhancePrListCards() {
     const container = document.getElementById('prList');
@@ -206,15 +209,22 @@ const ListQuickActions = (() => {
     container.querySelectorAll('.muscle-card').forEach((card) => {
       const nameEl = card.querySelector && card.querySelector('.mc-name');
       const label = nameEl ? normalizeText(nameEl.textContent) : '';
-      enhanceA11y(card, label ? `${label} 자극 부위 보기` : undefined);
+      enhanceA11y(card, label ? `${label} 기록 추이 보기` : undefined);
     });
   }
 
   function activatePrListCard(card) {
     const nameEl = card.querySelector && card.querySelector('.mc-name');
     const name = normalizeText(nameEl ? nameEl.textContent : '');
+    if (!name) return;
+
+    if (typeof PrTrendDetail !== 'undefined' && typeof PrTrendDetail.open === 'function') {
+      PrTrendDetail.open(name);
+      return;
+    }
+
     const stim = getStim();
-    if (name && stim && typeof stim.openExercise === 'function') {
+    if (stim && typeof stim.openExercise === 'function') {
       stim.openExercise(name, { showAdd: false });
     }
   }

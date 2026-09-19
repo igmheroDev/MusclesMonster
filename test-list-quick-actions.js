@@ -185,6 +185,11 @@ global.ExerciseStimHeatmap = {
   openExercise(name, opts) { openExerciseCalls.push({ name, opts }); },
 };
 
+const prTrendOpenCalls = [];
+global.PrTrendDetail = {
+  open(name) { prTrendOpenCalls.push(name); },
+};
+
 const ListQuickActions = new Function(
   fs.readFileSync(path.join(__dirname, 'listQuickActions.js'), 'utf8') + '; return ListQuickActions;'
 )();
@@ -226,15 +231,22 @@ console.log('=== 5. 통계 "주간 부위별 빈도" 행 탭 → 해당 부위 �
 fire(freqList, 'click', tricepsRow.children[0]);
 assert(openMuscleCalls[openMuscleCalls.length - 1] === 'triceps', '삼두 행 탭 → openMuscle(triceps)');
 
-console.log('=== 6. 통계 "🏆 개인 기록(PR)" 카드 탭 → 그 운동의 자극 부위 시트 오픈 ===');
+console.log('=== 6. 통계 "🏆 개인 기록(PR)" 카드 탭 → 그 운동의 기록 추이 시트 오픈(PrTrendDetail) ===');
 fire(prList, 'click', squatCard);
-let lastCall = openExerciseCalls[openExerciseCalls.length - 1];
-assert(lastCall.name === '스쿼트', '스쿼트 카드 탭 → openExercise(스쿼트, ...)');
-assert(lastCall.opts && lastCall.opts.showAdd === false, 'PR 목록에서는 "이 운동 추가" 버튼 숨김(showAdd:false)');
+assert(prTrendOpenCalls[prTrendOpenCalls.length - 1] === '스쿼트', '스쿼트 카드 탭 → PrTrendDetail.open(스쿼트)');
+assert(openExerciseCalls.length === 0, 'PrTrendDetail이 있으면 자극 부위 시트로 폴백하지 않음');
 
 fire(prList, 'click', legPressCard);
-lastCall = openExerciseCalls[openExerciseCalls.length - 1];
-assert(lastCall.name === '레그프레스', '레그프레스 카드 탭 → openExercise(레그프레스, ...)');
+assert(prTrendOpenCalls[prTrendOpenCalls.length - 1] === '레그프레스', '레그프레스 카드 탭 → PrTrendDetail.open(레그프레스)');
+
+console.log('=== 6b. PrTrendDetail이 없는 환경에서는 기존 자극 부위 시트로 폴백 ===');
+const savedPrTrendDetail = global.PrTrendDetail;
+delete global.PrTrendDetail;
+fire(prList, 'click', squatCard);
+let lastCall = openExerciseCalls[openExerciseCalls.length - 1];
+assert(lastCall.name === '스쿼트', '폴백: 스쿼트 카드 탭 → openExercise(스쿼트, ...)');
+assert(lastCall.opts && lastCall.opts.showAdd === false, '폴백에서도 "이 운동 추가" 버튼 숨김(showAdd:false)');
+global.PrTrendDetail = savedPrTrendDetail;
 
 console.log('=== 7. 재렌더(innerHTML 교체) 이후에도 다시 탭 가능해야 함(MutationObserver 재적용) ===');
 // muscle-card 텍스트 교체(app.js가 실제로 하는 것처럼 이름이 바뀐 새 카드로 대체)
@@ -259,19 +271,27 @@ assert(!mhJs.includes('ListQuickActions'), 'muscleHeatmap.js 미참조');
 
 const lqaJs = fs.readFileSync(path.join(__dirname, 'listQuickActions.js'), 'utf8');
 assert(lqaJs.includes('ExerciseStimHeatmap.openMuscle') || lqaJs.includes("'openMuscle'"), 'ExerciseStimHeatmap.openMuscle 재사용');
-assert(lqaJs.includes('openExercise'), 'ExerciseStimHeatmap.openExercise 재사용');
+assert(lqaJs.includes('openExercise'), 'ExerciseStimHeatmap.openExercise 재사용(폴백)');
+assert(lqaJs.includes('PrTrendDetail.open'), 'PrTrendDetail.open 재사용');
+assert(!appJs.includes('PrTrendDetail'), 'app.js는 PrTrendDetail을 참조하지 않음');
 
 console.log('=== 9. 정적 연동 검사 (index.html / sw.js) ===');
 const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 assert(indexHtml.includes('<script src="listQuickActions.js"></script>'), '스크립트 등록');
+assert(indexHtml.includes('<script src="prTrendDetail.js"></script>'), 'prTrendDetail.js 스크립트 등록');
 assert(indexHtml.includes('ListQuickActions.init()'), '부트스트랩에서 init 호출');
 assert(indexHtml.indexOf('<script src="listQuickActions.js">') > indexHtml.indexOf('<script src="exerciseStimHeatmap.js">'),
   'ExerciseStimHeatmap 스크립트 이후에 로드됨(의존 모듈 먼저 로드)');
+assert(indexHtml.indexOf('<script src="listQuickActions.js">') > indexHtml.indexOf('<script src="prTrendDetail.js">'),
+  'PrTrendDetail 스크립트 이후에 로드됨(의존 모듈 먼저 로드)');
+assert(indexHtml.includes('id="prTrendOverlay"'), 'PR 기록 추이 시트 오버레이 등록');
 
 const swJs = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(swJs.includes("'./listQuickActions.js'"), 'sw ASSETS 등록');
 assert(swJs.includes("'/listQuickActions.js'"), 'sw NETWORK_FIRST 등록');
-assert(swJs.includes('recovr-cache-v76'), 'sw 캐시 버전 상승');
+assert(swJs.includes("'./prTrendDetail.js'"), 'sw ASSETS에 prTrendDetail.js 등록');
+assert(swJs.includes("'/prTrendDetail.js'"), 'sw NETWORK_FIRST에 prTrendDetail.js 등록');
+assert(swJs.includes('recovr-cache-v77'), 'sw 캐시 버전 상승');
 
 console.log(`\n=== 최종: ${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'} ===`);
 process.exit(failures === 0 ? 0 : 1);
