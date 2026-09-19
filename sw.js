@@ -48,6 +48,7 @@ const ASSETS = [
   './prTrendDetail.js',
   './listQuickActions.js',
   './cardioListQuickActions.js',
+  './trendChartQuickActions.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -98,6 +99,7 @@ const NETWORK_FIRST_PATHS = [
   '/prTrendDetail.js',
   '/listQuickActions.js',
   '/cardioListQuickActions.js',
+  '/trendChartQuickActions.js',
   '/sw.js',
 ];
 

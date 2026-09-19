@@ -1492,3 +1492,46 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 39 — 2026-09-19 (같은 PR 후속)
+
+**직전 세션에서 보류했던 마지막 두 항목 완료 + main 머지 요청**
+
+**1) PR 카드 탭 → 자극 부위 대신/보조로 "기록 추이" 그래프 (신규 독립 모듈 `prTrendDetail.js`)**
+- 사용자 요청: "진행해, 모든것을 완벽히 완료되면 메인에 머지해" → 직전 세션 "다음 세션 후보 작업" 1번(PR 리스트 탭 시 자극 부위 미리보기 대신/추가로 기록 추이 그래프)을 진행
+- `app.js`의 `renderPRList()`는 전혀 수정하지 않고, 그 함수가 쓰는 것과 동일한 이미 공개된 전역 함수(`getCompletedWorkouts`/`calcE1RM`/`getExerciseVolume`)만으로 세션별 최고 무게·e1RM·볼륨 집계 로직을 `prTrendDetail.js` 안에서 독립적으로 재현(`renderPRList`의 세트별 후보 산출 방식과 동일: `setDetails`가 있으면 세트별로, 없으면 대표 weight/reps 1건)
+- PR 카드를 탭하면 최근 8세션의 e1RM 막대그래프 + 전체 기간 최고 무게/e1RM/세션 볼륨 통계 타일을 보여주는 새 바텀시트(`#prTrendOverlay`, 기존 `.esh-overlay`/`.esh-sheet`/`.stats-grid`/`.stat-card` CSS 재사용, 신규 CSS 클래스 없음)가 열림
+- **자극 부위 정보는 삭제가 아니라 보조 동선으로 유지**: 시트 하단에 "🎯 이 운동의 자극 부위 보기" 버튼을 두어, 누르면 기존 `ExerciseStimHeatmap.openExercise(name, {showAdd:false})`를 그대로 재사용해 자극 부위 히트맵으로 이동(대체가 아니라 두 정보 모두 접근 가능하게 함)
+- `listQuickActions.js`의 `activatePrListCard()`만 수정(내가 지난 세션에 만든 모듈이라 이번 후속 요청에 맞춰 조정하는 것은 "완성 모듈 임의 수정 금지" 원칙 위반이 아님): `PrTrendDetail`이 로드돼 있으면 `PrTrendDetail.open(name)`으로 위임하고, 없는 환경에서는 기존 `ExerciseStimHeatmap.openExercise` 폴백을 그대로 유지
+- `index.html`에 `<script src="prTrendDetail.js"></script>`(listQuickActions.js보다 먼저 로드) + `#prTrendOverlay` div 1줄 추가
+- `test-pr-trend-detail.js` 신규 추가: `renderPRList()`와 동일한 세션별 집계 검증(날짜 오름차순, 최고 무게/e1RM/볼륨), 기록 없는 운동은 빈 배열/안내 문구, 시트 HTML 구성, open/close/closeOnOverlay, 자극 부위 보기 버튼(showAdd:false 유지) 검증, 완성 모듈(app.js/exerciseStimHeatmap.js) 미참조·미수정 검증, 정적 연동 검사
+- `test-list-quick-actions.js` 갱신: PR 카드 탭 → `PrTrendDetail.open()` 호출 검증 + `PrTrendDetail` 미로드 환경에서의 폴백 동작 검증 추가
+
+**2) 통계 추세 막대그래프 탭 → 그날 상세로 이동 (신규 독립 모듈 `trendChartQuickActions.js`)**
+- 대상: 통계 "최근 추세"(`#trendChart`, `app.js`의 `renderTrendChart()`)와 "유산소 추세"(`#cardioTrendChart`, `cardioTracker.js`의 `renderTrendChart()`/`getCardioTrend()`) — 둘 다 순수 시각화 막대라 탭해도 반응 없었음
+- 두 렌더 함수는 전혀 수정하지 않고, "몇 번째 막대가 어떤 workout인지"를 알아내기 위해 실제 렌더 로직과 동일한 정렬/자르기 규칙(완료 기록을 날짜 오름차순 정렬 후 최근 8개, 유산소는 이미 공개된 `CardioTracker.isCardioWorkout()` 필터 추가)을 독립적으로 재현
+- 막대를 탭하면 기록(Log) 탭의 "목록" 뷰로 이동해 그 날짜의 카드를 자동으로 펼치고 스크롤 + 1.5초간 시안색 테두리로 하이라이트. **캘린더(주간/월간) 뷰 대신 목록 뷰로 이동하는 방식을 선택**했는데, 캘린더 뷰로 이동하려면 `app.js`의 `let calWeekDate`(모듈 스코프에 걸쳐 있지만 공개 getter/setter가 없는 내부 상태)를 다른 스크립트에서 직접 재할당해야 해 안정성이 떨어지는 반면, 이미 완성돼 있는 `logList.js`(`LogList`)는 `sortWithIndex`/`getVisibleCount`/`loadMore`/`toggleDetail`을 전부 공개 API로 노출하고 있어 원하는 날짜의 카드를 정확히 찾아 펼치는 것까지 완전히 공개 API만으로 가능했음
+- 같은 날짜에 기록이 여러 건 있을 수 있는 엣지 케이스까지 고려: 막대의 워크아웃 객체를 완료 기록 배열(`getCompletedWorkouts()`)에서 참조 동일성(`indexOf`)으로 찾은 뒤, `loadWorkouts()`(진행중 포함 원본 배열)에서 진행중 기록을 건너뛰며 위치 기반으로 원본 인덱스를 역산(`completedIndexToRawIndex`)해 완전히 정확한 카드(`wi-{realIdx}`)를 특정 — 단순 날짜 문자열 매칭이 아니라 실제 그 막대에 해당하는 정확한 기록을 항상 찾음
+- 페이지네이션(`LogList`는 40개씩 더보기) 밖에 있는 오래된 기록도 필요한 만큼 `LogList.loadMore()`를 반복 호출해 자동으로 노출시킨 뒤 펼침
+- `ensureStyles()`로 막대 컬럼에 커서 포인터·active/focus 스타일과 하이라이트 애니메이션(`@keyframes tcqaFlash`, `box-shadow`만 사용해 기존 카드 배경을 해치지 않음)을 동적 주입
+- `index.html`에 `<script src="trendChartQuickActions.js"></script>`(logList.js 로드 이후) + 부트스트랩에 `TrendChartQuickActions.init()` 추가
+- `test-trend-chart-quick-actions.js` 신규 추가: 정렬 규칙 재현 검증, 진행중 기록이 섞인 상황에서의 `completedIndexToRawIndex` 위치 역산 검증, a11y 속성 부여, 막대 클릭/키보드(Enter) → `switchView`/`setLogTab`/`LogList.toggleDetail` 호출 검증, 페이지 밖 카드도 자동 더보기 후 노출되는지 검증, 하이라이트 부여·타이머로 제거되는지 검증, 완성 모듈(app.js/logList.js/cardioTracker.js) 미참조·미수정 검증, 정적 연동 검사
+
+**공통**
+- SW 캐시 `recovr-cache-v77`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `prTrendDetail.js`/`trendChartQuickActions.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 13개 동기화
+
+**실브라우저 검증 (Playwright + 시스템 Chrome, headless)**
+- 스쿼트 6주치(60→90kg 점증) + 유산소 2건을 심어 실제 클릭까지 수행: "스쿼트" PR 카드 탭 → 기록 추이 시트(6세션 e1RM 막대 70→105, 최고 무게 90kg/최고 e1RM 105.0kg/최고 세션 볼륨 1,350kg) 정상 오픈 → "자극 부위 보기" 버튼 탭 → 기존 자극 부위 히트맵 시트로 정상 전환. "최근 추세" 8개 막대 중 3번째 탭 → 목록 탭으로 이동해 정확히 그 날짜(8/8) 카드가 펼쳐지고 시안색 테두리로 하이라이트됨을 확인. "유산소 추세" 막대 탭도 동일하게 정확한 유산소 세션 카드가 펼쳐짐을 확인. 콘솔 에러/경고 0건(스크린샷으로 최종 확인)
+
+**무결성 검사**
+- JS 문법 검사: 전체 `*.js` 파일 통과 ✓
+- 단위 테스트 34개 스위트: ALL PASSED ✓ (`test-pr-trend-detail.js`/`test-trend-chart-quick-actions.js` 신규 포함)
+
+**머지**
+- 사용자 요청대로 이번 PR을 `main`에 머지 진행(아래 머지 결과 참고)
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v77`
+
+**현재 앱 버전**: `1.0.0`
+
+---
