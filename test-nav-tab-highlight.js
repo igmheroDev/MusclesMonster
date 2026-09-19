@@ -188,7 +188,7 @@ assert(indexHtml.includes('<script src="navTabHighlight.js"></script>'), 'index.
 const swJs = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(swJs.includes("'./navTabHighlight.js'"), 'sw ASSETS');
 assert(swJs.includes("'/navTabHighlight.js'"), 'sw NETWORK_FIRST');
-assert(swJs.includes('recovr-cache-v75'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v76'), 'sw cache bump');
 
 assert(NavTabHighlight.init() === true, '첫 init');
 assert(NavTabHighlight.init() === false, '중복 init 방지');

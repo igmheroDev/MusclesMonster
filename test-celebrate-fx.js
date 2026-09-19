@@ -167,6 +167,6 @@ const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(html.includes('celebrateFx.js'), 'html script');
 assert(sw.includes('celebrateFx.js'), 'sw asset');
-assert(sw.includes('recovr-cache-v75'), 'sw cache bump');
+assert(sw.includes('recovr-cache-v76'), 'sw cache bump');
 console.log(failures === 0 ? 'CelebrateFx tests passed ✓' : failures + ' failed');
 process.exit(failures === 0 ? 0 : 1);

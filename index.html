@@ -3733,6 +3733,9 @@
 <div class="esh-overlay" id="eshMuscleOverlay" onclick="ExerciseStimHeatmap.closeMuscleOnOverlay(event)"></div>
 <div class="esh-overlay" id="eshExerciseOverlay" onclick="ExerciseStimHeatmap.closeExerciseOnOverlay(event)"></div>
 
+<!-- 통계 유산소 카드(기구별/세부지표) 탭 시 상세 시트 -->
+<div class="esh-overlay" id="cqaOverlay" onclick="CardioListQuickActions.closeOnOverlay(event)"></div>
+
 <!-- ===================== 근성장/근손실 부위별 목록 시트 ===================== -->
 <div class="mgd-overlay" id="mgdOverlay" onclick="MuscleGrowthDetail.closeListOnOverlay(event)"></div>
 
@@ -3793,6 +3796,7 @@
 <script src="navTabHighlight.js"></script>
 <script src="heatmapModeTabs.js"></script>
 <script src="listQuickActions.js"></script>
-<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init(); if (typeof YoutubeSearchLink !== 'undefined') YoutubeSearchLink.init(); if (typeof HeatmapModeTabs !== 'undefined') HeatmapModeTabs.init(); if (typeof ListQuickActions !== 'undefined') ListQuickActions.init();</script>
+<script src="cardioListQuickActions.js"></script>
+<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init(); if (typeof YoutubeSearchLink !== 'undefined') YoutubeSearchLink.init(); if (typeof HeatmapModeTabs !== 'undefined') HeatmapModeTabs.init(); if (typeof ListQuickActions !== 'undefined') ListQuickActions.init(); if (typeof CardioListQuickActions !== 'undefined') CardioListQuickActions.init();</script>
 </body>
 </html>

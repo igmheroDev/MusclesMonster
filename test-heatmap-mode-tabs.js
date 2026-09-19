@@ -237,7 +237,7 @@ assert(appJs.includes('HeatmapModeTabs.afterHomeRender()'), 'renderHome 이후 �
 const swJs = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(swJs.includes("'./heatmapModeTabs.js'"), 'sw ASSETS');
 assert(swJs.includes("'/heatmapModeTabs.js'"), 'sw NETWORK_FIRST');
-assert(swJs.includes('recovr-cache-v75'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v76'), 'sw cache bump');
 
 HeatmapModeTabs.destroy();
 

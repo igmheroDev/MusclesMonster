@@ -1459,3 +1459,36 @@ MusclesMonster/
 **현재 앱 버전**: `1.0.0`
 
 ---
+
+### 세션 38 — 2026-09-19 (같은 PR 후속)
+
+**통계 유산소 카드 2곳에도 탭 인터랙션 추가 (신규 독립 모듈 `cardioListQuickActions.js`)**
+- 사용자 요청: 직전 세션에서 제안만 하고 보류했던 3가지 중 "3번 — 통계 유산소 세부 지표/유산소 기구별 카드"를 추천 방향대로 진행해달라고 요청
+- 대상: 통계 "이번 주 유산소 기구별"(`#cardioMachineList`, `cardioTracker.js`의 `renderMachineBreakdown()`)과 "유산소 세부 지표"(`#cardioMetricsStats`, `cardioMetrics.js`의 `renderStatsCard()`) — 둘 다 정보만 표시하는 정적 카드로, 클릭 핸들러가 전혀 없었음
+- 완성된 `cardioTracker.js`/`cardioMetrics.js`는 전혀 수정하지 않고, 신규 독립 모듈 `cardioListQuickActions.js`가 두 모듈의 기존 공개 API만 매니저 참조로 재사용해 탭 시 상세 시트를 새로 추가:
+  - **기구별 카드**(예: "🪜 천국의 계단 20분") 행 탭 → 그 기구의 최근 세션 목록(날짜·시간·거리/칼로리/심박 세부 지표가 있으면 함께) 바텀시트 표시. `CardioTracker.isCardioExercise`/`getExerciseMinutes`/`getWeeklyStats`/`formatMinutes`, `CardioMetrics.formatSummary` 재사용
+  - **세부 지표 카드**(주간 거리/칼로리/평균 심박 3개 타일) 탭 → 3개 타일 중 어떤 걸 탭해도 "이번 주 세션별 기록" 하나의 시트로 안내(세 숫자가 결국 같은 세션 데이터에서 나온 집계이므로 하나로 통합하는 게 자연스럽다고 판단). `CardioMetrics.normalizeMetrics`/`hasAny`/`formatSummary` 재사용
+  - **중요 발견**: 애초에 `CardioMetrics.getCardioExercises()`를 재사용하려 했으나 이 함수는 모듈 내부 전용(공개 API에 미노출)이라 런타임 에러(`is not a function`) 발생 — Playwright 실브라우저 검증 중 발견해 수정. `cardioMetrics.js`를 건드리는 대신, 이미 공개된 `CardioTracker.isCardioExercise()` + `CardioMetrics.normalizeMetrics/hasAny/formatSummary()`만으로 동일한 목록을 직접 재구성하도록 변경(완성 모듈 미수정 원칙 유지). 이후 단위 테스트의 `CardioMetrics` 목업에서도 `getCardioExercises`를 의도적으로 제외해, 앞으로 비공개 API에 실수로 의존하면 목업만으로 즉시 테스트가 실패하도록 방지책 마련
+  - 시트 UI는 `exerciseStimHeatmap.js`가 이미 정의한 `.esh-overlay`/`.esh-sheet`류 CSS를 그대로 재사용(전용 오버레이 `#cqaOverlay` 1개 div만 `index.html`에 추가, 신규 CSS 클래스 없음)
+  - 데이터가 없는 상태(`#cardioMetricsStats`가 안내 문구 카드 1개만 렌더할 때)는 `.stats-grid` 존재 여부로 구분해 탭 인터랙션을 부여하지 않음(탭 가능해 보이는 커서/포커스 스타일도 `.stats-grid .stat-card`로 스코프해 빈 상태엔 적용 안 되게 함)
+- `index.html`에 `<script src="cardioListQuickActions.js"></script>` 1줄 + `#cqaOverlay` div 1줄 + 부트스트랩에 `CardioListQuickActions.init()` 1줄 추가
+- SW 캐시 `recovr-cache-v76`, `ASSETS`/`NETWORK_FIRST_PATHS`에 `cardioListQuickActions.js` 추가, 캐시 버전을 하드코딩한 테스트 파일 13개 동기화
+- `test-cardio-list-quick-actions.js` 신규 추가: 행 텍스트→운동명 추출, 스타일 주입(데이터 있을 때만 스코프), 기구별/세부지표 카드 각각 클릭·키보드(Enter) 인터랙션, 지표 없는 세션은 세부지표 목록에서 제외되는지, 데이터 없는 상태로 전환 시 탭 무반응, 완성 모듈(cardioTracker.js/cardioMetrics.js) 미참조·미수정 검증, 스크립트·오버레이·sw.js 캐시 버전 등 정적 연동 검사
+
+**실브라우저 검증 (Playwright + 시스템 Chrome, headless)**
+- 유산소 운동(천국의 계단: 거리·칼로리·심박 포함, 로잉머신: 지표 없음)을 심어 실제 클릭까지 수행: "천국의 계단" 기구 카드 탭 → 최근 세션 시트("이번 주 합계 20분", "9/19 · 20분 · 1.5km · 220kcal · 심박 150") 정상 오픈, "주간 거리"/"주간 칼로리" 등 세부 지표 타일 탭 → "이번 주 세션별 기록" 시트에 지표가 있는 천국의 계단 세션만 정상 표시(로잉머신은 지표가 없어 제외됨을 확인). 콘솔 에러/경고 0건
+
+**무결성 검사**
+- JS 문법 검사: 전체 `*.js` 파일 통과 ✓
+- 단위 테스트 32개 스위트: ALL PASSED ✓ (`test-cardio-list-quick-actions.js` 신규 포함)
+
+**다음 세션 후보 작업**
+- [ ] PR 리스트 탭 시 자극 부위 미리보기 대신/추가로 운동별 기록 추이 그래프를 보여주는 기능 검토 (직전 세션에서 제안한 1번 항목, 아직 미착수)
+- [ ] 통계 "최근 추세" 막대그래프 탭 시 그날 상세로 이동하는 기능 검토 (직전 세션에서 제안한 2번 항목, 아직 미착수)
+- [ ] 앱 버전 1.1.0 정식 릴리스 검토
+
+**현재 sw.js 캐시 버전**: `recovr-cache-v76`
+
+**현재 앱 버전**: `1.0.0`
+
+---

@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v75';
+const CACHE_NAME = 'recovr-cache-v76';
 const ASSETS = [
   './',
   './index.html',
@@ -46,6 +46,7 @@ const ASSETS = [
   './navTabHighlight.js',
   './heatmapModeTabs.js',
   './listQuickActions.js',
+  './cardioListQuickActions.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -94,6 +95,7 @@ const NETWORK_FIRST_PATHS = [
   '/navTabHighlight.js',
   '/heatmapModeTabs.js',
   '/listQuickActions.js',
+  '/cardioListQuickActions.js',
   '/sw.js',
 ];
 
