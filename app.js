@@ -766,6 +766,15 @@ function getDurationLoad(ex) {
   return (ex.durationMin || 0) * 60 * DURATION_LOAD_PER_SECOND;
 }
 
+// 성능 최적화: MUSCLE_KEYWORDS의 각 키워드를 매 호출마다 정규화하는 대신
+// 모듈 로드 시 1회만 정규화해 캐싱(키워드 목록 자체는 상수라 변하지 않음).
+// 결과값(부위 매칭)이 달라지지는 않고, matchKeywordCategories()의 내부
+// 반복 비용만 줄인다.
+const NORMALIZED_MUSCLE_KEYWORDS = {};
+Object.keys(MUSCLE_KEYWORDS).forEach((key) => {
+  NORMALIZED_MUSCLE_KEYWORDS[key] = (MUSCLE_KEYWORDS[key] || []).map((kw) => normalizeExerciseName(kw));
+});
+
 // 운동명에서 매칭되는 부위 목록을 반환.
 // 키워드가 길수록(더 구체적일수록) 우선 매칭되도록 정렬해서 비교.
 function matchKeywordCategories(name, categoryOrder) {
@@ -774,10 +783,9 @@ function matchKeywordCategories(name, categoryOrder) {
   const matches = [];
 
   for (const key of categoryOrder) {
-    const keywords = MUSCLE_KEYWORDS[key] || [];
+    const normKeywords = NORMALIZED_MUSCLE_KEYWORDS[key] || [];
     let bestLen = 0;
-    for (const kw of keywords) {
-      const normKw = normalizeExerciseName(kw);
+    for (const normKw of normKeywords) {
       if (normalized.includes(normKw) && normKw.length > bestLen) {
         bestLen = normKw.length;
       }
@@ -795,14 +803,29 @@ function matchKeywordCategories(name, categoryOrder) {
   return [...new Set(top.map(m => m.key))];
 }
 
+// 성능 최적화: 운동명 → 부위/활동 매칭은 순수 함수(같은 이름은 항상 같은
+// 결과)인데, 실제 사용 데이터에서는 같은 운동명이 여러 세션에 걸쳐 수백~
+// 수천 번 반복 조회된다(회복도 계산·통계·추천 등 10곳 이상에서 호출).
+// 이름별 결과를 캐싱해 중복 키워드 스캔을 제거한다. 캐시는 값을 변경할
+// 수 없는(불변) 상수 배열 참조를 공유하지 않도록 매 호출마다 얕은 복사
+// 본을 반환해 호출부가 실수로 배열을 변형해도 캐시가 오염되지 않게 한다.
+const _musclesFromNameCache = new Map();
+const _activityTagsFromNameCache = new Map();
+
 // 부위(회복도 계산 대상) 매칭
 function getMusclesFromExerciseName(name) {
-  return matchKeywordCategories(name, MUSCLE_ORDER);
+  if (_musclesFromNameCache.has(name)) return _musclesFromNameCache.get(name).slice();
+  const result = matchKeywordCategories(name, MUSCLE_ORDER);
+  _musclesFromNameCache.set(name, result);
+  return result.slice();
 }
 
 // 유산소/모빌리티 등 비-근력 활동 매칭 (회복도 계산에는 영향 없음)
 function getActivityTagsFromExerciseName(name) {
-  return matchKeywordCategories(name, NON_MUSCLE_ORDER);
+  if (_activityTagsFromNameCache.has(name)) return _activityTagsFromNameCache.get(name).slice();
+  const result = matchKeywordCategories(name, NON_MUSCLE_ORDER);
+  _activityTagsFromNameCache.set(name, result);
+  return result.slice();
 }
 
 // Returns: { chest: { volume, lastWorkoutDate, recoveryPct, hoursElapsed, recoveryHours }, ... }
@@ -819,34 +842,52 @@ function calcMuscleRecovery(workouts, settings) {
     result[m] = { volume: 0, lastDate: null, recoveryPct: 100, hoursElapsed: null, recoveryHours: Math.round(muscleBase), exercises: [] };
   });
 
-  // For each muscle, find the most recent workout that hit it, and accumulate that session's volume for that muscle
-  MUSCLE_ORDER.forEach(muscleKey => {
-    let mostRecent = null;
-    let mostRecentDate = null;
+  // 부위별로 "가장 최근에 그 부위를 자극한 세션"을 찾는다.
+  // 성능 최적화: 기존에는 부위(11개)마다 전체 workouts를 처음부터 다시
+  // 훑어(O(11 × n)) 그 안에서 매번 getMusclesFromExerciseName을 다시
+  // 호출했다. 이제는 workouts를 1회만 순회하면서(O(n)) 한 세션 안의
+  // 운동이 어떤 부위들을 자극하는지 한 번만 계산해 여러 부위의 후보를
+  // 동시에 갱신한다. 결과(각 부위의 최신 세션/볼륨/운동 목록/동률 처리)는
+  // 기존 로직과 완전히 동일하다 — 순서만 뒤집었을 뿐 판단 기준은 그대로임.
+  const mostRecentByMuscle = {}; // muscleKey -> { volume, exercises, date, fatigue, dateObj }
 
-    workouts.forEach(w => {
-      const wDate = new Date(w.date + 'T12:00:00'); // assume midday
-      let sessionVolumeForMuscle = 0;
-      const exNames = [];
+  workouts.forEach(w => {
+    const wDate = new Date(w.date + 'T12:00:00'); // assume midday
+    const sessionVolumeByMuscle = {};
+    const sessionExNamesByMuscle = {};
 
-      (w.exercises || []).forEach(ex => {
-        const muscles = getMusclesFromExerciseName(ex.name);
-        if (muscles.includes(muscleKey)) {
-          const vol = ex.mode === 'duration' ? getDurationLoad(ex) : getExerciseVolume(ex);
-          sessionVolumeForMuscle += vol;
-          exNames.push(ex.name);
-        }
+    (w.exercises || []).forEach(ex => {
+      const muscles = getMusclesFromExerciseName(ex.name);
+      if (muscles.length === 0) return;
+      const vol = ex.mode === 'duration' ? getDurationLoad(ex) : getExerciseVolume(ex);
+      muscles.forEach(muscleKey => {
+        sessionVolumeByMuscle[muscleKey] = (sessionVolumeByMuscle[muscleKey] || 0) + vol;
+        if (!sessionExNamesByMuscle[muscleKey]) sessionExNamesByMuscle[muscleKey] = [];
+        sessionExNamesByMuscle[muscleKey].push(ex.name);
       });
-
-      if (sessionVolumeForMuscle > 0) {
-        if (!mostRecentDate || wDate > mostRecentDate) {
-          mostRecentDate = wDate;
-          mostRecent = { volume: sessionVolumeForMuscle, exercises: exNames, date: w.date, fatigue: w.fatigue || 3 };
-        }
-      }
     });
 
+    Object.keys(sessionVolumeByMuscle).forEach(muscleKey => {
+      const sessionVolumeForMuscle = sessionVolumeByMuscle[muscleKey];
+      if (sessionVolumeForMuscle <= 0) return;
+      const current = mostRecentByMuscle[muscleKey];
+      if (!current || wDate > current.dateObj) {
+        mostRecentByMuscle[muscleKey] = {
+          volume: sessionVolumeForMuscle,
+          exercises: sessionExNamesByMuscle[muscleKey],
+          date: w.date,
+          fatigue: w.fatigue || 3,
+          dateObj: wDate,
+        };
+      }
+    });
+  });
+
+  MUSCLE_ORDER.forEach(muscleKey => {
+    const mostRecent = mostRecentByMuscle[muscleKey];
+
     if (mostRecent) {
+      const mostRecentDate = mostRecent.dateObj;
       // 세션 시각을 항상 정오(T12:00:00)로 가정하므로, 당일 낮 12시 이전에 저장하면
       // 이론상 "경과 시간"이 음수가 될 수 있다. 실제로 아직 시간이 지나지 않은 것뿐이므로 0으로 클램프.
       const hoursElapsed = Math.max(0, (now - mostRecentDate) / (1000 * 60 * 60));
