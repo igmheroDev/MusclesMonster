@@ -1697,7 +1697,7 @@
   }
   .mh-accent-bar {
     height: 3px;
-    background: linear-gradient(90deg, var(--red) 0%, var(--orange) 25%, var(--yellow) 60%, var(--green) 100%);
+    background: linear-gradient(90deg, #ff3b5c 0%, #f5a524 45%, #3ee6b0 100%);
     margin: 0 -16px 14px;
     border-radius: 0;
   }
@@ -1741,6 +1741,7 @@
     background: #ffffff;
     border-radius: 14px;
     overflow: hidden;
+    perspective: 1000px;
   }
   body.light .mh-body-wrap {
     background: #ffffff;
@@ -1754,6 +1755,19 @@
     max-height: min(42vh, 360px);
     height: auto;
     display: block;
+    transition: transform 0.45s cubic-bezier(0.4, 0.15, 0.2, 1), opacity 0.35s ease;
+  }
+  .mh-body-wrap.mh-flipping .mh-svg {
+    transform: rotateY(90deg) scale(0.96);
+    opacity: 0.35;
+  }
+  .mh-region--ready {
+    filter: drop-shadow(0 0 3px rgba(62, 230, 176, 0.45));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mh-svg { transition: none !important; }
+    .mh-body-wrap.mh-flipping .mh-svg { transform: none; opacity: 1; }
+    .mh-region--low, .mh-region--mid { animation: none !important; }
   }
   .mh-card--empty {
     padding-bottom: 12px;
@@ -3778,6 +3792,8 @@
 <script src="muscleHeatmap.js"></script>
 <script src="exerciseMuscleMap.js"></script>
 <script src="exerciseStimHeatmap.js"></script>
+<script src="bodyMapLive.js"></script>
+<script src="workoutCompleteMap.js"></script>
 <script src="backupStorage.js"></script>
 <script src="backupWriter.js"></script>
 <script src="backupReconnect.js"></script>

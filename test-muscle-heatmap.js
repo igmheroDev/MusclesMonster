@@ -36,13 +36,18 @@ const MuscleHeatmap = new Function(
 
 assert(MuscleHeatmap.FRONT_REGIONS.length > 0, 'front regions');
 assert(MuscleHeatmap.BACK_REGIONS.length > 0, 'back regions');
-assert(MuscleHeatmap.getRecoveryColor(30, true) === 'var(--red)', 'red zone');
-assert(MuscleHeatmap.getRecoveryColor(50, true) === 'var(--orange)', 'orange zone');
-assert(MuscleHeatmap.getRecoveryColor(80, true) === 'var(--yellow)', 'yellow zone');
-assert(MuscleHeatmap.getRecoveryColor(99, true) === 'var(--green)', 'green zone');
+assert(MuscleHeatmap.getRecoveryColor(30, true) === MuscleHeatmap.CORAL, 'coral fatigued zone');
+assert(MuscleHeatmap.getRecoveryColor(50, true) === MuscleHeatmap.AMBER, 'amber recovering zone');
+assert(MuscleHeatmap.getRecoveryColor(80, true) === MuscleHeatmap.AMBER, 'amber almost-ready zone');
+assert(MuscleHeatmap.getRecoveryColor(99, true) === MuscleHeatmap.MINT, 'mint ready zone');
 assert(MuscleHeatmap.getRecoveryColor(100, false) === MuscleHeatmap.BASE_MUSCLE, 'no data base color');
 assert(MuscleHeatmap.BASE_MUSCLE === '#eeeeef', 'base muscle light gray');
 assert(MuscleHeatmap.TERRACOTTA === MuscleHeatmap.BASE_MUSCLE, 'terracotta alias');
+assert(MuscleHeatmap.MINT === '#3ee6b0', 'mint accent');
+assert(typeof MuscleHeatmap.getHoursUntilReady === 'function', 'hours until ready helper');
+assert(MuscleHeatmap.getHoursUntilReady('chest', {
+  chest: { lastDate: '2026-07-13', recoveryHours: 48, hoursElapsed: 20 },
+}) === 28, 'hours until ready calc');
 
 const frontMuscles = new Set(MuscleHeatmap.FRONT_REGIONS.map((r) => r.muscle));
 assert(frontMuscles.has('chest'), 'front has chest');

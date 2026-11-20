@@ -22,7 +22,10 @@ const MuscleHeatmap = (() => {
   };
 
   // 이미지/마스크 캐시 무효화 (SW·브라우저 캐시 잔존 방지)
-  const ASSET_VERSION = 'v53';
+  const ASSET_VERSION = 'v54';
+  const MINT = '#3ee6b0';
+  const AMBER = '#f5a524';
+  const CORAL = '#ff3b5c';
 
   function assetUrl(path) {
     return `${path}?v=${ASSET_VERSION}`;
@@ -115,18 +118,26 @@ const MuscleHeatmap = (() => {
 
   function getRecoveryColor(pct, hasData) {
     if (!hasData) return TERRACOTTA;
-    if (typeof getPctColor === 'function') return getPctColor(pct);
-    if (pct < 40) return 'var(--red)';
-    if (pct < 70) return 'var(--orange)';
-    if (pct < 95) return 'var(--yellow)';
-    return 'var(--green)';
+    // 목업 톤: 피로(coral) / 회복중(amber) / 준비(mint)
+    if (pct < 40) return CORAL;
+    if (pct < 70) return AMBER;
+    if (pct < 95) return AMBER;
+    return MINT;
   }
 
   function getRecoveryClass(pct, hasData) {
     if (!hasData) return 'mh-region--idle';
     if (pct < 40) return 'mh-region--low';
     if (pct < 70) return 'mh-region--mid';
-    return '';
+    if (pct < 95) return 'mh-region--mid';
+    return 'mh-region--ready';
+  }
+
+  function getHoursUntilReady(muscleKey, recovery) {
+    const r = recovery?.[muscleKey];
+    if (!r || r.lastDate === null) return null;
+    const needed = Math.max(0, (r.recoveryHours || 0) - (r.hoursElapsed || 0));
+    return Math.round(needed);
   }
 
   function getMuscleLabel(muscleKey) {
@@ -196,10 +207,9 @@ const MuscleHeatmap = (() => {
 
   function buildLegend() {
     const items = [
-      { color: 'var(--red)', label: '피로', sub: '~40%' },
-      { color: 'var(--orange)', label: '회복중', sub: '40~70%' },
-      { color: 'var(--yellow)', label: '준비됨', sub: '70~95%' },
-      { color: 'var(--green)', label: '최적', sub: '95%+' },
+      { color: CORAL, label: '피로', sub: '~40%' },
+      { color: AMBER, label: '회복중', sub: '40~95%' },
+      { color: MINT, label: '준비됨', sub: '95%+' },
     ];
     return items.map((item) => `
       <span class="mh-legend-item">
@@ -231,33 +241,67 @@ const MuscleHeatmap = (() => {
       </svg>`;
   }
 
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
   function setView(view) {
-    currentView = view === 'back' ? 'back' : 'front';
-    render(lastRecovery, lastActive);
+    const next = view === 'back' ? 'back' : 'front';
+    if (next === currentView) return;
+    currentView = next;
+    const wrap = (typeof document !== 'undefined' && document.querySelector)
+      ? document.querySelector('#muscleHeatmapCard .mh-body-wrap')
+      : null;
+    const reduce = prefersReducedMotion();
+    if (!wrap || reduce || typeof window === 'undefined' || !window.setTimeout) {
+      render(lastRecovery, lastActive);
+      return;
+    }
+    wrap.classList.add('mh-flipping');
+    window.setTimeout(() => {
+      render(lastRecovery, lastActive);
+    }, 220);
   }
 
   function onRegionTap(e) {
     const region = e.target.closest('.mh-region');
     if (!region) return;
     const label = region.dataset.label || '';
+    const muscle = region.dataset.muscle || '';
     const pct = region.dataset.pct;
     const tip = document.getElementById('mhTooltip');
     if (!tip) return;
 
     const pctNum = parseInt(pct, 10);
+    const hoursLeft = getHoursUntilReady(muscle, lastRecovery);
     let statusText = '기록 없음';
     let statusClass = '';
     if (pct) {
-      if (pctNum < 40) { statusText = `회복 ${pct}% · 피로 누적`; statusClass = 'low'; }
-      else if (pctNum < 70) { statusText = `회복 ${pct}% · 회복 중`; statusClass = 'mid'; }
-      else if (pctNum < 95) { statusText = `회복 ${pct}% · 준비됨`; statusClass = ''; }
-      else { statusText = `회복 ${pct}% · 최적 상태`; statusClass = 'good'; }
+      if (pctNum < 40) {
+        statusText = `회복 ${pct}% · 피로`;
+        statusClass = 'low';
+      } else if (pctNum < 95) {
+        statusText = `회복 ${pct}% · 회복 중`;
+        statusClass = 'mid';
+      } else {
+        statusText = `회복 ${pct}% · 준비됨`;
+        statusClass = 'good';
+      }
+      if (hoursLeft != null && hoursLeft > 0 && pctNum < 95) {
+        statusText += ` · ${hoursLeft}시간 후 준비`;
+      } else if (pctNum >= 95) {
+        statusText += ' · 지금 운동 가능';
+      }
     }
 
     tip.innerHTML = `<span class="mh-tip-label">${label}</span><span class="mh-tip-status ${statusClass}">${statusText}</span>`;
     tip.classList.add('visible');
     clearTimeout(tip._hideTimer);
-    tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 2800);
+    tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 3200);
   }
 
   function render(recovery, activeMuscles) {
@@ -317,6 +361,7 @@ const MuscleHeatmap = (() => {
     render,
     setView,
     getRecoveryColor,
+    getHoursUntilReady,
     getShortName,
     SHORT_NAMES,
     LABEL_POSITIONS,
@@ -327,5 +372,9 @@ const MuscleHeatmap = (() => {
     BODY_MASKS,
     BASE_MUSCLE,
     TERRACOTTA,
+    ASSET_VERSION,
+    MINT,
+    AMBER,
+    CORAL,
   };
 })();
