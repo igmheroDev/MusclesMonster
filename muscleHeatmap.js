@@ -16,16 +16,39 @@ const MuscleHeatmap = (() => {
     back: 'body-map-back.png',
   };
 
+  const BODY_IMAGES_DARK = {
+    front: 'body-map-front-dark.png',
+    back: 'body-map-back-dark.png',
+  };
+
   const BODY_MASKS = {
     front: 'body-mask-front.png',
     back: 'body-mask-back.png',
   };
 
   // 이미지/마스크 캐시 무효화 (SW·브라우저 캐시 잔존 방지)
-  const ASSET_VERSION = 'v53';
+  const ASSET_VERSION = 'v56';
+  const MINT = '#3ee6b0';
+  const AMBER = '#f5a524';
+  const CORAL = '#ff3b5c';
+  const IDLE_FILL = '#2c2c36';
+  const IDLE_STROKE = '#6a6a78';
 
   function assetUrl(path) {
     return `${path}?v=${ASSET_VERSION}`;
+  }
+
+  function isLightTheme() {
+    try {
+      return !!(typeof document !== 'undefined' && document.body && document.body.classList.contains('light'));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function getBodyImageSrc(view) {
+    const map = isLightTheme() ? BODY_IMAGES : BODY_IMAGES_DARK;
+    return assetUrl(map[view] || map.front);
   }
 
   // 테스트/하위호환용
@@ -49,26 +72,27 @@ const MuscleHeatmap = (() => {
     forearms: '전완',
   };
 
-  // 전면/후면 근육명 라벨 좌표 (viewBox 240×360, 좌측 또는 중앙 1회만)
+  // 사이드 콜아웃 라벨 (바디와 겹치지 않도록 좌/우 배치)
+  // anchor: 'end' = 왼쪽, 'start' = 오른쪽 / tip = 리더선이 향할 근육쪽 좌표
   const LABEL_POSITIONS = {
     front: {
-      shoulder: { x: 68, y: 78 },
-      chest: { x: 120, y: 96 },
-      biceps: { x: 70, y: 112 },
-      core: { x: 120, y: 148 },
-      forearms: { x: 48, y: 160 },
-      quads: { x: 92, y: 210 },
-      adductors: { x: 120, y: 208 },
-      calves: { x: 92, y: 290 },
+      shoulder: { x: 18, y: 78, anchor: 'end', tipX: 78, tipY: 78 },
+      chest: { x: 18, y: 100, anchor: 'end', tipX: 100, tipY: 96 },
+      biceps: { x: 18, y: 128, anchor: 'end', tipX: 72, tipY: 118 },
+      core: { x: 222, y: 148, anchor: 'start', tipX: 150, tipY: 148 },
+      forearms: { x: 18, y: 172, anchor: 'end', tipX: 52, tipY: 168 },
+      quads: { x: 222, y: 220, anchor: 'start', tipX: 158, tipY: 220 },
+      adductors: { x: 222, y: 200, anchor: 'start', tipX: 132, tipY: 205 },
+      calves: { x: 222, y: 292, anchor: 'start', tipX: 158, tipY: 292 },
     },
     back: {
-      shoulder: { x: 68, y: 82 },
-      back: { x: 120, y: 118 },
-      triceps: { x: 70, y: 112 },
-      forearms: { x: 48, y: 160 },
-      hamstrings: { x: 92, y: 210 },
-      adductors: { x: 120, y: 212 },
-      calves: { x: 92, y: 290 },
+      shoulder: { x: 18, y: 82, anchor: 'end', tipX: 78, tipY: 82 },
+      back: { x: 18, y: 118, anchor: 'end', tipX: 100, tipY: 118 },
+      triceps: { x: 18, y: 128, anchor: 'end', tipX: 72, tipY: 118 },
+      forearms: { x: 18, y: 172, anchor: 'end', tipX: 52, tipY: 168 },
+      hamstrings: { x: 222, y: 220, anchor: 'start', tipX: 158, tipY: 220 },
+      adductors: { x: 222, y: 200, anchor: 'start', tipX: 132, tipY: 208 },
+      calves: { x: 222, y: 292, anchor: 'start', tipX: 158, tipY: 292 },
     },
   };
 
@@ -115,18 +139,26 @@ const MuscleHeatmap = (() => {
 
   function getRecoveryColor(pct, hasData) {
     if (!hasData) return TERRACOTTA;
-    if (typeof getPctColor === 'function') return getPctColor(pct);
-    if (pct < 40) return 'var(--red)';
-    if (pct < 70) return 'var(--orange)';
-    if (pct < 95) return 'var(--yellow)';
-    return 'var(--green)';
+    // 목업 톤: 피로(coral) / 회복중(amber) / 준비(mint)
+    if (pct < 40) return CORAL;
+    if (pct < 70) return AMBER;
+    if (pct < 95) return AMBER;
+    return MINT;
   }
 
   function getRecoveryClass(pct, hasData) {
     if (!hasData) return 'mh-region--idle';
     if (pct < 40) return 'mh-region--low';
     if (pct < 70) return 'mh-region--mid';
-    return '';
+    if (pct < 95) return 'mh-region--mid';
+    return 'mh-region--ready';
+  }
+
+  function getHoursUntilReady(muscleKey, recovery) {
+    const r = recovery?.[muscleKey];
+    if (!r || r.lastDate === null) return null;
+    const needed = Math.max(0, (r.recoveryHours || 0) - (r.hoursElapsed || 0));
+    return Math.round(needed);
   }
 
   function getMuscleLabel(muscleKey) {
@@ -153,20 +185,22 @@ const MuscleHeatmap = (() => {
 
     return regions.map((region) => {
       const { pct, hasData } = getMuscleData(region.muscle, recovery);
-      const fill = hasData ? getRecoveryColor(pct, true) : 'transparent';
-      const opacity = hasData ? 0.55 : 0;
+      const fill = hasData ? getRecoveryColor(pct, true) : IDLE_FILL;
+      const opacity = hasData ? 0.72 : 0.55;
+      const stroke = hasData ? 'none' : IDLE_STROKE;
+      const strokeW = hasData ? 0 : 0.7;
       const label = getMuscleLabel(region.muscle);
       const title = hasData ? `${label} ${pct}%` : `${label} (기록 없음)`;
       const cls = getRecoveryClass(pct, hasData);
 
       return `<path class="mh-region ${cls}" data-muscle="${region.muscle}" data-label="${label}" data-pct="${hasData ? pct : ''}"
-        d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="none" pointer-events="all">
+        d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeW}" pointer-events="all">
         <title>${title}</title>
       </path>`;
     }).join('');
   }
 
-  /** 블렌드/마스크 밖에 그려 가독성 확보 — 근육명(+회복%) */
+  /** 사이드 콜아웃 — 활성(기록 있는) 부위만 표시해 바디와 겹침 방지 */
   function buildRegionLabels(view, recovery) {
     const positions = LABEL_POSITIONS[view] || {};
     const labeled = new Set();
@@ -177,29 +211,30 @@ const MuscleHeatmap = (() => {
 
       const pos = positions[muscle];
       const { pct, hasData } = getMuscleData(muscle, recovery);
-      const name = getShortName(muscle);
-      const fullLabel = getMuscleLabel(muscle);
+      if (!hasData) return '';
 
-      if (hasData) {
-        return `<text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="middle"
-            class="mh-region-label mh-region-label--active" data-muscle="${muscle}" pointer-events="none">
+      const name = getShortName(muscle);
+      const anchor = pos.anchor || 'middle';
+      const tipX = pos.tipX != null ? pos.tipX : pos.x;
+      const tipY = pos.tipY != null ? pos.tipY : pos.y;
+      const midX = anchor === 'end' ? pos.x + 8 : (anchor === 'start' ? pos.x - 8 : pos.x);
+
+      return `<g class="mh-label-group" data-muscle="${muscle}" pointer-events="none">
+          <path class="mh-label-leader" d="M${pos.x} ${pos.y} L${midX} ${pos.y} L${tipX} ${tipY}"/>
+          <text x="${pos.x}" y="${pos.y}" text-anchor="${anchor}" dominant-baseline="middle"
+            class="mh-region-label mh-region-label--active">
             <tspan x="${pos.x}" dy="-5" class="mh-region-name">${name}</tspan>
             <tspan x="${pos.x}" dy="12" class="mh-region-pct">${pct}%</tspan>
-          </text>`;
-      }
-
-      return `<text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="middle"
-          class="mh-region-label mh-region-label--idle" data-muscle="${muscle}"
-          aria-label="${fullLabel}" pointer-events="none">${name}</text>`;
+          </text>
+        </g>`;
     }).join('');
   }
 
   function buildLegend() {
     const items = [
-      { color: 'var(--red)', label: '피로', sub: '~40%' },
-      { color: 'var(--orange)', label: '회복중', sub: '40~70%' },
-      { color: 'var(--yellow)', label: '준비됨', sub: '70~95%' },
-      { color: 'var(--green)', label: '최적', sub: '95%+' },
+      { color: CORAL, label: '피로', sub: '~40%' },
+      { color: AMBER, label: '회복중', sub: '40~95%' },
+      { color: MINT, label: '준비됨', sub: '95%+' },
     ];
     return items.map((item) => `
       <span class="mh-legend-item">
@@ -209,11 +244,12 @@ const MuscleHeatmap = (() => {
   }
 
   function buildSvg(view, recovery) {
-    const src = assetUrl(BODY_IMAGES[view] || BODY_IMAGES.front);
+    const src = getBodyImageSrc(view);
     const mask = assetUrl(BODY_MASKS[view] || BODY_MASKS.front);
     const maskId = `mhMask-${view}`;
+    const themeClass = isLightTheme() ? 'mh-svg--light' : 'mh-svg--dark';
     return `
-      <svg class="mh-svg" viewBox="0 0 ${VIEWBOX_W} ${VIEWBOX_H}" role="img" aria-label="근육 회복 히트맵 ${view === 'back' ? '후면' : '전면'}">
+      <svg class="mh-svg ${themeClass}" viewBox="0 0 ${VIEWBOX_W} ${VIEWBOX_H}" role="img" aria-label="근육 회복 히트맵 ${view === 'back' ? '후면' : '전면'}">
         <defs>
           <mask id="${maskId}">
             <image href="${mask}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
@@ -222,7 +258,7 @@ const MuscleHeatmap = (() => {
         </defs>
         <image class="mh-body-image" href="${src}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
           preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
-        <g class="mh-muscles" mask="url(#${maskId})" style="mix-blend-mode:multiply">
+        <g class="mh-muscles" mask="url(#${maskId})">
           ${buildRegionPaths(view, recovery)}
         </g>
         <g class="mh-labels" aria-hidden="false">
@@ -231,33 +267,67 @@ const MuscleHeatmap = (() => {
       </svg>`;
   }
 
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
   function setView(view) {
-    currentView = view === 'back' ? 'back' : 'front';
-    render(lastRecovery, lastActive);
+    const next = view === 'back' ? 'back' : 'front';
+    if (next === currentView) return;
+    currentView = next;
+    const wrap = (typeof document !== 'undefined' && document.querySelector)
+      ? document.querySelector('#muscleHeatmapCard .mh-body-wrap')
+      : null;
+    const reduce = prefersReducedMotion();
+    if (!wrap || reduce || typeof window === 'undefined' || !window.setTimeout) {
+      render(lastRecovery, lastActive);
+      return;
+    }
+    wrap.classList.add('mh-flipping');
+    window.setTimeout(() => {
+      render(lastRecovery, lastActive);
+    }, 220);
   }
 
   function onRegionTap(e) {
     const region = e.target.closest('.mh-region');
     if (!region) return;
     const label = region.dataset.label || '';
+    const muscle = region.dataset.muscle || '';
     const pct = region.dataset.pct;
     const tip = document.getElementById('mhTooltip');
     if (!tip) return;
 
     const pctNum = parseInt(pct, 10);
+    const hoursLeft = getHoursUntilReady(muscle, lastRecovery);
     let statusText = '기록 없음';
     let statusClass = '';
     if (pct) {
-      if (pctNum < 40) { statusText = `회복 ${pct}% · 피로 누적`; statusClass = 'low'; }
-      else if (pctNum < 70) { statusText = `회복 ${pct}% · 회복 중`; statusClass = 'mid'; }
-      else if (pctNum < 95) { statusText = `회복 ${pct}% · 준비됨`; statusClass = ''; }
-      else { statusText = `회복 ${pct}% · 최적 상태`; statusClass = 'good'; }
+      if (pctNum < 40) {
+        statusText = `회복 ${pct}% · 피로`;
+        statusClass = 'low';
+      } else if (pctNum < 95) {
+        statusText = `회복 ${pct}% · 회복 중`;
+        statusClass = 'mid';
+      } else {
+        statusText = `회복 ${pct}% · 준비됨`;
+        statusClass = 'good';
+      }
+      if (hoursLeft != null && hoursLeft > 0 && pctNum < 95) {
+        statusText += ` · ${hoursLeft}시간 후 준비`;
+      } else if (pctNum >= 95) {
+        statusText += ' · 지금 운동 가능';
+      }
     }
 
     tip.innerHTML = `<span class="mh-tip-label">${label}</span><span class="mh-tip-status ${statusClass}">${statusText}</span>`;
     tip.classList.add('visible');
     clearTimeout(tip._hideTimer);
-    tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 2800);
+    tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 3200);
   }
 
   function render(recovery, activeMuscles) {
@@ -317,6 +387,7 @@ const MuscleHeatmap = (() => {
     render,
     setView,
     getRecoveryColor,
+    getHoursUntilReady,
     getShortName,
     SHORT_NAMES,
     LABEL_POSITIONS,
@@ -324,8 +395,16 @@ const MuscleHeatmap = (() => {
     BACK_REGIONS,
     BODY_SILHOUETTE,
     BODY_IMAGES,
+    BODY_IMAGES_DARK,
     BODY_MASKS,
+    getBodyImageSrc,
     BASE_MUSCLE,
     TERRACOTTA,
+    ASSET_VERSION,
+    MINT,
+    AMBER,
+    CORAL,
+    IDLE_FILL,
+    IDLE_STROKE,
   };
 })();

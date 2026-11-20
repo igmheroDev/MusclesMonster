@@ -36,13 +36,18 @@ const MuscleHeatmap = new Function(
 
 assert(MuscleHeatmap.FRONT_REGIONS.length > 0, 'front regions');
 assert(MuscleHeatmap.BACK_REGIONS.length > 0, 'back regions');
-assert(MuscleHeatmap.getRecoveryColor(30, true) === 'var(--red)', 'red zone');
-assert(MuscleHeatmap.getRecoveryColor(50, true) === 'var(--orange)', 'orange zone');
-assert(MuscleHeatmap.getRecoveryColor(80, true) === 'var(--yellow)', 'yellow zone');
-assert(MuscleHeatmap.getRecoveryColor(99, true) === 'var(--green)', 'green zone');
+assert(MuscleHeatmap.getRecoveryColor(30, true) === MuscleHeatmap.CORAL, 'coral fatigued zone');
+assert(MuscleHeatmap.getRecoveryColor(50, true) === MuscleHeatmap.AMBER, 'amber recovering zone');
+assert(MuscleHeatmap.getRecoveryColor(80, true) === MuscleHeatmap.AMBER, 'amber almost-ready zone');
+assert(MuscleHeatmap.getRecoveryColor(99, true) === MuscleHeatmap.MINT, 'mint ready zone');
 assert(MuscleHeatmap.getRecoveryColor(100, false) === MuscleHeatmap.BASE_MUSCLE, 'no data base color');
 assert(MuscleHeatmap.BASE_MUSCLE === '#eeeeef', 'base muscle light gray');
 assert(MuscleHeatmap.TERRACOTTA === MuscleHeatmap.BASE_MUSCLE, 'terracotta alias');
+assert(MuscleHeatmap.MINT === '#3ee6b0', 'mint accent');
+assert(typeof MuscleHeatmap.getHoursUntilReady === 'function', 'hours until ready helper');
+assert(MuscleHeatmap.getHoursUntilReady('chest', {
+  chest: { lastDate: '2026-07-13', recoveryHours: 48, hoursElapsed: 20 },
+}) === 28, 'hours until ready calc');
 
 const frontMuscles = new Set(MuscleHeatmap.FRONT_REGIONS.map((r) => r.muscle));
 assert(frontMuscles.has('chest'), 'front has chest');
@@ -73,7 +78,7 @@ assert(typeof MuscleHeatmap.setView === 'function', 'setView exists');
 assert(MuscleHeatmap.SHORT_NAMES.chest === '가슴', 'short name chest');
 assert(MuscleHeatmap.SHORT_NAMES.hamstrings === '햄스', 'short name hamstrings');
 assert(MuscleHeatmap.getShortName('quads') === '대퇴', 'getShortName quads');
-assert(MuscleHeatmap.LABEL_POSITIONS.front.chest?.x === 120, 'front chest label pos');
+assert(MuscleHeatmap.LABEL_POSITIONS.front.chest?.x === 18, 'front chest label pos');
 assert(MuscleHeatmap.LABEL_POSITIONS.back.back?.y > 0, 'back label pos');
 assert(Object.keys(MuscleHeatmap.LABEL_POSITIONS.front).length >= 7, 'front has multiple labels');
 assert(Object.keys(MuscleHeatmap.LABEL_POSITIONS.back).length >= 6, 'back has multiple labels');
@@ -97,12 +102,11 @@ MuscleHeatmap.render({
 }, ['chest', 'back']);
 const html = global.__mhCard.innerHTML;
 assert(html.includes('mh-region-label'), 'renders label class');
+assert(html.includes('mh-label-group') || html.includes('mh-label-leader'), 'side callout labels');
 assert(html.includes('가슴'), 'renders chest name');
 assert(html.includes('72%'), 'renders chest pct');
 assert(html.includes('mh-labels'), 'labels group outside blend');
-assert(html.includes('코어'), 'renders idle core name on front');
-assert(html.includes('이두'), 'renders idle biceps name on front');
-assert(html.includes('대퇴'), 'renders idle quads short name');
+assert(!html.includes('>코어<') || html.includes('mh-label-group'), 'idle labels omitted or grouped');
 
 MuscleHeatmap.setView('back');
 const backHtml = global.__mhCard.innerHTML;
