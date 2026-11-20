@@ -103,8 +103,9 @@ const BodyMapLive = (() => {
       .bml-flip-icon { font-size: 16px; line-height: 1; }
       .bml-stage {
         perspective: 900px;
-        width: min(100%, 220px);
+        width: min(100%, 240px);
         margin: 0 auto;
+        background: transparent;
       }
       .bml-flipper {
         position: relative;
@@ -123,11 +124,27 @@ const BodyMapLive = (() => {
         inset: 0;
         transform: rotateY(180deg);
       }
-      .bml-svg { width: 100%; height: auto; display: block; }
+      .bml-face-inner { background: transparent; }
+      .bml-svg { width: 100%; height: auto; display: block; background: transparent; }
+      body:not(.light) .bml-svg .bml-body-image {
+        filter: none;
+        opacity: 0.95;
+      }
       .bml-region {
-        transition: fill-opacity 0.35s ease, fill 0.35s ease;
+        transition: fill-opacity 0.35s ease, fill 0.35s ease, filter 0.35s ease;
         cursor: pointer;
       }
+      .bml-region--idle {
+        fill: #2c2c36;
+        fill-opacity: 0.55;
+        stroke: #6a6a78;
+        stroke-width: 0.7px;
+      }
+      .bml-region--active {
+        filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.9)) drop-shadow(0 0 14px rgba(255, 59, 92, 0.45));
+      }
+      body.light .bml-region--active { filter: drop-shadow(0 0 4px rgba(255, 59, 92, 0.5)); }
+      body.light .bml-svg .bml-body-image { filter: none; opacity: 1; }
       .bml-pop {
         position: absolute;
         z-index: 3;
@@ -226,9 +243,17 @@ const BodyMapLive = (() => {
   }
 
   function getBodyAssets(view) {
-    const images = (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.BODY_IMAGES)
-      ? MuscleHeatmap.BODY_IMAGES
-      : { front: 'body-map-front.png', back: 'body-map-back.png' };
+    const isLight = !!(typeof document !== 'undefined' && document.body?.classList?.contains('light'));
+    let images;
+    if (typeof MuscleHeatmap !== 'undefined') {
+      if (!isLight && MuscleHeatmap.BODY_IMAGES_DARK) images = MuscleHeatmap.BODY_IMAGES_DARK;
+      else images = MuscleHeatmap.BODY_IMAGES;
+    }
+    if (!images) {
+      images = isLight
+        ? { front: 'body-map-front.png', back: 'body-map-back.png' }
+        : { front: 'body-map-front-dark.png', back: 'body-map-back-dark.png' };
+    }
     const masks = (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.BODY_MASKS)
       ? MuscleHeatmap.BODY_MASKS
       : { front: 'body-mask-front.png', back: 'body-mask-back.png' };
@@ -256,10 +281,14 @@ const BodyMapLive = (() => {
     const maskId = `bmlMask-${view}`;
     const paths = regions.map((region) => {
       const load = loads[region.muscle] || 0;
-      const opacity = intensityOpacity(load);
-      const fill = load > 0 ? CORAL : 'transparent';
-      return `<path class="bml-region" data-muscle="${region.muscle}" data-view="${view}"
-        d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="none"></path>`;
+      const active = load > 0;
+      const opacity = active ? intensityOpacity(load) : 0.55;
+      const fill = active ? CORAL : '#2c2c36';
+      const stroke = active ? 'none' : '#6a6a78';
+      const strokeW = active ? 0 : 0.7;
+      const cls = active ? 'bml-region bml-region--active' : 'bml-region bml-region--idle';
+      return `<path class="${cls}" data-muscle="${region.muscle}" data-view="${view}"
+        d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeW}"></path>`;
     }).join('');
 
     let popHtml = '';
@@ -288,9 +317,9 @@ const BodyMapLive = (() => {
                 preserveAspectRatio="xMidYMid meet"/>
             </mask>
           </defs>
-          <image href="${assets.image}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
+          <image class="bml-body-image" href="${assets.image}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
             preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
-          <g mask="url(#${maskId})" style="mix-blend-mode:multiply">${paths}</g>
+          <g mask="url(#${maskId})">${paths}</g>
         </svg>
         ${popHtml}
       </div>`;

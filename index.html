@@ -1737,21 +1737,23 @@
     position: relative;
     display: flex;
     justify-content: center;
-    padding: 8px 0 4px;
-    background: #ffffff;
+    padding: 4px 0 2px;
+    background: transparent;
     border-radius: 14px;
-    overflow: hidden;
+    overflow: visible;
     perspective: 1000px;
   }
   body.light .mh-body-wrap {
     background: #ffffff;
+    overflow: hidden;
+    padding: 8px 0 4px;
   }
   body.light .mh-card {
     background: var(--surface);
   }
   .mh-svg {
     width: 100%;
-    max-width: 240px;
+    max-width: 260px;
     max-height: min(42vh, 360px);
     height: auto;
     display: block;
@@ -1761,7 +1763,31 @@
     transform: rotateY(90deg) scale(0.96);
     opacity: 0.35;
   }
-  .mh-region--ready {
+  /* 다크: 투명 PNG 실루엣 사용 — 추가 invert 불필요 */
+  body:not(.light) .mh-body-image {
+    filter: none;
+    opacity: 0.95;
+  }
+  body:not(.light) .mh-muscles {
+    mix-blend-mode: normal !important;
+  }
+  body:not(.light) .mh-region--idle {
+    fill: #2c2c36 !important;
+    fill-opacity: 0.72 !important;
+    stroke: #6a6a78 !important;
+    stroke-width: 0.7px;
+    stroke-opacity: 0.85;
+  }
+  body:not(.light) .mh-region--low {
+    filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.9)) drop-shadow(0 0 14px rgba(255, 59, 92, 0.45));
+  }
+  body:not(.light) .mh-region--mid {
+    filter: drop-shadow(0 0 5px rgba(245, 165, 36, 0.85)) drop-shadow(0 0 12px rgba(245, 165, 36, 0.4));
+  }
+  body:not(.light) .mh-region--ready {
+    filter: drop-shadow(0 0 5px rgba(62, 230, 176, 0.9)) drop-shadow(0 0 14px rgba(62, 230, 176, 0.45));
+  }
+  body.light .mh-region--ready {
     filter: drop-shadow(0 0 3px rgba(62, 230, 176, 0.45));
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1804,27 +1830,56 @@
     letter-spacing: -0.02em;
     pointer-events: none;
     paint-order: stroke fill;
-    stroke: rgba(255,255,255,0.92);
-    stroke-width: 2.5px;
     stroke-linejoin: round;
   }
-  .mh-region-label--active {
+  /* 다크: 사이드 콜아웃 — 바디 위에 겹치지 않게 */
+  body:not(.light) .mh-region-label {
+    stroke: rgba(10, 10, 15, 0.92);
+    stroke-width: 3px;
+  }
+  body:not(.light) .mh-region-label--active {
+    fill: #f0f0f5;
+    font-size: 9.5px;
+  }
+  body:not(.light) .mh-region-label--idle {
+    fill: #8a8a9a;
+    font-size: 8px;
+    font-weight: 600;
+    opacity: 0.55;
+  }
+  body:not(.light) .mh-region-pct {
+    fill: #3ee6b0;
+    font-size: 8px;
+    font-weight: 700;
+  }
+  body.light .mh-region-label {
+    stroke: rgba(255,255,255,0.92);
+    stroke-width: 2.5px;
+  }
+  body.light .mh-region-label--active {
     fill: #1a1a22;
     font-size: 9px;
   }
-  .mh-region-label--idle {
+  body.light .mh-region-label--idle {
     fill: #6b6b78;
     font-size: 8.5px;
     font-weight: 600;
     stroke: rgba(255,255,255,0.85);
     stroke-width: 2px;
   }
-  .mh-region-name { font-weight: 800; }
-  .mh-region-pct {
+  body.light .mh-region-pct {
     font-size: 8px;
     font-weight: 700;
     fill: #2a2a35;
   }
+  .mh-region-name { font-weight: 800; }
+  .mh-label-leader {
+    stroke: rgba(255,255,255,0.18);
+    stroke-width: 1;
+    fill: none;
+    pointer-events: none;
+  }
+  body.light .mh-label-leader { stroke: rgba(0,0,0,0.15); }
   .mh-tooltip {
     position: absolute;
     bottom: 6px;

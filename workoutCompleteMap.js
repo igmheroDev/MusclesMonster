@@ -96,10 +96,26 @@ const WorkoutCompleteMap = (() => {
         color: var(--muted, #6b6b85);
       }
       .wcm-map-wrap {
-        width: min(210px, 70%);
+        width: min(230px, 78%);
         margin: 12px auto 8px;
+        background: transparent;
       }
-      .wcm-svg { width: 100%; height: auto; display: block; }
+      .wcm-svg { width: 100%; height: auto; display: block; background: transparent; }
+      body:not(.light) .wcm-svg .wcm-body-image {
+        filter: none;
+        opacity: 0.95;
+      }
+      body.light .wcm-svg .wcm-body-image { filter: none; opacity: 1; }
+      .wcm-region--idle {
+        fill: #2c2c36;
+        fill-opacity: 0.55;
+        stroke: #6a6a78;
+        stroke-width: 0.7px;
+      }
+      .wcm-region--active {
+        filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.9)) drop-shadow(0 0 14px rgba(255, 59, 92, 0.45));
+      }
+      body.light .wcm-region--active { filter: drop-shadow(0 0 4px rgba(255, 59, 92, 0.45)); }
       .wcm-stats {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
@@ -210,7 +226,18 @@ const WorkoutCompleteMap = (() => {
   }
 
   function assetUrl(path) {
-    return `${path}?v=v53`;
+    return `${path}?v=v56`;
+  }
+
+  function getBodyImages() {
+    const isLight = !!(typeof document !== 'undefined' && document.body?.classList?.contains('light'));
+    if (typeof MuscleHeatmap !== 'undefined') {
+      if (!isLight && MuscleHeatmap.BODY_IMAGES_DARK) return MuscleHeatmap.BODY_IMAGES_DARK;
+      if (MuscleHeatmap.BODY_IMAGES) return MuscleHeatmap.BODY_IMAGES;
+    }
+    return isLight
+      ? { front: 'body-map-front.png', back: 'body-map-back.png' }
+      : { front: 'body-map-front-dark.png', back: 'body-map-back-dark.png' };
   }
 
   function intensityOpacity(score) {
@@ -298,18 +325,20 @@ const WorkoutCompleteMap = (() => {
     const regions = (typeof MuscleHeatmap !== 'undefined')
       ? (view === 'back' ? MuscleHeatmap.BACK_REGIONS : MuscleHeatmap.FRONT_REGIONS)
       : [];
-    const images = (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.BODY_IMAGES)
-      ? MuscleHeatmap.BODY_IMAGES
-      : { front: 'body-map-front.png', back: 'body-map-back.png' };
+    const images = getBodyImages();
     const masks = (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.BODY_MASKS)
       ? MuscleHeatmap.BODY_MASKS
       : { front: 'body-mask-front.png', back: 'body-mask-back.png' };
     const maskId = `wcmMask-${view}`;
     const paths = (regions || []).map((region) => {
       const score = loads[region.muscle] || 0;
-      const opacity = intensityOpacity(score);
-      const fill = score > 0 ? intensityColor(score) : 'transparent';
-      return `<path d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="none"></path>`;
+      const active = score > 0;
+      const opacity = active ? intensityOpacity(score) : 0.55;
+      const fill = active ? intensityColor(score) : '#2c2c36';
+      const stroke = active ? 'none' : '#6a6a78';
+      const strokeW = active ? 0 : 0.7;
+      const cls = active ? 'wcm-region--active' : 'wcm-region--idle';
+      return `<path class="${cls}" d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeW}"></path>`;
     }).join('');
 
     return `
@@ -320,9 +349,9 @@ const WorkoutCompleteMap = (() => {
               preserveAspectRatio="xMidYMid meet"/>
           </mask>
         </defs>
-        <image href="${assetUrl(images[view] || images.front)}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
+        <image class="wcm-body-image" href="${assetUrl(images[view] || images.front)}" x="0" y="0" width="${VIEWBOX_W}" height="${VIEWBOX_H}"
           preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
-        <g mask="url(#${maskId})" style="mix-blend-mode:multiply">${paths}</g>
+        <g mask="url(#${maskId})">${paths}</g>
       </svg>`;
   }
 
