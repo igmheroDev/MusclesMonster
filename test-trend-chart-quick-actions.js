@@ -269,7 +269,7 @@ assert(indexHtml.indexOf('<script src="trendChartQuickActions.js">') > indexHtml
 const swJs = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(swJs.includes("'./trendChartQuickActions.js'"), 'sw ASSETS 등록');
 assert(swJs.includes("'/trendChartQuickActions.js'"), 'sw NETWORK_FIRST 등록');
-assert(swJs.includes('recovr-cache-v92'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v94'), 'sw cache bump');
 
 console.log(`\n=== 최종: ${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'} ===`);
 process.exit(failures === 0 ? 0 : 1);
