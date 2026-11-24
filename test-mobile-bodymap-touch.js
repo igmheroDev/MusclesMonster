@@ -129,38 +129,26 @@ async function run() {
       const page = await context.newPage();
       await page.addInitScript((workouts) => {
         localStorage.setItem('recovr_workouts_v1', JSON.stringify(workouts));
-        localStorage.setItem('recovr_bodymap_view_mode', '2d');
         localStorage.setItem('recovr_theme_v1', 'dark');
       }, SAMPLE_WORKOUTS);
 
       await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
       await page.waitForSelector('#view-home.view.active', { timeout: 30000 });
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(2500);
 
-      // Duplicate toggle check (2D)
-      const toggles2d = await page.evaluate(() => Array.from(document.querySelectorAll('.bm3-mode-toggle'))
-        .filter((el) => {
-          const st = getComputedStyle(el);
-          return st.display !== 'none' && st.visibility !== 'hidden' && !el.closest('[hidden]');
-        })
-        .map((el) => el.getAttribute('data-bm3-toggle')));
-      assert(toggles2d.length === 1, `${profile.name}: exactly one visible 2D/3D toggle (got ${JSON.stringify(toggles2d)})`);
-      assert(toggles2d[0] === 'home-modes', `${profile.name}: chrome owns toggle`);
-
-      const legends2d = await page.evaluate(() => Array.from(document.querySelectorAll('.h3d-legend, .mh-legend'))
+      // Home is 3D-only — no visible 2D/3D toggle
+      const toggles = await page.evaluate(() => Array.from(document.querySelectorAll('.bm3-mode-toggle'))
         .filter((el) => {
           const st = getComputedStyle(el);
           return st.display !== 'none' && st.visibility !== 'hidden' && el.offsetParent !== null;
         })
-        .map((el) => el.className));
-      assert(
-        legends2d.filter((c) => /h3d-legend/.test(c)).length === 0,
-        `${profile.name}: chrome legend hidden in 2D`
-      );
+        .map((el) => el.getAttribute('data-bm3-toggle')));
+      assert(toggles.length === 0, `${profile.name}: no home 2D/3D toggle (got ${JSON.stringify(toggles)})`);
 
-      // Switch to 3D
-      await page.locator('[data-bm3-toggle="home-modes"] [data-bm3-mode="3d"]').tap();
-      await page.waitForTimeout(2500);
+      const tabLabels = await page.evaluate(() => Array.from(document.querySelectorAll('[data-hmt-mode]'))
+        .map((el) => (el.textContent || '').trim()));
+      assert(tabLabels.includes('회복') && tabLabels.includes('성장') && tabLabels.includes('손실'),
+        `${profile.name}: Korean mode tabs (got ${JSON.stringify(tabLabels)})`);
 
       const stage = await page.evaluate(() => {
         const el = document.querySelector('#h3dSharedHost .bm3-stage, .bm3-stage');

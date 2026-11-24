@@ -705,7 +705,7 @@ const BodyMap3D = (() => {
       if (alt) rec = data.recovery[alt];
     }
     if (!rec || rec.lastDate == null) {
-      return `<strong>${escapeHtml(label)}</strong> · No data`;
+      return `<strong>${escapeHtml(label)}</strong> · 기록 없음`;
     }
     const pct = Math.round(rec.recoveryPct || 0);
     let hoursLeft = null;
@@ -716,9 +716,9 @@ const BodyMap3D = (() => {
     } else {
       hoursLeft = Math.max(0, Math.round((rec.recoveryHours || 0) - (rec.hoursElapsed || 0)));
     }
-    if (pct < 40) return `${escapeHtml(label)} · Fatigued${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
-    if (pct < 95) return `${escapeHtml(label)} · Recovering${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
-    return `${escapeHtml(label)} · Ready`;
+    if (pct < 40) return `${escapeHtml(label)} · 피로${hoursLeft > 0 ? ` · ${hoursLeft}시간 후 준비` : ''}`;
+    if (pct < 95) return `${escapeHtml(label)} · 회복 중${hoursLeft > 0 ? ` · ${hoursLeft}시간 후 준비` : ''}`;
+    return `${escapeHtml(label)} · 준비됨`;
   }
 
   function formatIntensityTip(muscle, data, meshLabel) {
@@ -744,17 +744,17 @@ const BodyMap3D = (() => {
   function formatGrowthTip(muscle, data, meshLabel) {
     const label = meshLabel || EN_LABELS[muscle] || muscle;
     const g = growthEntryForId(data && data.perMuscle, muscle);
-    if (!g || !(g.growthPct > 0)) return `${escapeHtml(label)} · No growth signal`;
-    const sessions = g.sessionCount != null ? ` · ${g.sessionCount} sessions / 4 wks` : '';
-    return `${escapeHtml(label)} · Growth +${g.growthPct}%${sessions}`;
+    if (!g || !(g.growthPct > 0)) return `${escapeHtml(label)} · 성장 신호 없음`;
+    const sessions = g.sessionCount != null ? ` · 4주 ${g.sessionCount}회` : '';
+    return `${escapeHtml(label)} · 성장 +${g.growthPct}%${sessions}`;
   }
 
   function formatLossTip(muscle, data, meshLabel) {
     const label = meshLabel || EN_LABELS[muscle] || muscle;
     const l = lossEntryForId(data && data.perMuscle, muscle);
-    if (!l) return `${escapeHtml(label)} · No data`;
-    if (!(l.lossPct > 0)) return `${escapeHtml(label)} · Stable · ${l.daysSince}d since last`;
-    return `${escapeHtml(label)} · Loss −${l.lossPct}% · ${l.daysSince}d idle`;
+    if (!l) return `${escapeHtml(label)} · 기록 없음`;
+    if (!(l.lossPct > 0)) return `${escapeHtml(label)} · 유지 · ${l.daysSince}일 전 운동`;
+    return `${escapeHtml(label)} · 손실 −${l.lossPct}% · ${l.daysSince}일 휴식`;
   }
 
   function tipForMode(state, muscle, label) {

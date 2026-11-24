@@ -39,17 +39,19 @@ assert(
 assert(bm3.includes("dataset.bm3Bound"), 'mode toggle re-bind guard');
 assert(bm3.includes('pointer-events: none !important'), 'hidden hosts cannot intercept taps');
 
-assert(h3d.includes('data-bm3-toggle="recovery"'), 'hides recovery duplicate toggle');
+assert(h3d.includes('.bm3-mode-toggle'), 'hides all home mode toggles');
 assert(h3d.includes('touch-action: pan-y'), 'shared 3D host allows vertical pan');
 assert(h3d.includes('#muscleHeatmapCard'), 'hides 2D cards while 3D active');
-assert(h3d.includes('.h3d-legend') && h3d.includes('display: none'), 'chrome legend hidden in 2D');
+assert(h3d.includes('resolveHomeMapMode') || h3d.includes('webglOk'), 'home is 3D-only with WebGL gate');
+assert(!/buildModeToggle\(mapMode/.test(h3d), 'home chrome has no 2D/3D toggle builder');
+assert(h3d.includes('회복') && h3d.includes('성장') && h3d.includes('손실'), 'Korean mode tabs');
 assert(h3d.includes('stopPropagation'), 'tab click stopPropagation vs HeatmapModeTabs');
 
-assert(heat.includes('ownsHome3d'), 'recovery heatmap yields home toggle to Heatmap3dModes');
+assert(heat.includes('ownsHome3d'), 'recovery heatmap yields home 3D to Heatmap3dModes');
 assert(heat.includes("scope: 'recovery'") || heat.includes('scope: "recovery"'), 'recovery scope still defined for non-home');
 
 assert(tabs.includes('ownsHome3d'), 'HeatmapModeTabs defers to Heatmap3dModes');
-assert(sw.includes('recovr-cache-v87'), 'SW cache bumped to v87');
+assert(sw.includes('recovr-cache-v88'), 'SW cache bumped to v88');
 
 console.log(failures === 0 ? '\n=== bodymap mobile guards passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);
 process.exit(failures === 0 ? 0 : 1);
