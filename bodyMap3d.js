@@ -171,8 +171,9 @@ const BodyMap3D = (() => {
         display: flex; align-items: center; justify-content: center; color: ${MINT}; font-size: 16px;
       }
       .bm3-hint-text {
-        font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
-        color: rgba(232,232,240,0.75); text-align: center; max-width: 64px; line-height: 1.2;
+        font-size: 10px; font-weight: 700; letter-spacing: -0.02em;
+        color: rgba(232,232,240,0.75); text-align: center; max-width: 5.2em; line-height: 1.25;
+        word-break: keep-all; overflow-wrap: normal; white-space: normal;
       }
       .bm3-tip {
         position: absolute; left: 50%; top: 16%; transform: translateX(-50%); z-index: 4;
@@ -1368,7 +1369,7 @@ const BodyMap3D = (() => {
         <div class="bm3-tip" aria-live="polite"></div>
         <div class="bm3-hint">
           <div class="bm3-hint-ring" aria-hidden="true">↻</div>
-          <div class="bm3-hint-text">Drag to rotate</div>
+          <div class="bm3-hint-text">밀어 돌리기</div>
         </div>`;
       host.appendChild(stage);
       if (!host.querySelector('.bm3-credit')) {

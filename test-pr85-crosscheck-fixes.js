@@ -103,7 +103,7 @@ assert(!heat.includes('chrome owns the single home 2D/3D toggle'), 'stale toggle
 assert(heat.includes('Home is 3D-only'), 'updated home-owns comment');
 assert(!bm3.includes('?v=r170'), 'three import has no query (dedupe with GLTFLoader)');
 assert(/import\(`\.\/\$\{THREE_URL\}`\)/.test(bm3), 'three imported as bare module URL');
-assert(sw.includes('recovr-cache-v90'), 'SW bumped to v90');
+assert(sw.includes('recovr-cache-v92'), 'SW bumped to v90');
 
 console.log(failures === 0 ? '\n=== pr85 crosscheck fixes passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);
 process.exit(failures === 0 ? 0 : 1);

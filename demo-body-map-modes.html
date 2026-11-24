@@ -52,11 +52,22 @@
 
   <script src="muscleGrowthTracker.js"></script>
   <script src="heatmapModeTabs.js"></script>
+  <script src="muscleHeatmap.js"></script>
   <script src="bodyMap3d.js"></script>
   <script src="heatmap3dModes.js"></script>
+  <script src="homeBodyMapDetail.js"></script>
   <script>
     // Minimal stubs so Heatmap3dModes can compute without full app.js
     window.MUSCLE_ORDER = ['chest','back','shoulder','biceps','triceps','quads','hamstrings','adductors','calves','core','forearms'];
+    window.MUSCLE_LABELS = {
+      chest: { name: '가슴', icon: '💪' }, back: { name: '등', icon: '🏋️' },
+      shoulder: { name: '어깨', icon: '🤸' }, biceps: { name: '이두', icon: '💪' },
+      triceps: { name: '삼두', icon: '💪' }, quads: { name: '대퇴사두', icon: '🦵' },
+      hamstrings: { name: '햄스트링', icon: '🦵' }, adductors: { name: '내전근', icon: '🦵' },
+      calves: { name: '종아리', icon: '🦶' }, core: { name: '코어', icon: '🧘' },
+      forearms: { name: '전완', icon: '✊' },
+    };
+    window.loadSettings = function() { return {}; };
     window.getMusclesFromExerciseName = function(name) {
       const n = String(name || '').toLowerCase();
       const out = [];
@@ -110,23 +121,24 @@
 
     window.calcMuscleRecovery = function() {
       return {
-        chest: { lastDate: daysAgo(1), recoveryPct: 28, recoveryHours: 48, hoursElapsed: 14 },
-        shoulder: { lastDate: daysAgo(1), recoveryPct: 40, recoveryHours: 48, hoursElapsed: 14 },
-        triceps: { lastDate: daysAgo(1), recoveryPct: 55, recoveryHours: 36, hoursElapsed: 14 },
-        back: { lastDate: daysAgo(3), recoveryPct: 72, recoveryHours: 72, hoursElapsed: 50 },
-        quads: { lastDate: daysAgo(22), recoveryPct: 100, recoveryHours: 48, hoursElapsed: 90 },
-        hamstrings: { lastDate: daysAgo(22), recoveryPct: 100, recoveryHours: 48, hoursElapsed: 90 },
-        core: { lastDate: daysAgo(5), recoveryPct: 88, recoveryHours: 36, hoursElapsed: 40 },
-        biceps: { lastDate: null, recoveryPct: 100 },
-        calves: { lastDate: daysAgo(30), recoveryPct: 100, recoveryHours: 36, hoursElapsed: 100 },
-        adductors: { lastDate: null, recoveryPct: 100 },
-        forearms: { lastDate: null, recoveryPct: 100 },
+        chest: { lastDate: daysAgo(1), recoveryPct: 28, recoveryHours: 48, hoursElapsed: 14, volume: 12000 },
+        shoulder: { lastDate: daysAgo(1), recoveryPct: 40, recoveryHours: 48, hoursElapsed: 14, volume: 6000 },
+        triceps: { lastDate: daysAgo(1), recoveryPct: 55, recoveryHours: 36, hoursElapsed: 14, volume: 4500 },
+        back: { lastDate: daysAgo(3), recoveryPct: 72, recoveryHours: 72, hoursElapsed: 50, volume: 8000 },
+        quads: { lastDate: daysAgo(22), recoveryPct: 100, recoveryHours: 48, hoursElapsed: 90, volume: 9000 },
+        hamstrings: { lastDate: daysAgo(22), recoveryPct: 100, recoveryHours: 48, hoursElapsed: 90, volume: 7000 },
+        core: { lastDate: daysAgo(5), recoveryPct: 88, recoveryHours: 36, hoursElapsed: 40, volume: 2000 },
+        biceps: { lastDate: null, recoveryPct: 100, volume: 0 },
+        calves: { lastDate: daysAgo(30), recoveryPct: 100, recoveryHours: 36, hoursElapsed: 100, volume: 1500 },
+        adductors: { lastDate: null, recoveryPct: 100, volume: 0 },
+        forearms: { lastDate: null, recoveryPct: 100, volume: 0 },
       };
     };
 
     BodyMap3D.setPreferredMode('3d');
     HeatmapModeTabs.init();
     Heatmap3dModes.afterHomeRender(calcMuscleRecovery());
+    HomeBodyMapDetail.afterHomeRender();
 
     // Cycle modes for transition capture
     const order = ['recovery', 'growth', 'loss', 'recovery'];
