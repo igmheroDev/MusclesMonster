@@ -17,6 +17,51 @@ const WorkoutCompleteMap = (() => {
   let mq = null;
   let lastShownAt = 0;
   let pendingWorkout = null;
+  let mapMode = '2d';
+  const BM3_MOUNT_ID = 'complete';
+  let lastStats = null;
+  let lastView = 'front';
+
+  function syncMapModeFromStorage() {
+    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.getPreferredMode) {
+      mapMode = BodyMap3D.getPreferredMode();
+    }
+  }
+
+  function teardown3d() {
+    if (typeof BodyMap3D !== 'undefined') BodyMap3D.unmount(BM3_MOUNT_ID);
+  }
+
+  function estimateSetCounts(loads, totalSets) {
+    const counts = {};
+    const keys = Object.keys(loads || {});
+    const sum = keys.reduce((s, k) => s + (loads[k] || 0), 0) || 1;
+    keys.forEach((m) => {
+      counts[m] = Math.max(1, Math.round(((loads[m] || 0) / sum) * (totalSets || keys.length)));
+    });
+    return counts;
+  }
+
+  async function mountOrUpdate3d(stats, view) {
+    if (typeof BodyMap3D === 'undefined') return;
+    const host3d = document.getElementById('wcm3dHost');
+    if (!host3d) return;
+    const data = {
+      loads: (stats && stats.loads) || {},
+      setCounts: estimateSetCounts(stats && stats.loads, stats && stats.sets),
+      view: view || 'front',
+    };
+    if (host3d.querySelector('canvas')) {
+      BodyMap3D.update(BM3_MOUNT_ID, data, { colorMode: 'complete' });
+      return;
+    }
+    await BodyMap3D.mount(BM3_MOUNT_ID, host3d, {
+      colorMode: 'complete',
+      data,
+      showPedestal: true,
+      autoRotate: !reducedMotion,
+    });
+  }
 
   function prefersReducedMotion() {
     try {
@@ -100,6 +145,19 @@ const WorkoutCompleteMap = (() => {
         margin: 12px auto 8px;
         background: transparent;
       }
+      .wcm-map-header {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+      }
+      .wcm-3d-host {
+        width: min(280px, 88%);
+        margin: 8px auto 4px;
+      }
+      .wcm-3d-host .bm3-stage {
+        aspect-ratio: 3 / 4.1;
+      }
+      .wcm-2d-only[hidden], .wcm-3d-host[hidden] { display: none !important; }
       .wcm-svg { width: 100%; height: auto; display: block; background: transparent; }
       body:not(.light) .wcm-svg .wcm-body-image {
         filter: none;
@@ -382,10 +440,18 @@ const WorkoutCompleteMap = (() => {
     lastShownAt = now;
 
     ensureStyles();
+    syncMapModeFromStorage();
+    teardown3d();
+
     const overlay = ensureOverlay();
     const stats = analyzeWorkout(workout);
     const view = pickView(stats.loads);
+    lastStats = stats;
+    lastView = view;
     const nth = countCompletedWorkouts();
+    const modeToggle = (typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
+      ? BodyMap3D.buildModeToggle(mapMode, { scope: 'complete' })
+      : '';
 
     const calorieHtml = (stats.calories != null && stats.calories > 0)
       ? `<div class="wcm-stat">
@@ -402,7 +468,9 @@ const WorkoutCompleteMap = (() => {
         <div class="wcm-logo">REC<span>O</span>VR</div>
         <div class="wcm-title" id="wcmTitle">운동 완료!</div>
         <div class="wcm-sub">${nth > 0 ? `${nth}번째 운동` : '오늘 세션 요약'}</div>
-        <div class="wcm-map-wrap">${buildSvg(view, stats.loads)}</div>
+        <div class="wcm-map-header">${modeToggle}</div>
+        <div class="wcm-3d-host" id="wcm3dHost" ${mapMode === '3d' ? '' : 'hidden'}></div>
+        <div class="wcm-2d-only wcm-map-wrap" ${mapMode === '3d' ? 'hidden' : ''}>${buildSvg(view, stats.loads)}</div>
         <div class="wcm-stats">
           <div class="wcm-stat">
             <div class="wcm-stat-val">${escapeHtml(Math.round(stats.volume).toLocaleString('ko-KR'))}</div>
@@ -433,6 +501,25 @@ const WorkoutCompleteMap = (() => {
       btn.addEventListener('click', hide);
     });
 
+    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.bindModeToggle) {
+      BodyMap3D.bindModeToggle(overlay, (mode) => {
+        mapMode = mode;
+        const host3d = overlay.querySelector('#wcm3dHost');
+        const twoD = overlay.querySelector('.wcm-2d-only');
+        if (mode === '3d') {
+          if (twoD) twoD.hidden = true;
+          if (host3d) host3d.hidden = false;
+          mountOrUpdate3d(lastStats, lastView);
+        } else {
+          teardown3d();
+          if (host3d) host3d.hidden = true;
+          if (twoD) twoD.hidden = false;
+        }
+      });
+    }
+
+    if (mapMode === '3d') mountOrUpdate3d(stats, view);
+
     try {
       if (typeof CelebrateFx !== 'undefined' && CelebrateFx.confettiBurst && !reducedMotion) {
         CelebrateFx.confettiBurst({ count: 48, y: window.innerHeight * 0.22 });
@@ -443,6 +530,7 @@ const WorkoutCompleteMap = (() => {
   }
 
   function hide() {
+    teardown3d();
     const overlay = document.getElementById(OVERLAY_ID);
     if (overlay) overlay.classList.remove('show');
   }
@@ -507,6 +595,7 @@ const WorkoutCompleteMap = (() => {
       else if (mq.removeListener) mq.removeListener(onMotionChange);
       mq = null;
     }
+    teardown3d();
     const overlay = document.getElementById(OVERLAY_ID);
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     initialized = false;

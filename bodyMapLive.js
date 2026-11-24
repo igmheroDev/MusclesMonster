@@ -21,6 +21,8 @@ const BodyMapLive = (() => {
   let reducedMotion = false;
   let mq = null;
   let modalObserver = null;
+  let mapMode = '2d'; // '2d' | '3d' — 3D is experimental overlay
+  const BM3_MOUNT_ID = 'live';
 
   function prefersReducedMotion() {
     try {
@@ -70,6 +72,17 @@ const BodyMapLive = (() => {
         gap: 8px;
         margin-bottom: 8px;
       }
+      .bml-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .bml-3d-host {
+        width: min(100%, 280px);
+        margin: 0 auto 4px;
+      }
+      .bml-2d-only[hidden], .bml-3d-host[hidden] { display: none !important; }
       .bml-title {
         font-size: 12.5px;
         font-weight: 700;
@@ -407,18 +420,125 @@ const BodyMapLive = (() => {
     return host;
   }
 
+  function syncMapModeFromStorage() {
+    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.getPreferredMode) {
+      mapMode = BodyMap3D.getPreferredMode();
+    }
+  }
+
+  function estimateSetCounts(loads) {
+    const counts = {};
+    Object.keys(loads || {}).forEach((m) => {
+      counts[m] = Math.max(1, Math.round((loads[m] || 0) * 2.2));
+    });
+    return counts;
+  }
+
+  async function mountOrUpdate3d(loads) {
+    if (typeof BodyMap3D === 'undefined') return;
+    const host3d = document.getElementById('bml3dHost');
+    if (!host3d) return;
+    const data = { loads: loads || lastLoads, setCounts: estimateSetCounts(loads || lastLoads) };
+    const existing = host3d.querySelector('canvas');
+    if (existing) {
+      BodyMap3D.update(BM3_MOUNT_ID, data, { colorMode: 'intensity' });
+      return;
+    }
+    await BodyMap3D.mount(BM3_MOUNT_ID, host3d, {
+      colorMode: 'intensity',
+      data,
+      showPedestal: false,
+      autoRotate: !reducedMotion,
+    });
+  }
+
+  function teardown3d() {
+    if (typeof BodyMap3D !== 'undefined') BodyMap3D.unmount(BM3_MOUNT_ID);
+  }
+
+  function applyModeVisibility(root) {
+    if (!root) return;
+    const twoD = root.querySelector('.bml-2d-only');
+    const threeD = root.querySelector('.bml-3d-host');
+    const flipBtn = root.querySelector('[data-bml-flip]');
+    const is3d = mapMode === '3d';
+    if (twoD) twoD.hidden = is3d;
+    if (threeD) threeD.hidden = !is3d;
+    if (flipBtn) flipBtn.hidden = is3d;
+    if (is3d) mountOrUpdate3d(lastLoads);
+    else teardown3d();
+  }
+
+  function updateMetaPanel(host, loads) {
+    const entries = Object.keys(loads)
+      .map((m) => ({ muscle: m, load: loads[m], label: getMuscleLabel(m) }))
+      .sort((a, b) => b.load - a.load);
+    const top = entries[0];
+    const loadPct = top ? Math.min(100, Math.round(top.load * 18)) : 0;
+    const hasData = entries.length > 0;
+    const sub = host.querySelector('.bml-sub');
+    if (sub) {
+      sub.textContent = hasData ? '세트 완료 시 부위가 진해져요' : '세트를 완료하면 자극 부위가 표시돼요';
+    }
+    let meta = host.querySelector('[data-bml-meta]');
+    if (!meta) return;
+    if (!hasData) {
+      meta.innerHTML = `<div class="bml-empty">아직 완료된 세트가 없어요</div>`;
+      return;
+    }
+    meta.innerHTML = `
+      <div class="bml-load-row">
+        <div class="bml-load-label"><span>${escapeHtml(top.label)} 부하</span><b>${loadPct}%</b></div>
+        <div class="bml-load-track"><div class="bml-load-fill" style="width:${loadPct}%"></div></div>
+      </div>
+      <div class="bml-tags">
+        ${entries.slice(0, 4).map((e) => `
+          <span class="bml-tag" style="--bml-op:${intensityOpacity(e.load)}">
+            <span></span>${escapeHtml(e.label)}
+          </span>`).join('')}
+      </div>`;
+  }
+
   function render(options = {}) {
     ensureStyles();
     const host = ensureHost();
     if (!host) return false;
+
+    syncMapModeFromStorage();
 
     const loads = options.loads || computeSessionLoads();
     const pop = options.pop || null;
     lastLoads = loads;
     lastPop = pop;
 
+    // Preserve live 3D canvas across set-complete refreshes
+    const existingCard = host.querySelector('.bml-card');
+    const live3dCanvas = host.querySelector('#bml3dHost canvas');
+    if (existingCard && live3dCanvas && mapMode === '3d' && options.forceFull !== true) {
+      updateMetaPanel(host, loads);
+      mountOrUpdate3d(loads);
+      if (pop && pop.delta > 0 && typeof BodyMap3D !== 'undefined') {
+        const label = (BodyMap3D.EN_LABELS && BodyMap3D.EN_LABELS[pop.muscle]) || getMuscleLabel(pop.muscle);
+        const tip = host.querySelector('#bml3dHost .bm3-tip');
+        if (tip) {
+          tip.innerHTML = `+${escapeHtml(String(pop.delta))} sets · ${escapeHtml(label)}`;
+          tip.classList.add('visible');
+          clearTimeout(tip._hideTimer);
+          tip._hideTimer = setTimeout(() => tip.classList.remove('visible'), 1200);
+        }
+      }
+      if (pop && !reducedMotion) {
+        window.setTimeout(() => {
+          if (lastPop === pop) {
+            lastPop = null;
+          }
+        }, 750);
+      }
+      return true;
+    }
+
     const primary = pickPrimaryMuscle(loads);
-    if (options.autoFlip !== false && primary) {
+    if (options.autoFlip !== false && primary && mapMode === '2d') {
       const want = desiredViewForMuscle(primary);
       if (want !== currentView) currentView = want;
     }
@@ -430,6 +550,12 @@ const BodyMapLive = (() => {
     const top = entries[0];
     const loadPct = top ? Math.min(100, Math.round(top.load * 18)) : 0;
     const hasData = entries.length > 0;
+    const modeToggle = (typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
+      ? BodyMap3D.buildModeToggle(mapMode, { scope: 'live' })
+      : '';
+
+    // Full rebuild tears down any prior WebGL context
+    teardown3d();
 
     host.innerHTML = `
       <div class="bml-card">
@@ -439,17 +565,24 @@ const BodyMapLive = (() => {
             <div class="bml-title">실시간 자극 맵</div>
             <div class="bml-sub">${hasData ? '세트 완료 시 부위가 진해져요' : '세트를 완료하면 자극 부위가 표시돼요'}</div>
           </div>
-          <button type="button" class="bml-flip" data-bml-flip aria-label="전면 후면 전환">
-            <span class="bml-flip-icon" aria-hidden="true">↻</span>
-            <span>${currentView === 'back' ? '후면' : '전면'}</span>
-          </button>
-        </div>
-        <div class="bml-stage">
-          <div class="bml-flipper ${currentView === 'back' ? 'is-back' : ''}" data-bml-flipper>
-            <div class="bml-face bml-face--front">${buildFace('front', loads, currentView === 'front' ? pop : null)}</div>
-            <div class="bml-face bml-face--back">${buildFace('back', loads, currentView === 'back' ? pop : null)}</div>
+          <div class="bml-header-actions">
+            ${modeToggle}
+            <button type="button" class="bml-flip" data-bml-flip aria-label="전면 후면 전환">
+              <span class="bml-flip-icon" aria-hidden="true">↻</span>
+              <span>${currentView === 'back' ? '후면' : '전면'}</span>
+            </button>
           </div>
         </div>
+        <div class="bml-3d-host" id="bml3dHost" hidden></div>
+        <div class="bml-2d-only">
+          <div class="bml-stage">
+            <div class="bml-flipper ${currentView === 'back' ? 'is-back' : ''}" data-bml-flipper>
+              <div class="bml-face bml-face--front">${buildFace('front', loads, currentView === 'front' ? pop : null)}</div>
+              <div class="bml-face bml-face--back">${buildFace('back', loads, currentView === 'back' ? pop : null)}</div>
+            </div>
+          </div>
+        </div>
+        <div data-bml-meta>
         ${hasData ? `
           <div class="bml-load-row">
             <div class="bml-load-label"><span>${escapeHtml(top.label)} 부하</span><b>${loadPct}%</b></div>
@@ -462,6 +595,7 @@ const BodyMapLive = (() => {
               </span>`).join('')}
           </div>
         ` : `<div class="bml-empty">아직 완료된 세트가 없어요</div>`}
+        </div>
       </div>`;
 
     const flipBtn = host.querySelector('[data-bml-flip]');
@@ -472,7 +606,20 @@ const BodyMapLive = (() => {
       });
     }
 
-    if (pop && !reducedMotion) {
+    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.bindModeToggle) {
+      BodyMap3D.bindModeToggle(host, (mode) => {
+        mapMode = mode;
+        if (mode === '2d') {
+          render({ loads: lastLoads, pop: null, autoFlip: false, forceFull: true });
+        } else {
+          applyModeVisibility(host);
+        }
+      });
+    }
+
+    applyModeVisibility(host);
+
+    if (pop && !reducedMotion && mapMode === '2d') {
       window.setTimeout(() => {
         if (lastPop === pop) {
           lastPop = null;
@@ -548,6 +695,8 @@ const BodyMapLive = (() => {
     modalObserver = new MutationObserver(() => {
       if (isModalOpen()) {
         window.setTimeout(() => render({ autoFlip: true }), 50);
+      } else {
+        teardown3d();
       }
     });
     modalObserver.observe(overlay, { attributes: true, attributeFilter: ['class'] });
@@ -584,6 +733,7 @@ const BodyMapLive = (() => {
       else if (mq.removeListener) mq.removeListener(onMotionChange);
       mq = null;
     }
+    teardown3d();
     const host = document.getElementById(HOST_ID);
     if (host && host.parentNode) host.parentNode.removeChild(host);
     initialized = false;
