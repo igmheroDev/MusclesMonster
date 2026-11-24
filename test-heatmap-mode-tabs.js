@@ -165,7 +165,8 @@ assert(cfg.hostId === 'heatmapModeHost', 'host id');
 assert(cfg.defaultMode === 'recovery', '기본 탭은 회복');
 assert(cfg.recoveryPanelId === 'muscleHeatmapCard', '회복 패널 = 기존 회복 히트맵 컨테이너');
 assert(cfg.growthPanelId === 'muscleGrowthHeatmapCard', '성장·손실 패널 = 기존 성장 히트맵 컨테이너');
-assert(cfg.modes.join(',') === 'recovery,growth', '모드 2개');
+assert(cfg.modes.join(',') === 'recovery,growth,loss', '모드 3개 (loss는 growth 패널 공유)');
+assert(cfg.panelFor.loss === 'growth', 'loss → growth 패널');
 
 console.log('=== 2. 스타일: 히트맵 바로 위, 홈 헤더/하단 네비 아님 ===');
 assert(HeatmapModeTabs.ensureStyles() === true, 'ensureStyles');
@@ -186,9 +187,13 @@ assert(growthPanel.getAttribute('hidden') === '', '성장 패널 숨김');
 assert(recoveryTab.getAttribute('aria-selected') === 'true', '회복 탭 선택');
 assert(growthTab.getAttribute('aria-selected') === 'false', '성장 탭 비선택');
 
-assert(HeatmapModeTabs.setMode('growth') === 'growth', '성장·손실 선택');
+assert(HeatmapModeTabs.setMode('growth') === 'growth', '성장 선택');
 assert(recoveryPanel.getAttribute('hidden') === '', '회복 패널 숨김');
 assert(!growthPanel.getAttribute('hidden'), '성장 패널 표시');
+
+assert(HeatmapModeTabs.setMode('loss') === 'loss', '손실 선택');
+assert(recoveryPanel.getAttribute('hidden') === '', '손실 시 회복 패널 숨김');
+assert(!growthPanel.getAttribute('hidden'), '손실 시 growth 패널 표시(공유)');
 
 host._listeners.filter((l) => l[0] === 'click').forEach((l) => {
   l[1]({
@@ -237,7 +242,7 @@ assert(appJs.includes('HeatmapModeTabs.afterHomeRender()'), 'renderHome 이후 �
 const swJs = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 assert(swJs.includes("'./heatmapModeTabs.js'"), 'sw ASSETS');
 assert(swJs.includes("'/heatmapModeTabs.js'"), 'sw NETWORK_FIRST');
-assert(swJs.includes('recovr-cache-v84'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v85'), 'sw cache bump');
 
 HeatmapModeTabs.destroy();
 

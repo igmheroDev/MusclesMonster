@@ -17,9 +17,14 @@ const BodyMap3D = (() => {
   const CORAL = '#ff3b5c';
   const AMBER = '#f5a524';
   const MINT = '#3ee6b0';
+  const GROWTH = '#2ef0a0';
+  const GROWTH_DEEP = '#14c878';
+  const LOSS = '#7b6cff';
+  const LOSS_DEEP = '#4a3dc8';
   const BASE_COLOR = '#3a3a44';
   const CONTEXT_COLOR = '#2a2a32';
   const BG = '#0a0a0f';
+  const TRANSITION_MS = 400;
 
   // App coarse ids that should also light related fine-only meshes
   const LOAD_ALIASES = {
@@ -376,6 +381,38 @@ const BodyMap3D = (() => {
     return { color: MINT, intensity: 0.26, albedoMix: 0.58, fresnel: 0.6 };
   }
 
+  function growthVisual(growthPct, hasData) {
+    if (!hasData || !(growthPct > 0)) {
+      return { color: BASE_COLOR, intensity: 0.03, albedoMix: 0, fresnel: 0 };
+    }
+    const maxG = (typeof MuscleGrowthTracker !== 'undefined' && MuscleGrowthTracker.MAX_GROWTH_PCT)
+      ? MuscleGrowthTracker.MAX_GROWTH_PCT : 3;
+    const t = Math.max(0, Math.min(1, growthPct / maxG));
+    const color = t > 0.55 ? GROWTH : GROWTH_DEEP;
+    return {
+      color,
+      intensity: 0.18 + t * 0.34,
+      albedoMix: 0.55 + t * 0.35,
+      fresnel: 0.45 + t * 0.5,
+    };
+  }
+
+  function lossVisual(lossPct, hasData) {
+    if (!hasData || !(lossPct > 0)) {
+      return { color: BASE_COLOR, intensity: 0.03, albedoMix: 0, fresnel: 0 };
+    }
+    const maxL = (typeof MuscleGrowthTracker !== 'undefined' && MuscleGrowthTracker.MAX_LOSS_PCT)
+      ? MuscleGrowthTracker.MAX_LOSS_PCT : 8;
+    const t = Math.max(0, Math.min(1, lossPct / maxL));
+    const color = t > 0.5 ? LOSS_DEEP : LOSS;
+    return {
+      color,
+      intensity: 0.16 + t * 0.3,
+      albedoMix: 0.48 + t * 0.32,
+      fresnel: 0.4 + t * 0.4,
+    };
+  }
+
   function loadForId(loads, id) {
     if (!loads) return 0;
     let v = loads[id] || 0;
@@ -425,6 +462,160 @@ const BodyMap3D = (() => {
     return { pct: best.recoveryPct ?? 100, hasData: true };
   }
 
+  const FINE_TO_COARSE = {
+    front_delts: 'shoulder', rear_delts: 'shoulder',
+    traps: 'back', lats: 'back', lower_back: 'back',
+    abs: 'core', obliques: 'core',
+    glutes: 'hamstrings',
+  };
+
+  function growthEntryForId(perMuscle, id) {
+    if (!perMuscle) return null;
+    if (perMuscle[id] && perMuscle[id].growth) return perMuscle[id].growth;
+    const coarse = FINE_TO_COARSE[id];
+    if (coarse && perMuscle[coarse] && perMuscle[coarse].growth) return perMuscle[coarse].growth;
+    return null;
+  }
+
+  function lossEntryForId(perMuscle, id) {
+    if (!perMuscle) return null;
+    if (perMuscle[id] && perMuscle[id].loss) return perMuscle[id].loss;
+    const coarse = FINE_TO_COARSE[id];
+    if (coarse && perMuscle[coarse] && perMuscle[coarse].loss) return perMuscle[coarse].loss;
+    return null;
+  }
+
+  function growthForMesh(appIds, perMuscle) {
+    if (!perMuscle || !appIds) return { pct: 0, hasData: false, entry: null };
+    let best = null;
+    appIds.forEach((id) => {
+      const g = growthEntryForId(perMuscle, id);
+      if (!g) return;
+      if (!best || (g.growthPct || 0) > (best.growthPct || 0)) best = g;
+    });
+    if (!best) return { pct: 0, hasData: false, entry: null };
+    return { pct: best.growthPct || 0, hasData: true, entry: best };
+  }
+
+  function lossForMesh(appIds, perMuscle) {
+    if (!perMuscle || !appIds) return { pct: 0, hasData: false, entry: null };
+    let best = null;
+    appIds.forEach((id) => {
+      const l = lossEntryForId(perMuscle, id);
+      if (!l) return;
+      if (!best || (l.lossPct || 0) > (best.lossPct || 0)) best = l;
+    });
+    if (!best) return { pct: 0, hasData: false, entry: null };
+    return { pct: best.lossPct || 0, hasData: true, entry: best };
+  }
+
+  function captureMatSnapshot(mat) {
+    return {
+      color: mat.color.getHex(),
+      emissive: mat.emissive.getHex(),
+      emissiveIntensity: mat.emissiveIntensity,
+      roughness: mat.roughness,
+      fresnel: (mat.userData && mat.userData.fresnelStrength) || 0,
+    };
+  }
+
+  function applyMatTarget(mat, target) {
+    mat.color.setHex(target.color);
+    mat.emissive.setHex(target.emissive);
+    mat.emissiveIntensity = target.emissiveIntensity;
+    mat.roughness = target.roughness;
+    if (target.metalness != null) mat.metalness = target.metalness;
+    setFresnel(mat, target.fresnel || 0);
+    mat.vertexColors = false;
+    mat.needsUpdate = true;
+  }
+
+  function lerpMat(mat, from, to, t) {
+    const mixC = (a, b) => {
+      const ar = (a >> 16) & 255; const ag = (a >> 8) & 255; const ab = a & 255;
+      const br = (b >> 16) & 255; const bg = (b >> 8) & 255; const bb = b & 255;
+      const r = Math.round(ar + (br - ar) * t);
+      const g = Math.round(ag + (bg - ag) * t);
+      const bl = Math.round(ab + (bb - ab) * t);
+      return (r << 16) | (g << 8) | bl;
+    };
+    mat.color.setHex(mixC(from.color, to.color));
+    mat.emissive.setHex(mixC(from.emissive, to.emissive));
+    mat.emissiveIntensity = from.emissiveIntensity + (to.emissiveIntensity - from.emissiveIntensity) * t;
+    mat.roughness = from.roughness + (to.roughness - from.roughness) * t;
+    setFresnel(mat, from.fresnel + (to.fresnel - from.fresnel) * t);
+  }
+
+  function computeMatTarget(state, mesh) {
+    const appIds = mesh.userData.appIds || [];
+    const { colorMode, data, showPedestal } = state;
+    const idle = {
+      color: hexToInt(BASE_COLOR),
+      emissive: hexToInt(BASE_COLOR),
+      emissiveIntensity: showPedestal ? 0.045 : 0.03,
+      roughness: 0.78,
+      fresnel: colorMode === 'complete' || colorMode === 'intensity' ? 0.15 : 0,
+      metalness: 0.08,
+    };
+
+    if (colorMode === 'recovery') {
+      const { pct, hasData } = recoveryForMesh(appIds, data && data.recovery);
+      const vis = recoveryVisual(pct, hasData);
+      if (!hasData) return idle;
+      return {
+        color: mixHex(BASE_COLOR, vis.color, vis.albedoMix),
+        emissive: hexToInt(vis.color),
+        emissiveIntensity: vis.intensity,
+        roughness: 0.55,
+        fresnel: vis.fresnel,
+        metalness: 0.08,
+      };
+    }
+
+    if (colorMode === 'growth') {
+      const { pct, hasData } = growthForMesh(appIds, data && data.perMuscle);
+      const vis = growthVisual(pct, hasData && pct > 0);
+      if (!(hasData && pct > 0)) return idle;
+      return {
+        color: mixHex(BASE_COLOR, vis.color, vis.albedoMix),
+        emissive: hexToInt(vis.color),
+        emissiveIntensity: vis.intensity,
+        roughness: 0.48,
+        fresnel: vis.fresnel,
+        metalness: 0.06,
+      };
+    }
+
+    if (colorMode === 'loss') {
+      const { pct, hasData } = lossForMesh(appIds, data && data.perMuscle);
+      const vis = lossVisual(pct, hasData && pct > 0);
+      if (!(hasData && pct > 0)) return idle;
+      return {
+        color: mixHex(BASE_COLOR, vis.color, vis.albedoMix),
+        emissive: hexToInt(vis.color),
+        emissiveIntensity: vis.intensity,
+        roughness: 0.62,
+        fresnel: vis.fresnel,
+        metalness: 0.04,
+      };
+    }
+
+    const load = activeLoadForMesh(appIds, data && data.loads);
+    if (load > 0) {
+      const t = Math.min(1, load / 3.5);
+      const emissive = intensityFromLoad(load) * (colorMode === 'complete' ? 1.05 : 1);
+      return {
+        color: mixHex(BASE_COLOR, CORAL, 0.72 + t * 0.22),
+        emissive: hexToInt(CORAL),
+        emissiveIntensity: emissive,
+        roughness: 0.4 + (1 - t) * 0.16,
+        fresnel: 0.55 + t * 0.45,
+        metalness: 0.06,
+      };
+    }
+    return idle;
+  }
+
   function ensureUniqueMaterial(mesh) {
     const mat = mesh.material;
     if (!mat) {
@@ -440,56 +631,36 @@ const BodyMap3D = (() => {
     return mat;
   }
 
-  function applyColors(state) {
-    const { muscleMeshes, colorMode, data, showPedestal } = state;
+  function applyColors(state, opts) {
+    const animate = !!(opts && opts.animate);
+    const duration = (opts && opts.duration != null) ? opts.duration : TRANSITION_MS;
+    const reduce = prefersReducedMotion();
     const seen = new Set();
-    muscleMeshes.forEach((meshes) => {
+    const transitions = [];
+
+    state.muscleMeshes.forEach((meshes) => {
       meshes.forEach((mesh) => {
         if (seen.has(mesh)) return;
         seen.add(mesh);
-        const appIds = mesh.userData.appIds || [];
         const mat = ensureUniqueMaterial(mesh);
-
-        if (colorMode === 'recovery') {
-          const { pct, hasData } = recoveryForMesh(appIds, data && data.recovery);
-          const vis = recoveryVisual(pct, hasData);
-          if (hasData) {
-            mat.color.setHex(mixHex(BASE_COLOR, vis.color, vis.albedoMix));
-            mat.emissive.setHex(hexToInt(vis.color));
-            mat.emissiveIntensity = vis.intensity;
-            mat.roughness = 0.55;
-            setFresnel(mat, vis.fresnel);
-          } else {
-            mat.color.setHex(hexToInt(BASE_COLOR));
-            mat.emissive.setHex(hexToInt(BASE_COLOR));
-            mat.emissiveIntensity = 0.03;
-            mat.roughness = 0.78;
-            setFresnel(mat, 0);
-          }
+        const target = computeMatTarget(state, mesh);
+        if (animate && !reduce) {
+          transitions.push({ mat, from: captureMatSnapshot(mat), to: target });
         } else {
-          const load = activeLoadForMesh(appIds, data && data.loads);
-          if (load > 0) {
-            const t = Math.min(1, load / 3.5);
-            const emissive = intensityFromLoad(load) * (colorMode === 'complete' ? 1.05 : 1);
-            // Coral-tinted albedo carries most of the color; emissive only soft-glows
-            mat.color.setHex(mixHex(BASE_COLOR, CORAL, 0.72 + t * 0.22));
-            mat.emissive.setHex(hexToInt(CORAL));
-            mat.emissiveIntensity = emissive;
-            mat.roughness = 0.4 + (1 - t) * 0.16;
-            mat.metalness = 0.06;
-            setFresnel(mat, 0.55 + t * 0.45);
-          } else {
-            mat.color.setHex(hexToInt(BASE_COLOR));
-            mat.emissive.setHex(hexToInt(BASE_COLOR));
-            mat.emissiveIntensity = showPedestal ? 0.045 : 0.03;
-            mat.roughness = 0.78;
-            setFresnel(mat, 0.15);
-          }
+          applyMatTarget(mat, target);
         }
-        mat.vertexColors = false;
-        mat.needsUpdate = true;
       });
     });
+
+    if (transitions.length) {
+      state.colorTransition = {
+        items: transitions,
+        start: (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+        duration,
+      };
+    } else {
+      state.colorTransition = null;
+    }
   }
 
   function showTip(state, html) {
@@ -545,12 +716,34 @@ const BodyMap3D = (() => {
       if (alt) load = loads[alt] || 0;
     }
     if (load <= 0) return `${escapeHtml(label)} · Idle`;
-    const sets = data && data.setCounts && (data.setCounts[muscle] || data.setCounts.shoulder || data.setCounts.back);
     if (data && data.setCounts && data.setCounts[muscle] != null) {
       return `+${escapeHtml(String(data.setCounts[muscle]))} sets · ${escapeHtml(label)}`;
     }
     const n = Math.max(1, Math.round(load * 2.2));
     return `+${n} sets · ${escapeHtml(label)}`;
+  }
+
+  function formatGrowthTip(muscle, data, meshLabel) {
+    const label = meshLabel || EN_LABELS[muscle] || muscle;
+    const g = growthEntryForId(data && data.perMuscle, muscle);
+    if (!g || !(g.growthPct > 0)) return `${escapeHtml(label)} · No growth signal`;
+    const sessions = g.sessionCount != null ? ` · ${g.sessionCount} sessions / 4 wks` : '';
+    return `${escapeHtml(label)} · Growth +${g.growthPct}%${sessions}`;
+  }
+
+  function formatLossTip(muscle, data, meshLabel) {
+    const label = meshLabel || EN_LABELS[muscle] || muscle;
+    const l = lossEntryForId(data && data.perMuscle, muscle);
+    if (!l) return `${escapeHtml(label)} · No data`;
+    if (!(l.lossPct > 0)) return `${escapeHtml(label)} · Stable · ${l.daysSince}d since last`;
+    return `${escapeHtml(label)} · Loss −${l.lossPct}% · ${l.daysSince}d idle`;
+  }
+
+  function tipForMode(state, muscle, label) {
+    if (state.colorMode === 'recovery') return formatRecoveryTip(muscle, state.data, label);
+    if (state.colorMode === 'growth') return formatGrowthTip(muscle, state.data, label);
+    if (state.colorMode === 'loss') return formatLossTip(muscle, state.data, label);
+    return formatIntensityTip(muscle, state.data, label);
   }
 
   function pickMuscle(state, clientX, clientY) {
@@ -603,10 +796,7 @@ const BodyMap3D = (() => {
     if (state.pointerMoved < 8 && clientX != null) {
       const hit = pickMuscle(state, clientX, clientY);
       if (hit) {
-        const html = state.colorMode === 'recovery'
-          ? formatRecoveryTip(hit.muscle, state.data, hit.label)
-          : formatIntensityTip(hit.muscle, state.data, hit.label);
-        showTip(state, html);
+        showTip(state, tipForMode(state, hit.muscle, hit.label));
         if (typeof state.onMuscleTap === 'function') state.onMuscleTap(hit.muscle);
       }
     }
@@ -650,6 +840,16 @@ const BodyMap3D = (() => {
       if (state.root) state.root.scale.setScalar(breathe);
       if (!state.dragging && state.autoRotate) {
         state.targetYaw += state.showPedestal ? 0.006 : 0.0035;
+      }
+    }
+    if (state.colorTransition) {
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const t = Math.min(1, (now - state.colorTransition.start) / state.colorTransition.duration);
+      const eased = t * t * (3 - 2 * t);
+      state.colorTransition.items.forEach((item) => lerpMat(item.mat, item.from, item.to, eased));
+      if (t >= 1) {
+        state.colorTransition.items.forEach((item) => applyMatTarget(item.mat, item.to));
+        state.colorTransition = null;
       }
     }
     state.yaw += (state.targetYaw - state.yaw) * 0.12;
@@ -896,7 +1096,39 @@ const BodyMap3D = (() => {
     if (data) state.data = data;
     if (options.colorMode) state.colorMode = options.colorMode;
     if (options.showPedestal != null) state.showPedestal = !!options.showPedestal;
-    applyColors(state);
+    applyColors(state, { animate: !!options.animate, duration: options.duration });
+  }
+
+  /** Soft mode switch: keep yaw/renderer, crossfade materials (~400ms). */
+  function transitionUpdate(id, data, options = {}) {
+    const state = mounts.get(id);
+    if (!state || state.disposed) return false;
+    if (data) state.data = Object.assign({}, state.data || {}, data);
+    if (options.colorMode) state.colorMode = options.colorMode;
+    if (options.showPedestal != null) state.showPedestal = !!options.showPedestal;
+    if (options.view === 'back') {
+      state.targetYaw = Math.PI;
+    } else if (options.view === 'front') {
+      // Keep current yaw if already facing front-ish; otherwise ease toward front
+      if (Math.abs(((state.yaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI) < 0.35) {
+        state.targetYaw = 0.28;
+      }
+    }
+    applyColors(state, {
+      animate: options.animate !== false,
+      duration: options.duration != null ? options.duration : TRANSITION_MS,
+    });
+    return true;
+  }
+
+  function hasMount(id) {
+    const state = mounts.get(id);
+    return !!(state && !state.disposed && state.renderer);
+  }
+
+  function getYaw(id) {
+    const state = mounts.get(id);
+    return state ? state.yaw : 0;
   }
 
   function unmount(id) {
@@ -948,6 +1180,11 @@ const BodyMap3D = (() => {
     CORAL,
     AMBER,
     MINT,
+    GROWTH,
+    GROWTH_DEEP,
+    LOSS,
+    LOSS_DEEP,
+    TRANSITION_MS,
     getPreferredMode,
     setPreferredMode,
     isWebGLAvailable,
@@ -955,6 +1192,9 @@ const BodyMap3D = (() => {
     bindModeToggle,
     mount,
     update,
+    transitionUpdate,
+    hasMount,
+    getYaw,
     unmount,
     unmountAll,
     loadThree,
@@ -963,6 +1203,8 @@ const BodyMap3D = (() => {
     ensureStyles,
     intensityFromLoad,
     recoveryVisual,
+    growthVisual,
+    lossVisual,
   };
 })();
 

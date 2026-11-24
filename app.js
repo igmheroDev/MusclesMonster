@@ -1178,6 +1178,12 @@ function renderHome() {
     console.warn('[RECOVR] 히트맵 모드 탭 동기화 실패:', e);
   }
 
+  try {
+    if (typeof Heatmap3dModes !== 'undefined') Heatmap3dModes.afterHomeRender(recovery);
+  } catch (e) {
+    console.warn('[RECOVR] 공유 3D 히트맵 모드 동기화 실패:', e);
+  }
+
   const muscleList = document.getElementById('muscleList');
   if (!muscleList) return;
 

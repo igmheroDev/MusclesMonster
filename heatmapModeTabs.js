@@ -13,7 +13,13 @@ const HeatmapModeTabs = (() => {
   const STYLE_ID = 'heatmap-mode-tabs-styles';
   const HOST_ID = 'heatmapModeHost';
   const DEFAULT_MODE = 'recovery';
-  const MODES = ['recovery', 'growth'];
+  // 'loss' shares the growth panel (2D combined map); 3D modes use Heatmap3dModes
+  const MODES = ['recovery', 'growth', 'loss'];
+  const PANEL_FOR = {
+    recovery: 'recovery',
+    growth: 'growth',
+    loss: 'growth',
+  };
 
   let initialized = false;
   let currentMode = DEFAULT_MODE;
@@ -91,10 +97,11 @@ const HeatmapModeTabs = (() => {
       }
     });
 
+    const activePanel = PANEL_FOR[currentMode] || currentMode;
     panels.forEach((panel) => {
       const id = panel.getAttribute('data-hmt-panel')
         || (panel.dataset && panel.dataset.hmtPanel);
-      const on = id === currentMode;
+      const on = id === activePanel;
       if (on) {
         if (panel.removeAttribute) panel.removeAttribute('hidden');
       } else if (panel.setAttribute) {
@@ -197,6 +204,7 @@ const HeatmapModeTabs = (() => {
       hostId: HOST_ID,
       defaultMode: DEFAULT_MODE,
       modes: MODES.slice(),
+      panelFor: Object.assign({}, PANEL_FOR),
       recoveryPanelId: 'muscleHeatmapCard',
       growthPanelId: 'muscleGrowthHeatmapCard',
     };
