@@ -104,7 +104,7 @@ assert(html.includes('selected'), 'selected class');
 
 assert(BodyMap3D.intensityFromLoad(0) === 0, 'zero intensity');
 assert(BodyMap3D.intensityFromLoad(1) > 0.2, 'positive intensity');
-assert(BodyMap3D.intensityFromLoad(20) <= 0.85, 'intensity capped moderate');
+assert(BodyMap3D.intensityFromLoad(20) <= 0.55, 'intensity capped moderate');
 
 assert(BodyMap3D.recoveryVisual(20, true).color === BodyMap3D.CORAL, 'fatigued coral');
 assert(BodyMap3D.recoveryVisual(60, true).color === BodyMap3D.AMBER, 'recovering amber');

@@ -365,15 +365,15 @@ const BodyMap3D = (() => {
 
   function intensityFromLoad(load) {
     if (!load || load <= 0) return 0;
-    // Moderate emissive scale — keep room for lit shading + fresnel
-    return Math.max(0.22, Math.min(0.85, 0.2 + load * 0.18));
+    // Keep emissive moderate so MeshStandard lit shading + normals stay readable
+    return Math.max(0.18, Math.min(0.52, 0.14 + load * 0.1));
   }
 
   function recoveryVisual(pct, hasData) {
     if (!hasData) return { color: BASE_COLOR, intensity: 0.04, albedoMix: 0, fresnel: 0 };
-    if (pct < 40) return { color: CORAL, intensity: 0.55, albedoMix: 0.7, fresnel: 1.1 };
-    if (pct < 95) return { color: AMBER, intensity: 0.42, albedoMix: 0.55, fresnel: 0.85 };
-    return { color: MINT, intensity: 0.35, albedoMix: 0.45, fresnel: 0.7 };
+    if (pct < 40) return { color: CORAL, intensity: 0.38, albedoMix: 0.82, fresnel: 0.95 };
+    if (pct < 95) return { color: AMBER, intensity: 0.3, albedoMix: 0.7, fresnel: 0.75 };
+    return { color: MINT, intensity: 0.26, albedoMix: 0.58, fresnel: 0.6 };
   }
 
   function loadForId(loads, id) {
@@ -470,13 +470,14 @@ const BodyMap3D = (() => {
           const load = activeLoadForMesh(appIds, data && data.loads);
           if (load > 0) {
             const t = Math.min(1, load / 3.5);
-            const emissive = intensityFromLoad(load) * (colorMode === 'complete' ? 1.08 : 1);
-            // Coral albedo + moderate emissive → lit shading keeps fiber shape
-            mat.color.setHex(mixHex(BASE_COLOR, CORAL, 0.55 + t * 0.35));
+            const emissive = intensityFromLoad(load) * (colorMode === 'complete' ? 1.05 : 1);
+            // Coral-tinted albedo carries most of the color; emissive only soft-glows
+            mat.color.setHex(mixHex(BASE_COLOR, CORAL, 0.72 + t * 0.22));
             mat.emissive.setHex(hexToInt(CORAL));
             mat.emissiveIntensity = emissive;
-            mat.roughness = 0.48 + (1 - t) * 0.18;
-            setFresnel(mat, 0.75 + t * 0.65);
+            mat.roughness = 0.4 + (1 - t) * 0.16;
+            mat.metalness = 0.06;
+            setFresnel(mat, 0.55 + t * 0.45);
           } else {
             mat.color.setHex(hexToInt(BASE_COLOR));
             mat.emissive.setHex(hexToInt(BASE_COLOR));
@@ -747,22 +748,22 @@ const BodyMap3D = (() => {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     state.canvasWrap.appendChild(renderer.domElement);
 
-    // Key + dual rim so coral albedo still reads muscle volume when emissive is moderate
-    const ambient = new THREE.AmbientLight(0x6e6e7c, 0.42);
+    // Stronger key/rim so coral albedo keeps fiber volume when emissive is moderate
+    const ambient = new THREE.AmbientLight(0x6e6e7c, 0.32);
     scene.add(ambient);
-    const key = new THREE.DirectionalLight(0xffffff, 0.85);
+    const key = new THREE.DirectionalLight(0xffffff, 1.15);
     key.position.set(1.5, 2.6, 2.4);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0xb8d0ff, 1.05);
+    const rim = new THREE.DirectionalLight(0xb8d0ff, 1.2);
     rim.position.set(-2.1, 1.5, -2.5);
     scene.add(rim);
-    const rim2 = new THREE.DirectionalLight(0xffb8a0, 0.45);
+    const rim2 = new THREE.DirectionalLight(0xffb8a0, 0.55);
     rim2.position.set(2.3, 0.7, -1.5);
     scene.add(rim2);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.32);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.38);
     fill.position.set(0, -1.2, 1.9);
     scene.add(fill);
-    const hemi = new THREE.HemisphereLight(0x8a9bb8, 0x1a1210, 0.35);
+    const hemi = new THREE.HemisphereLight(0x8a9bb8, 0x1a1210, 0.4);
     scene.add(hemi);
 
     const cloned = template.scene.clone(true);
