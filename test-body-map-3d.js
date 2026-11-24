@@ -120,7 +120,8 @@ assert(BodyMap3D.growthVisual(2.8, true).tier === 'strong', 'strong tier');
 assert(typeof BodyMap3D.getQualityStats === 'function', 'quality stats API');
 
 const src = fs.readFileSync(path.join(__dirname, 'bodyMap3d.js'), 'utf8');
-assert(src.includes('Drag to rotate'), 'drag hint present');
+assert(src.includes('밀어 돌리기'), 'Korean drag hint');
+assert(src.includes('word-break: keep-all') || src.includes('word-break:keep-all'), 'hint keep-all');
 assert(src.includes('피로') || src.includes('Fatigued'), 'recovery tip status');
 assert(src.includes('vendor/three.module.min.js'), 'vendors three');
 assert(src.includes('muscles-body.glb') || src.includes('MODEL_URL'), 'loads anatomy glb');
@@ -157,7 +158,7 @@ assert(fs.existsSync(path.join(__dirname, 'vendor/MODEL_SOURCE.md')), 'model sou
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.LICENSE.txt')), 'three license');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(sw.includes('recovr-cache-v90'), 'sw cache v90');
+assert(sw.includes('recovr-cache-v91'), 'sw cache v90');
 assert(sw.includes('bodyMap3d.js'), 'sw caches bodyMap3d');
 assert(sw.includes('vendor/three.module.min.js'), 'sw caches three');
 assert(sw.includes('vendor/anatomy/muscles-body.glb'), 'sw caches anatomy glb');

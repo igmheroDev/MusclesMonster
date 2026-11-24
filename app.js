@@ -1184,6 +1184,12 @@ function renderHome() {
     console.warn('[RECOVR] 공유 3D 히트맵 모드 동기화 실패:', e);
   }
 
+  try {
+    if (typeof HomeBodyMapDetail !== 'undefined') HomeBodyMapDetail.afterHomeRender();
+  } catch (e) {
+    console.warn('[RECOVR] 바디맵 자세히 보기 연결 실패:', e);
+  }
+
   const muscleList = document.getElementById('muscleList');
   if (!muscleList) return;
 
