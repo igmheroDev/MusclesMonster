@@ -12,7 +12,7 @@ Home heatmap uses **one shared WebGL stage** (`Heatmap3dModes` → `BodyMap3D` m
 | Mode | Palette |
 |------|---------|
 | Recovery | Coral fatigued · Amber recovering · Mint ready |
-| Growth | Deep teal (`#1aa88a` Growing) → lime (`#b8ff3d` Strong growth) |
+| Growth | Deep teal `#1aa88a` (성장 중) → lime `#b8ff3d` (강한 성장) |
 | Loss | Violet → deep indigo by loss amount |
 
 ## Glow polish (Stage 2)
