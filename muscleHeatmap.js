@@ -393,7 +393,10 @@ const MuscleHeatmap = (() => {
 
     const hasData = lastActive.length > 0;
     const viewLabel = currentView === 'back' ? '후면' : '전면';
-    const modeToggle = (typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
+    // Heatmap3dModes chrome owns the single home 2D/3D toggle — skip duplicate here
+    const homeOwnsToggle = (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+      && Heatmap3dModes.ownsHome3d());
+    const modeToggle = (!homeOwnsToggle && typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
       ? BodyMap3D.buildModeToggle(mapMode, { scope: 'recovery' })
       : '';
 

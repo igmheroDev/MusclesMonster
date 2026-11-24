@@ -61,7 +61,7 @@ assert(indexHtml.includes('h3dSharedHost'), 'shared host in DOM');
 assert(indexHtml.includes('data-hmt-mode="loss"'), 'loss tab in DOM');
 assert(appJs.includes('Heatmap3dModes.afterHomeRender'), 'app hooks afterHomeRender');
 assert(heat.includes('Heatmap3dModes.ownsHome3d'), 'heatmap yields home 3D');
-assert(swJs.includes('recovr-cache-v85'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v86'), 'sw cache bump');
 assert(swJs.includes('heatmap3dModes.js'), 'sw caches module');
 
 console.log(failures === 0 ? '\n=== Heatmap3dModes tests passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);

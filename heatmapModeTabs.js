@@ -119,6 +119,11 @@ const HeatmapModeTabs = (() => {
   }
 
   function onTabClick(e) {
+    // Heatmap3dModes owns Recovery/Growth/Loss when present (Loss ≠ growth panel only).
+    if (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d()) {
+      return;
+    }
     const tab = e.target && e.target.closest
       ? e.target.closest('[data-hmt-mode]')
       : e.target;
@@ -158,7 +163,13 @@ const HeatmapModeTabs = (() => {
       return false;
     }
     if (!initialized) {
-      host.addEventListener('click', onTabClick);
+      // When Heatmap3dModes is loaded it owns Recovery/Growth/Loss clicks
+      // (capture + stopPropagation). Skip our bubble click to avoid double handlers.
+      const modesOwnsTabs = (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d());
+      if (!modesOwnsTabs) {
+        host.addEventListener('click', onTabClick);
+      }
       host.addEventListener('keydown', onTabKeydown);
       initialized = true;
     }
@@ -185,6 +196,11 @@ const HeatmapModeTabs = (() => {
   function afterHomeRender() {
     ensureStyles();
     fillEmptyGrowthPanel();
+    // Avoid fighting Heatmap3dModes panel visibility (esp. Loss tab).
+    if (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d()) {
+      return;
+    }
     applyMode();
   }
 

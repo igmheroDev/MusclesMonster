@@ -69,17 +69,38 @@ const Heatmap3dModes = (() => {
         background: #0a0a0f;
         border: 1px solid var(--border);
         margin-bottom: 8px;
+        /* Allow vertical page scroll when the gesture starts on the 3D host */
+        touch-action: pan-y;
+      }
+      #${SHARED_HOST_ID} .bm3-stage {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        aspect-ratio: auto;
+        touch-action: pan-y;
       }
       #${SHARED_HOST_ID}[hidden] { display: none !important; }
       #${CHROME_ID}[hidden] { display: none !important; }
+      /* Chrome owns the single 2D/3D toggle — never show the recovery card's duplicate */
+      .hmt-host .bm3-mode-toggle[data-bm3-toggle="recovery"] {
+        display: none !important;
+      }
+      /* In 2D, cards keep their own legends; chrome legend only for 3D */
+      #${CHROME_ID} .h3d-legend { display: none; }
+      .hmt-host.h3d-active #${CHROME_ID} .h3d-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+      }
+      /* 3D mode: hide 2D panel cards entirely (avoids stacked headers / Front·Back / legends) */
       .hmt-host.h3d-active .mh-body-wrap,
       .hmt-host.h3d-active .mh-legend,
       .hmt-host.h3d-active .mh-sub,
       .hmt-host.h3d-active #mh3dHost,
-      .hmt-host.h3d-active .bm3-mode-toggle[data-bm3-toggle="recovery"] {
+      .hmt-host.h3d-active #muscleHeatmapCard,
+      .hmt-host.h3d-active #muscleGrowthHeatmapCard {
         display: none !important;
       }
-      .hmt-host.h3d-active .mh-header .mh-toggle { opacity: 0.85; }
     `;
     (document.head || document.documentElement).appendChild(style);
     return true;
@@ -331,6 +352,8 @@ const Heatmap3dModes = (() => {
     if (wired) return;
     const host = getHost();
     if (!host) return;
+    // Capture + stopPropagation so HeatmapModeTabs' bubble listener cannot
+    // double-toggle panels (Loss shares the growth panel id).
     host.addEventListener('click', onTabClick, true);
     wired = true;
   }
