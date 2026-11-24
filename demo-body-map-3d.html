@@ -120,7 +120,8 @@
       forearms: { lastDate: null, recoveryPct: 100 },
       adductors: { lastDate: '2026-11-20', recoveryPct: 96, recoveryHours: 36, hoursElapsed: 70 },
     };
-    const completeLoads = { chest: 3.5, shoulder: 2.4, triceps: 2.0, core: 1.4, biceps: 0.8, quads: 1.1, calves: 0.6 };
+    // Only worked muscles — must NOT light legs when upper-body session
+    const completeLoads = { chest: 3.5, shoulder: 2.4, triceps: 2.0, core: 1.4 };
 
     function wireToggle(el, mountId, host, optsFactory) {
       el.innerHTML = BodyMap3D.buildModeToggle('3d', { scope: mountId });

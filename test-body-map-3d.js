@@ -104,11 +104,12 @@ assert(html.includes('selected'), 'selected class');
 
 assert(BodyMap3D.intensityFromLoad(0) === 0, 'zero intensity');
 assert(BodyMap3D.intensityFromLoad(1) > 0.2, 'positive intensity');
-assert(BodyMap3D.intensityFromLoad(20) <= 1.35, 'intensity capped');
+assert(BodyMap3D.intensityFromLoad(20) <= 0.85, 'intensity capped moderate');
 
 assert(BodyMap3D.recoveryVisual(20, true).color === BodyMap3D.CORAL, 'fatigued coral');
 assert(BodyMap3D.recoveryVisual(60, true).color === BodyMap3D.AMBER, 'recovering amber');
 assert(BodyMap3D.recoveryVisual(98, true).color === BodyMap3D.MINT, 'ready mint');
+assert(BodyMap3D.recoveryVisual(20, true).albedoMix > 0, 'recovery uses coral albedo mix');
 
 const src = fs.readFileSync(path.join(__dirname, 'bodyMap3d.js'), 'utf8');
 assert(src.includes('Drag to rotate'), 'english drag hint');
@@ -127,13 +128,27 @@ assert(src.includes('MAX_PIXEL_RATIO = 2') || src.includes('MAX_PIXEL_RATIO=2'),
 assert(src.includes('dispose'), 'dispose path');
 assert(src.includes('WEBGL_lose_context') || src.includes('loseContext'), 'lose context on dispose');
 assert(src.includes('showPedestal'), 'complete pedestal support');
+// KEY_TO_APP: upper-body session must not light leg atlas keys
+const keyMap = JSON.parse(fs.readFileSync(path.join(__dirname, 'vendor/anatomy/KEY_TO_APP.json'), 'utf8'));
+const upperLoads = { chest: 1, shoulder: 1, triceps: 1, core: 1 };
+const litKeys = Object.keys(keyMap).filter((k) => (keyMap[k] || []).some((id) => upperLoads[id] > 0));
+['rectus_femoris', 'vastus_lateralis', 'gastrocnemius_medial', 'gluteus_maximus', 'biceps_femoris_long', 'psoas_major'].forEach((leg) => {
+  assert(!litKeys.includes(leg), `upper-body load must not light ${leg}`);
+});
+assert(litKeys.includes('pectoralis_major_sternocostal'), 'chest lights pecs');
+assert(litKeys.includes('rectus_abdominis'), 'core lights abs');
+assert(!((keyMap.psoas_major || []).includes('core')), 'psoas not aliased to core');
+assert((keyMap.gluteus_maximus || []).includes('glutes') && !(keyMap.gluteus_maximus || []).includes('hamstrings'), 'glutes not aliased as hamstrings mesh id');
+assert(src.includes('uFresnel') || src.includes('fresnel') || src.includes('Fresnel'), 'fresnel rim on glow');
+assert(src.includes('makeMuscleMat'), 'per-mesh materials');
+
 
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.module.min.js')), 'three vendor file');
 assert(fs.existsSync(path.join(__dirname, 'vendor/MODEL_SOURCE.md')), 'model source doc');
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.LICENSE.txt')), 'three license');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(sw.includes('recovr-cache-v83'), 'cache bumped to v82');
+assert(sw.includes('recovr-cache-v84'), 'cache bumped to v84');
 assert(sw.includes('bodyMap3d.js'), 'sw caches bodyMap3d');
 assert(sw.includes('vendor/three.module.min.js'), 'sw caches three');
 assert(sw.includes('vendor/anatomy/muscles-body.glb'), 'sw caches anatomy glb');

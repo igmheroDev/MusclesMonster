@@ -21,6 +21,15 @@ const BodyMap3D = (() => {
   const CONTEXT_COLOR = '#2a2a32';
   const BG = '#0a0a0f';
 
+  // App coarse ids that should also light related fine-only meshes
+  const LOAD_ALIASES = {
+    shoulder: ['front_delts', 'rear_delts'],
+    back: ['traps', 'lats', 'lower_back'],
+    core: ['abs', 'obliques'],
+    // App label "둔근/햄스트링" is one recovery/load bucket
+    hamstrings: ['glutes'],
+  };
+
   // App-facing ids (coarse + finer where the model allows)
   const EN_LABELS = {
     chest: 'Chest',
@@ -192,15 +201,38 @@ const BodyMap3D = (() => {
     return parseInt(String(hex).replace('#', ''), 16);
   }
 
+  function attachGlowFresnel(mat) {
+    // Soft view-dependent rim so lit muscles keep fiber depth (no flat emissive slab)
+    mat.userData.fresnelStrength = 0;
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uFresnel = { value: 0 };
+      mat.userData.uFresnel = shader.uniforms.uFresnel;
+      shader.fragmentShader = `uniform float uFresnel;\n${shader.fragmentShader}`;
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `
+        float bm3Fres = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.35);
+        outgoingLight += totalEmissiveRadiance * bm3Fres * uFresnel;
+        #include <opaque_fragment>
+        `
+      );
+    };
+    mat.customProgramCacheKey = () => 'bm3-fresnel-v1';
+  }
+
   function makeMuscleMat() {
-    return new THREE.MeshStandardMaterial({
+    // Always a fresh instance — never share across meshes
+    const mat = new THREE.MeshStandardMaterial({
       color: hexToInt(BASE_COLOR),
-      roughness: 0.86,
-      metalness: 0.05,
+      roughness: 0.72,
+      metalness: 0.08,
       emissive: hexToInt(BASE_COLOR),
-      emissiveIntensity: 0.04,
+      emissiveIntensity: 0.03,
       flatShading: false,
+      vertexColors: false,
     });
+    attachGlowFresnel(mat);
+    return mat;
   }
 
   function makeContextMat() {
@@ -210,12 +242,29 @@ const BodyMap3D = (() => {
       metalness: 0.02,
       emissive: hexToInt(CONTEXT_COLOR),
       emissiveIntensity: 0.02,
+      vertexColors: false,
     });
+  }
+
+  function mixHex(a, b, t) {
+    const pa = hexToInt(a);
+    const pb = hexToInt(b);
+    const ar = (pa >> 16) & 255; const ag = (pa >> 8) & 255; const ab = pa & 255;
+    const br = (pb >> 16) & 255; const bg = (pb >> 8) & 255; const bb = pb & 255;
+    const r = Math.round(ar + (br - ar) * t);
+    const g = Math.round(ag + (bg - ag) * t);
+    const bl = Math.round(ab + (bb - ab) * t);
+    return (r << 16) | (g << 8) | bl;
+  }
+
+  function setFresnel(mat, strength) {
+    mat.userData.fresnelStrength = strength;
+    if (mat.userData.uFresnel) mat.userData.uFresnel.value = strength;
   }
 
   async function loadKeyMap() {
     if (keyToApp) return keyToApp;
-    const res = await fetch(`./${MAP_URL}?v=1`);
+    const res = await fetch(`./${MAP_URL}?v=2`);
     keyToApp = await res.json();
     return keyToApp;
   }
@@ -259,27 +308,25 @@ const BodyMap3D = (() => {
     wrapper.scale.setScalar(scale);
     root.add(wrapper);
 
-    const muscleMat = makeMuscleMat();
-    const contextMat = makeContextMat();
-
     gltfScene.traverse((obj) => {
       if (!obj.isMesh) return;
-      const extras = (obj.userData && Object.keys(obj.userData).length)
+      // Dispose any shared source material; every mesh gets its own instance
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => { /* keep geo; replace below */ });
+      }
+      const extras = (obj.userData && (obj.userData.key || obj.userData.muscleId || obj.userData.label))
         ? obj.userData
-        : (obj.parent && obj.parent.userData) || {};
+        : (obj.parent && obj.parent.userData) || obj.userData || {};
       const key = normalizeKeyFromName(obj.name, extras);
       const appIds = mapping[key] || null;
-      const isSupport = !appIds && (
-        /bone|skeleton|skull|context|support|connective|cartilage/i.test(obj.name)
-        || (extras && (extras.kind === 'bone' || extras.kind === 'support'))
-      );
 
       if (appIds && appIds.length) {
-        const mat = muscleMat.clone();
+        // Brand-new material per mesh (never share / never clone a shared template)
+        const mat = makeMuscleMat();
         obj.material = mat;
         obj.castShadow = false;
         obj.receiveShadow = false;
-        obj.userData.appIds = appIds;
+        obj.userData.appIds = appIds.slice();
         obj.userData.muscle = pickPrimaryId(appIds);
         obj.userData.atlasKey = key;
         obj.userData.label = extras.label || EN_LABELS[obj.userData.muscle] || key;
@@ -288,11 +335,9 @@ const BodyMap3D = (() => {
           muscleMeshes.get(id).push(obj);
         });
       } else {
-        obj.material = contextMat.clone();
+        obj.material = makeContextMat();
         obj.userData.muscle = null;
         obj.userData.appIds = [];
-        // Keep light context (bones) faintly visible for silhouette
-        if (isSupport) obj.material.opacity = 1;
       }
     });
 
@@ -320,37 +365,79 @@ const BodyMap3D = (() => {
 
   function intensityFromLoad(load) {
     if (!load || load <= 0) return 0;
-    return Math.max(0.15, Math.min(1.35, 0.25 + load * 0.28));
+    // Moderate emissive scale — keep room for lit shading + fresnel
+    return Math.max(0.22, Math.min(0.85, 0.2 + load * 0.18));
   }
 
   function recoveryVisual(pct, hasData) {
-    if (!hasData) return { color: BASE_COLOR, intensity: 0.05 };
-    if (pct < 40) return { color: CORAL, intensity: 0.95 };
-    if (pct < 95) return { color: AMBER, intensity: 0.7 };
-    return { color: MINT, intensity: 0.55 };
+    if (!hasData) return { color: BASE_COLOR, intensity: 0.04, albedoMix: 0, fresnel: 0 };
+    if (pct < 40) return { color: CORAL, intensity: 0.55, albedoMix: 0.7, fresnel: 1.1 };
+    if (pct < 95) return { color: AMBER, intensity: 0.42, albedoMix: 0.55, fresnel: 0.85 };
+    return { color: MINT, intensity: 0.35, albedoMix: 0.45, fresnel: 0.7 };
+  }
+
+  function loadForId(loads, id) {
+    if (!loads) return 0;
+    let v = loads[id] || 0;
+    // Fine-only meshes also pick up their coarse app bucket
+    Object.keys(LOAD_ALIASES).forEach((coarse) => {
+      if ((LOAD_ALIASES[coarse] || []).includes(id)) {
+        v = Math.max(v, loads[coarse] || 0);
+      }
+    });
+    return v;
   }
 
   function activeLoadForMesh(appIds, loads) {
     if (!loads || !appIds) return 0;
     let best = 0;
     appIds.forEach((id) => {
-      const v = loads[id] || 0;
-      if (v > best) best = v;
+      best = Math.max(best, loadForId(loads, id));
     });
-    // Coarse aliases already included in appIds via KEY_TO_APP
     return best;
+  }
+
+  function recoveryRecordForId(recovery, id) {
+    if (!recovery) return null;
+    let r = recovery[id];
+    if (r && r.lastDate != null) return r;
+    // Fine ids fall back to coarse app buckets
+    const reverse = {
+      front_delts: 'shoulder', rear_delts: 'shoulder',
+      traps: 'back', lats: 'back', lower_back: 'back',
+      abs: 'core', obliques: 'core',
+      glutes: 'hamstrings',
+    };
+    const coarse = reverse[id];
+    if (coarse && recovery[coarse] && recovery[coarse].lastDate != null) return recovery[coarse];
+    return null;
   }
 
   function recoveryForMesh(appIds, recovery) {
     if (!recovery || !appIds) return { pct: 100, hasData: false };
     let best = null;
     appIds.forEach((id) => {
-      const r = recovery[id];
+      const r = recoveryRecordForId(recovery, id);
       if (!r || r.lastDate == null) return;
       if (!best || (r.recoveryPct ?? 100) < (best.recoveryPct ?? 100)) best = r;
     });
     if (!best) return { pct: 100, hasData: false };
     return { pct: best.recoveryPct ?? 100, hasData: true };
+  }
+
+  function ensureUniqueMaterial(mesh) {
+    const mat = mesh.material;
+    if (!mat) {
+      mesh.material = makeMuscleMat();
+      return mesh.material;
+    }
+    // If this material is somehow shared, detach a private clone with fresnel
+    if (mat.userData && mat.userData._bm3Shared) {
+      const next = makeMuscleMat();
+      mesh.material = next;
+      return next;
+    }
+    return mat;
   }
 
   function applyColors(state) {
@@ -361,28 +448,44 @@ const BodyMap3D = (() => {
         if (seen.has(mesh)) return;
         seen.add(mesh);
         const appIds = mesh.userData.appIds || [];
-        const mat = mesh.material;
-        let color = BASE_COLOR;
-        let intensity = 0.04;
+        const mat = ensureUniqueMaterial(mesh);
 
         if (colorMode === 'recovery') {
           const { pct, hasData } = recoveryForMesh(appIds, data && data.recovery);
           const vis = recoveryVisual(pct, hasData);
-          color = vis.color;
-          intensity = vis.intensity;
+          if (hasData) {
+            mat.color.setHex(mixHex(BASE_COLOR, vis.color, vis.albedoMix));
+            mat.emissive.setHex(hexToInt(vis.color));
+            mat.emissiveIntensity = vis.intensity;
+            mat.roughness = 0.55;
+            setFresnel(mat, vis.fresnel);
+          } else {
+            mat.color.setHex(hexToInt(BASE_COLOR));
+            mat.emissive.setHex(hexToInt(BASE_COLOR));
+            mat.emissiveIntensity = 0.03;
+            mat.roughness = 0.78;
+            setFresnel(mat, 0);
+          }
         } else {
           const load = activeLoadForMesh(appIds, data && data.loads);
           if (load > 0) {
-            color = CORAL;
-            intensity = intensityFromLoad(load) * (colorMode === 'complete' ? 1.15 : 1);
+            const t = Math.min(1, load / 3.5);
+            const emissive = intensityFromLoad(load) * (colorMode === 'complete' ? 1.08 : 1);
+            // Coral albedo + moderate emissive → lit shading keeps fiber shape
+            mat.color.setHex(mixHex(BASE_COLOR, CORAL, 0.55 + t * 0.35));
+            mat.emissive.setHex(hexToInt(CORAL));
+            mat.emissiveIntensity = emissive;
+            mat.roughness = 0.48 + (1 - t) * 0.18;
+            setFresnel(mat, 0.75 + t * 0.65);
           } else {
-            intensity = showPedestal ? 0.06 : 0.04;
+            mat.color.setHex(hexToInt(BASE_COLOR));
+            mat.emissive.setHex(hexToInt(BASE_COLOR));
+            mat.emissiveIntensity = showPedestal ? 0.045 : 0.03;
+            mat.roughness = 0.78;
+            setFresnel(mat, 0.15);
           }
         }
-
-        mat.color.setHex(hexToInt(BASE_COLOR));
-        mat.emissive.setHex(hexToInt(color));
-        mat.emissiveIntensity = intensity;
+        mat.vertexColors = false;
         mat.needsUpdate = true;
       });
     });
@@ -644,20 +747,23 @@ const BodyMap3D = (() => {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     state.canvasWrap.appendChild(renderer.domElement);
 
-    const ambient = new THREE.AmbientLight(0x7a7a88, 0.55);
+    // Key + dual rim so coral albedo still reads muscle volume when emissive is moderate
+    const ambient = new THREE.AmbientLight(0x6e6e7c, 0.42);
     scene.add(ambient);
-    const key = new THREE.DirectionalLight(0xffffff, 0.65);
-    key.position.set(1.4, 2.4, 2.2);
+    const key = new THREE.DirectionalLight(0xffffff, 0.85);
+    key.position.set(1.5, 2.6, 2.4);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0xb0c8ff, 0.9);
-    rim.position.set(-2.0, 1.4, -2.4);
+    const rim = new THREE.DirectionalLight(0xb8d0ff, 1.05);
+    rim.position.set(-2.1, 1.5, -2.5);
     scene.add(rim);
-    const rim2 = new THREE.DirectionalLight(0xffc8b0, 0.35);
-    rim2.position.set(2.2, 0.6, -1.4);
+    const rim2 = new THREE.DirectionalLight(0xffb8a0, 0.45);
+    rim2.position.set(2.3, 0.7, -1.5);
     scene.add(rim2);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.28);
-    fill.position.set(0, -1.2, 1.8);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.32);
+    fill.position.set(0, -1.2, 1.9);
     scene.add(fill);
+    const hemi = new THREE.HemisphereLight(0x8a9bb8, 0x1a1210, 0.35);
+    scene.add(hemi);
 
     const cloned = template.scene.clone(true);
     const { root, muscleMeshes } = prepareFigure(cloned, template.mapping);

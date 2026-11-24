@@ -3,7 +3,7 @@
   "pectoralis_major_sternocostal": ["chest"],
   "pectoralis_major_abdominal": ["chest"],
   "pectoralis_minor": ["chest"],
-  "serratus_anterior": ["chest", "back"],
+  "serratus_anterior": ["chest"],
 
   "deltoid_anterior": ["shoulder", "front_delts"],
   "deltoid_lateral": ["shoulder", "front_delts"],
@@ -82,9 +82,9 @@
   "semitendinosus": ["hamstrings"],
   "semimembranosus": ["hamstrings"],
 
-  "gluteus_maximus": ["hamstrings", "glutes"],
-  "gluteus_medius": ["hamstrings", "glutes"],
-  "gluteus_minimus": ["hamstrings", "glutes"],
+  "gluteus_maximus": ["glutes"],
+  "gluteus_medius": ["glutes"],
+  "gluteus_minimus": ["glutes"],
 
   "adductor_magnus": ["adductors"],
   "adductor_longus": ["adductors"],
@@ -108,13 +108,13 @@
   "popliteus": ["calves"],
 
   "iliacus": ["adductors"],
-  "psoas_major": ["core"],
-  "piriformis": ["hamstrings", "glutes"],
-  "quadratus_femoris": ["hamstrings", "glutes"],
-  "obturator_internus": ["hamstrings", "glutes"],
-  "obturator_externus": ["hamstrings", "glutes"],
-  "gemellus_inferior": ["hamstrings", "glutes"],
-  "gemellus_superior": ["hamstrings", "glutes"],
+  "psoas_major": ["adductors"],
+  "piriformis": ["glutes"],
+  "quadratus_femoris": ["glutes"],
+  "obturator_internus": ["glutes"],
+  "obturator_externus": ["glutes"],
+  "gemellus_inferior": ["glutes"],
+  "gemellus_superior": ["glutes"],
 
   "sternocleidomastoid": ["traps"],
   "scalenus_medius": ["traps"],
