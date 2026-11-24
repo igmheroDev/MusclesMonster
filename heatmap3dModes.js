@@ -1,9 +1,9 @@
 // ============================================================
 // RECOVR - Shared home 3D body-map modes (independent module)
 //
-// Owns ONE WebGL stage for Recovery / Growth / Loss on the home
-// heatmap host. Does not rewrite MuscleHeatmap / MuscleGrowthDetail
-// calculation — only reuses their data and hides their per-card 3D.
+// Owns ONE WebGL stage for 회복 / 성장 / 손실 on the home
+// heatmap host. Home is 3D-only (no 2D/3D toggle). Falls back
+// to existing 2D cards only when WebGL is unavailable.
 //
 // Growth / loss formulas: see BODY_MAP_3D_MODES.md (from MuscleGrowthTracker)
 // ============================================================
@@ -16,9 +16,14 @@ const Heatmap3dModes = (() => {
   const MODES = ['recovery', 'growth', 'loss'];
   const DEFAULT_MODE = 'recovery';
   const MODE_STORAGE_KEY = 'recovr_heatmap_data_mode';
+  const MODE_LABELS = {
+    recovery: '회복',
+    growth: '성장',
+    loss: '손실',
+  };
 
   let currentMode = DEFAULT_MODE;
-  let mapMode = '2d';
+  let mapMode = '3d'; // home defaults to 3D; '2d' only as WebGL fallback
   let lastRecovery = null;
   let lastPerMuscle = null;
   let wired = false;
@@ -32,6 +37,12 @@ const Heatmap3dModes = (() => {
     }
   }
 
+  function webglOk() {
+    return typeof BodyMap3D !== 'undefined'
+      && typeof BodyMap3D.isWebGLAvailable === 'function'
+      && BodyMap3D.isWebGLAvailable();
+  }
+
   function ensureStyles() {
     if (typeof document === 'undefined') return false;
     if (document.getElementById(STYLE_ID)) return true;
@@ -42,7 +53,7 @@ const Heatmap3dModes = (() => {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 8px;
         margin: 0 0 8px;
       }
@@ -61,6 +72,12 @@ const Heatmap3dModes = (() => {
       #${CHROME_ID} .h3d-legend i {
         width: 8px; height: 8px; border-radius: 50%; display: inline-block;
       }
+      #${CHROME_ID} .h3d-fallback-note {
+        width: 100%;
+        font-size: 11px;
+        color: var(--muted);
+        margin: 0;
+      }
       #${SHARED_HOST_ID} {
         height: min(52vh, 420px);
         min-height: 280px;
@@ -69,17 +86,30 @@ const Heatmap3dModes = (() => {
         background: #0a0a0f;
         border: 1px solid var(--border);
         margin-bottom: 8px;
+        touch-action: pan-y;
+      }
+      #${SHARED_HOST_ID} .bm3-stage {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        aspect-ratio: auto;
+        touch-action: pan-y;
       }
       #${SHARED_HOST_ID}[hidden] { display: none !important; }
       #${CHROME_ID}[hidden] { display: none !important; }
+      /* Home never shows a 2D/3D toggle — remove any leftover DOM */
+      .hmt-host .bm3-mode-toggle {
+        display: none !important;
+      }
+      /* 3D mode: hide 2D panel cards entirely */
       .hmt-host.h3d-active .mh-body-wrap,
       .hmt-host.h3d-active .mh-legend,
       .hmt-host.h3d-active .mh-sub,
       .hmt-host.h3d-active #mh3dHost,
-      .hmt-host.h3d-active .bm3-mode-toggle[data-bm3-toggle="recovery"] {
+      .hmt-host.h3d-active #muscleHeatmapCard,
+      .hmt-host.h3d-active #muscleGrowthHeatmapCard {
         display: none !important;
       }
-      .hmt-host.h3d-active .mh-header .mh-toggle { opacity: 0.85; }
     `;
     (document.head || document.documentElement).appendChild(style);
     return true;
@@ -89,10 +119,14 @@ const Heatmap3dModes = (() => {
     return true;
   }
 
-  function syncMapMode() {
-    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.getPreferredMode) {
-      mapMode = BodyMap3D.getPreferredMode();
-    }
+  /**
+   * Home view is 3D-only (local mapMode). Do NOT call BodyMap3D.setPreferredMode —
+   * that writes recovr_bodymap_view_mode used by live/complete screens.
+   * Fall back to 2D cards only when WebGL is unavailable.
+   */
+  function resolveHomeMapMode() {
+    mapMode = webglOk() ? '3d' : '2d';
+    return mapMode;
   }
 
   function loadSavedMode() {
@@ -113,20 +147,20 @@ const Heatmap3dModes = (() => {
   function legendHtml(mode) {
     if (mode === 'growth') {
       return `
-        <span><i style="background:#14c878"></i>Growing</span>
-        <span><i style="background:#2ef0a0"></i>Strong growth</span>
-        <span><i style="background:#3a3a44"></i>No signal</span>`;
+        <span><i style="background:#14c878"></i>성장 중</span>
+        <span><i style="background:#2ef0a0"></i>강한 성장</span>
+        <span><i style="background:#3a3a44"></i>신호 없음</span>`;
     }
     if (mode === 'loss') {
       return `
-        <span><i style="background:#7b6cff"></i>Losing</span>
-        <span><i style="background:#4a3dc8"></i>High loss</span>
-        <span><i style="background:#3a3a44"></i>Stable</span>`;
+        <span><i style="background:#7b6cff"></i>손실</span>
+        <span><i style="background:#4a3dc8"></i>손실 심함</span>
+        <span><i style="background:#3a3a44"></i>유지</span>`;
     }
     return `
-      <span><i style="background:#ff3b5c"></i>Fatigued</span>
-      <span><i style="background:#f5a524"></i>Recovering</span>
-      <span><i style="background:#3ee6b0"></i>Ready</span>`;
+      <span><i style="background:#ff3b5c"></i>피로</span>
+      <span><i style="background:#f5a524"></i>회복 중</span>
+      <span><i style="background:#3ee6b0"></i>준비됨</span>`;
   }
 
   function ensureChrome() {
@@ -140,18 +174,15 @@ const Heatmap3dModes = (() => {
       if (tabs && tabs.nextSibling) host.insertBefore(chrome, tabs.nextSibling);
       else host.insertBefore(chrome, host.firstChild);
     }
-    const toggle = (typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
-      ? BodyMap3D.buildModeToggle(mapMode, { scope: 'home-modes' })
+    // Legend only — no 2D/3D toggle on home
+    const fallbackNote = (mapMode !== '3d')
+      ? '<p class="h3d-fallback-note" data-h3d-fallback>3D를 사용할 수 없어 2D로 표시합니다.</p>'
       : '';
     chrome.innerHTML = `
-      <div class="h3d-legend" data-h3d-legend>${legendHtml(currentMode)}</div>
-      ${toggle}`;
-    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.bindModeToggle) {
-      BodyMap3D.bindModeToggle(chrome, (mode) => {
-        mapMode = mode;
-        applyViewMode();
-      });
-    }
+      <div class="h3d-legend" data-h3d-legend aria-label="${MODE_LABELS[currentMode] || ''} 범례">${legendHtml(currentMode)}</div>
+      ${fallbackNote}`;
+    // Strip any leftover toggles injected elsewhere into chrome
+    chrome.querySelectorAll('.bm3-mode-toggle').forEach((el) => el.remove());
     return chrome;
   }
 
@@ -179,12 +210,11 @@ const Heatmap3dModes = (() => {
     if (!host) return;
     const tablist = host.querySelector('.hmt-tabs');
     if (!tablist) return;
-    tablist.setAttribute('aria-label', 'Body map mode');
-    // Rebuild three English-labelled tabs while keeping panel ids
+    tablist.setAttribute('aria-label', '바디맵 모드');
     tablist.innerHTML = `
-      <button type="button" class="hmt-tab" role="tab" id="hmtTabRecovery" data-hmt-mode="recovery" aria-controls="muscleHeatmapCard">Recovery</button>
-      <button type="button" class="hmt-tab" role="tab" id="hmtTabGrowth" data-hmt-mode="growth" aria-controls="muscleGrowthHeatmapCard">Growth</button>
-      <button type="button" class="hmt-tab" role="tab" id="hmtTabLoss" data-hmt-mode="loss" aria-controls="muscleGrowthHeatmapCard">Loss</button>`;
+      <button type="button" class="hmt-tab" role="tab" id="hmtTabRecovery" data-hmt-mode="recovery" aria-controls="muscleHeatmapCard" aria-label="회복">${MODE_LABELS.recovery}</button>
+      <button type="button" class="hmt-tab" role="tab" id="hmtTabGrowth" data-hmt-mode="growth" aria-controls="muscleGrowthHeatmapCard" aria-label="성장">${MODE_LABELS.growth}</button>
+      <button type="button" class="hmt-tab" role="tab" id="hmtTabLoss" data-hmt-mode="loss" aria-controls="muscleGrowthHeatmapCard" aria-label="손실">${MODE_LABELS.loss}</button>`;
   }
 
   function applyTabSelection() {
@@ -208,14 +238,14 @@ const Heatmap3dModes = (() => {
       if (!showRecovery) growthPanel.removeAttribute('hidden');
       else growthPanel.setAttribute('hidden', '');
     }
-
-    // Panels are toggled here; do not call HeatmapModeTabs.setMode —
-    // it would overwrite the Loss tab selection (loss shares the growth panel).
   }
 
   function refreshLegend() {
     const el = document.querySelector(`#${CHROME_ID} [data-h3d-legend]`);
-    if (el) el.innerHTML = legendHtml(currentMode);
+    if (el) {
+      el.innerHTML = legendHtml(currentMode);
+      el.setAttribute('aria-label', `${MODE_LABELS[currentMode] || ''} 범례`);
+    }
   }
 
   function buildDataPayload() {
@@ -226,11 +256,10 @@ const Heatmap3dModes = (() => {
   }
 
   async function mountOrTransition3d() {
-    if (typeof BodyMap3D === 'undefined') return;
+    if (typeof BodyMap3D === 'undefined') return false;
     const shared = ensureSharedHost();
-    if (!shared) return;
+    if (!shared) return false;
 
-    // Suppress recovery card's own WebGL context
     if (BodyMap3D.unmount) BodyMap3D.unmount('recovery');
 
     const data = buildDataPayload();
@@ -242,17 +271,23 @@ const Heatmap3dModes = (() => {
         animate: true,
         duration: BodyMap3D.TRANSITION_MS || 400,
       });
-      return;
+      return true;
     }
 
     shared.innerHTML = '';
-    await BodyMap3D.mount(MOUNT_ID, shared, {
+    const ok = await BodyMap3D.mount(MOUNT_ID, shared, {
       colorMode,
       data,
       showPedestal: false,
       autoRotate: !prefersReducedMotion(),
       onMuscleTap: null,
     });
+    if (!ok) {
+      // Mount failed → fall back to 2D cards
+      mapMode = '2d';
+      return false;
+    }
+    return true;
   }
 
   function teardown3d() {
@@ -261,9 +296,10 @@ const Heatmap3dModes = (() => {
     if (shared) shared.innerHTML = '';
   }
 
-  function applyViewMode() {
+  async function applyViewMode() {
     const host = getHost();
     if (!host) return;
+    resolveHomeMapMode();
     ensureChrome();
     const shared = ensureSharedHost();
     const chrome = document.getElementById(CHROME_ID);
@@ -272,12 +308,19 @@ const Heatmap3dModes = (() => {
       host.classList.add('h3d-active');
       if (chrome) chrome.removeAttribute('hidden');
       if (shared) shared.removeAttribute('hidden');
-      mountOrTransition3d();
+      const ok = await mountOrTransition3d();
+      if (!ok) {
+        host.classList.remove('h3d-active');
+        if (shared) shared.setAttribute('hidden', '');
+        teardown3d();
+        ensureChrome(); // refresh fallback note
+        if (chrome) chrome.removeAttribute('hidden');
+        refreshLegend();
+      }
     } else {
       host.classList.remove('h3d-active');
       if (shared) shared.setAttribute('hidden', '');
       teardown3d();
-      // Keep chrome (toggle + legend) visible so user can switch back to 3D
       if (chrome) chrome.removeAttribute('hidden');
       refreshLegend();
     }
@@ -307,6 +350,28 @@ const Heatmap3dModes = (() => {
     setMode(mode);
   }
 
+  function onTabKeydown(e) {
+    const host = getHost();
+    if (!host) return;
+    const focused = e.target && e.target.closest ? e.target.closest('[data-hmt-mode]') : null;
+    if (!focused || !host.contains(focused)) return;
+    const tabs = Array.prototype.slice.call(host.querySelectorAll('[data-hmt-mode]'));
+    if (!tabs.length) return;
+    const current = tabs.filter((t) => t.getAttribute('aria-selected') === 'true')[0] || focused || tabs[0];
+    const idx = tabs.indexOf(current);
+    let next = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabs.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const mode = tabs[next].getAttribute('data-hmt-mode');
+    setMode(mode);
+    if (tabs[next].focus) tabs[next].focus();
+  }
+
   function refreshDataCaches() {
     try {
       if (typeof loadWorkouts === 'function' && typeof calcMuscleRecovery === 'function') {
@@ -331,14 +396,16 @@ const Heatmap3dModes = (() => {
     if (wired) return;
     const host = getHost();
     if (!host) return;
+    // Capture so HeatmapModeTabs cannot desync aria vs legend/mode state
     host.addEventListener('click', onTabClick, true);
+    host.addEventListener('keydown', onTabKeydown, true);
     wired = true;
   }
 
   function afterHomeRender(recovery) {
     ensureStyles();
     loadSavedMode();
-    syncMapMode();
+    resolveHomeMapMode();
     upgradeTabs();
     wire();
     if (recovery) lastRecovery = recovery;
@@ -363,6 +430,7 @@ const Heatmap3dModes = (() => {
       mapMode,
       mountId: MOUNT_ID,
       modes: MODES.slice(),
+      labels: Object.assign({}, MODE_LABELS),
     };
   }
 
@@ -374,6 +442,7 @@ const Heatmap3dModes = (() => {
     getState,
     MOUNT_ID,
     MODES,
+    MODE_LABELS,
     legendHtml,
   };
 })();

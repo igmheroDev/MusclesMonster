@@ -393,7 +393,10 @@ const MuscleHeatmap = (() => {
 
     const hasData = lastActive.length > 0;
     const viewLabel = currentView === 'back' ? '후면' : '전면';
-    const modeToggle = (typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
+    // Home is 3D-only via Heatmap3dModes — never inject a recovery-card 2D/3D toggle there
+    const homeOwns3d = (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+      && Heatmap3dModes.ownsHome3d());
+    const modeToggle = (!homeOwns3d && typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
       ? BodyMap3D.buildModeToggle(mapMode, { scope: 'recovery' })
       : '';
 

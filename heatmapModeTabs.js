@@ -119,6 +119,11 @@ const HeatmapModeTabs = (() => {
   }
 
   function onTabClick(e) {
+    // Heatmap3dModes owns Recovery/Growth/Loss when present (Loss ≠ growth panel only).
+    if (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d()) {
+      return;
+    }
     const tab = e.target && e.target.closest
       ? e.target.closest('[data-hmt-mode]')
       : e.target;
@@ -132,6 +137,11 @@ const HeatmapModeTabs = (() => {
   }
 
   function onTabKeydown(e) {
+    // Same ownership gate as click — Heatmap3dModes owns arrow-key tab changes.
+    if (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d()) {
+      return;
+    }
     const host = getHost();
     if (!host) return;
     const tabs = Array.prototype.slice.call(host.querySelectorAll('[data-hmt-mode]'));
@@ -158,8 +168,13 @@ const HeatmapModeTabs = (() => {
       return false;
     }
     if (!initialized) {
-      host.addEventListener('click', onTabClick);
-      host.addEventListener('keydown', onTabKeydown);
+      // When Heatmap3dModes owns tabs, skip BOTH click and keydown (it handles them).
+      const modesOwnsTabs = (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d());
+      if (!modesOwnsTabs) {
+        host.addEventListener('click', onTabClick);
+        host.addEventListener('keydown', onTabKeydown);
+      }
       initialized = true;
     }
     applyMode(host);
@@ -185,6 +200,11 @@ const HeatmapModeTabs = (() => {
   function afterHomeRender() {
     ensureStyles();
     fillEmptyGrowthPanel();
+    // Avoid fighting Heatmap3dModes panel visibility (esp. Loss tab).
+    if (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d()) {
+      return;
+    }
     applyMode();
   }
 

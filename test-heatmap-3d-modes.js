@@ -7,6 +7,7 @@ const path = require('path');
 let failures = 0;
 function assert(cond, msg) {
   if (!cond) { failures++; console.error('FAIL:', msg); }
+  else console.log('OK:', msg);
 }
 
 const src = fs.readFileSync(path.join(__dirname, 'heatmap3dModes.js'), 'utf8');
@@ -21,10 +22,21 @@ console.log('=== 1. Module API surface ===');
 assert(src.includes('MOUNT_ID = \'home-modes\''), 'shared mount id');
 assert(src.includes('ownsHome3d'), 'ownsHome3d flag');
 assert(src.includes('transitionUpdate'), 'uses transitionUpdate');
-assert(src.includes('Recovery'), 'Recovery tab label');
-assert(src.includes('Growth'), 'Growth tab label');
-assert(src.includes('Loss'), 'Loss tab label');
+assert(src.includes('회복'), 'Korean Recovery tab label');
+assert(src.includes('성장'), 'Korean Growth tab label');
+assert(src.includes('손실'), 'Korean Loss tab label');
+assert(src.includes('바디맵 모드'), 'Korean aria-label');
 assert(src.includes('h3dSharedHost') || src.includes('SHARED_HOST_ID'), 'shared host');
+assert(src.includes('resolveHomeMapMode'), '3D-only home resolver');
+assert(src.includes('isWebGLAvailable'), 'WebGL fallback gate');
+assert(!/\.setPreferredMode\s*\(/.test(src), 'home does not write global view-mode pref');
+assert(src.includes('onTabKeydown'), 'keyboard tabs owned by Heatmap3dModes');
+assert(!/buildModeToggle\(mapMode/.test(src), 'home does not build 2D/3D toggle');
+assert(!src.includes("scope: 'home-modes'"), 'no home-modes toggle scope');
+assert(src.includes('3D를 사용할 수 없어'), 'Korean WebGL fallback note');
+assert(src.includes('피로') && src.includes('회복 중') && src.includes('준비됨'), 'Korean recovery legend');
+assert(src.includes('성장 중') && src.includes('강한 성장'), 'Korean growth legend');
+assert(src.includes('손실 심함') && src.includes('유지'), 'Korean loss legend');
 
 console.log('=== 2. BodyMap3D growth/loss + transition ===');
 assert(bm3.includes('function growthVisual'), 'growthVisual');
@@ -36,6 +48,9 @@ assert(bm3.includes('LOSS = '), 'loss color');
 assert(bm3.includes('formatGrowthTip'), 'growth tooltip');
 assert(bm3.includes('formatLossTip'), 'loss tooltip');
 assert(bm3.includes('colorTransition'), 'animated crossfade');
+assert(bm3.includes('피로'), 'Korean fatigued tip');
+assert(bm3.includes('성장 신호 없음') || bm3.includes('· 성장'), 'Korean growth tip');
+assert(bm3.includes('손실 −') || bm3.includes('· 손실'), 'Korean loss tip');
 
 const BodyMap3D = new Function(
   fs.readFileSync(path.join(__dirname, 'bodyMap3d.js'), 'utf8') + '; return BodyMap3D;'
@@ -59,9 +74,14 @@ console.log('=== 4. Wiring ===');
 assert(indexHtml.includes('heatmap3dModes.js'), 'index loads module');
 assert(indexHtml.includes('h3dSharedHost'), 'shared host in DOM');
 assert(indexHtml.includes('data-hmt-mode="loss"'), 'loss tab in DOM');
+assert(indexHtml.includes('>회복<'), 'index Recovery Korean');
+assert(indexHtml.includes('>성장<'), 'index Growth Korean');
+assert(indexHtml.includes('>손실<'), 'index Loss Korean');
+assert(indexHtml.includes('aria-label="바디맵 모드"'), 'index Korean aria');
+assert(!indexHtml.includes('>Recovery<'), 'no English Recovery tab');
 assert(appJs.includes('Heatmap3dModes.afterHomeRender'), 'app hooks afterHomeRender');
 assert(heat.includes('Heatmap3dModes.ownsHome3d'), 'heatmap yields home 3D');
-assert(swJs.includes('recovr-cache-v85'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v89'), 'sw cache bump');
 assert(swJs.includes('heatmap3dModes.js'), 'sw caches module');
 
 console.log(failures === 0 ? '\n=== Heatmap3dModes tests passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);

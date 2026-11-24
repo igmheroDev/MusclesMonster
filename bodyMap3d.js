@@ -133,7 +133,9 @@ const BodyMap3D = (() => {
       }
       .bm3-mode-btn {
         border: none; background: transparent; color: rgba(232,232,240,0.72);
-        font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 6px 11px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+        /* Mobile tap target >= 44px (WCAG / Apple HIG) */
+        min-width: 44px; min-height: 44px; padding: 10px 14px;
         cursor: pointer; font-family: 'Space Grotesk', sans-serif;
       }
       .bm3-mode-btn.selected { background: ${CORAL}; color: #fff; }
@@ -142,9 +144,14 @@ const BodyMap3D = (() => {
         position: relative; width: min(100%, 280px); margin: 0 auto; aspect-ratio: 3 / 4;
         border-radius: 16px; overflow: hidden;
         background: radial-gradient(ellipse at 50% 42%, #14141c 0%, ${BG} 72%);
-        touch-action: none; user-select: none; -webkit-user-select: none;
+        /* pan-y: vertical page scroll must work when the finger starts on the canvas.
+           Horizontal drags are claimed in JS (axis lock) for rotate. */
+        touch-action: pan-y; user-select: none; -webkit-user-select: none;
       }
-      .bm3-stage canvas { display: block; width: 100% !important; height: 100% !important; }
+      .bm3-stage canvas {
+        display: block; width: 100% !important; height: 100% !important;
+        touch-action: pan-y;
+      }
       .bm3-hint {
         position: absolute; right: 10px; top: 46%; transform: translateY(-50%);
         display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -179,7 +186,18 @@ const BodyMap3D = (() => {
       .bm3-credit {
         margin-top: 6px; font-size: 9px; line-height: 1.35; color: var(--muted, #6b6b85); text-align: center;
       }
-      .bm3-credit a { color: ${MINT}; }
+      .bm3-credit a {
+        color: ${MINT};
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 44px; padding: 10px 8px;
+      }
+      /* Hidden 2D/3D hosts must never intercept taps (some WebViews keep layout briefly) */
+      .mh-body-wrap[hidden], .bml-2d-only[hidden], .wcm-2d-only[hidden],
+      .mh-3d-host[hidden], .bml-3d-host[hidden], .wcm-3d-host[hidden],
+      #mh3dHost[hidden], #bml3dHost[hidden], #wcm3dHost[hidden], #h3dSharedHost[hidden] {
+        display: none !important;
+        pointer-events: none !important;
+      }
     `;
     document.head.appendChild(style);
     stylesReady = true;
@@ -188,9 +206,11 @@ const BodyMap3D = (() => {
   function loadThree() {
     if (THREE && GLTFLoader) return Promise.resolve(THREE);
     if (loadPromise) return loadPromise;
+    // Import without query strings so GLTFLoader's static `from './three.module.min.js'`
+    // resolves to the SAME module instance (avoids "Multiple instances of Three.js").
     loadPromise = Promise.all([
-      import(`./${THREE_URL}?v=r170`),
-      import(`./${LOADER_URL}?v=r170`),
+      import(`./${THREE_URL}`),
+      import(`./${LOADER_URL}`),
     ]).then(([threeMod, loaderMod]) => {
       THREE = threeMod;
       GLTFLoader = loaderMod.GLTFLoader;
@@ -687,7 +707,7 @@ const BodyMap3D = (() => {
       if (alt) rec = data.recovery[alt];
     }
     if (!rec || rec.lastDate == null) {
-      return `<strong>${escapeHtml(label)}</strong> · No data`;
+      return `<strong>${escapeHtml(label)}</strong> · 기록 없음`;
     }
     const pct = Math.round(rec.recoveryPct || 0);
     let hoursLeft = null;
@@ -698,9 +718,9 @@ const BodyMap3D = (() => {
     } else {
       hoursLeft = Math.max(0, Math.round((rec.recoveryHours || 0) - (rec.hoursElapsed || 0)));
     }
-    if (pct < 40) return `${escapeHtml(label)} · Fatigued${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
-    if (pct < 95) return `${escapeHtml(label)} · Recovering${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
-    return `${escapeHtml(label)} · Ready`;
+    if (pct < 40) return `${escapeHtml(label)} · 피로${hoursLeft > 0 ? ` · ${hoursLeft}시간 후 준비` : ''}`;
+    if (pct < 95) return `${escapeHtml(label)} · 회복 중${hoursLeft > 0 ? ` · ${hoursLeft}시간 후 준비` : ''}`;
+    return `${escapeHtml(label)} · 준비됨`;
   }
 
   function formatIntensityTip(muscle, data, meshLabel) {
@@ -726,17 +746,17 @@ const BodyMap3D = (() => {
   function formatGrowthTip(muscle, data, meshLabel) {
     const label = meshLabel || EN_LABELS[muscle] || muscle;
     const g = growthEntryForId(data && data.perMuscle, muscle);
-    if (!g || !(g.growthPct > 0)) return `${escapeHtml(label)} · No growth signal`;
-    const sessions = g.sessionCount != null ? ` · ${g.sessionCount} sessions / 4 wks` : '';
-    return `${escapeHtml(label)} · Growth +${g.growthPct}%${sessions}`;
+    if (!g || !(g.growthPct > 0)) return `${escapeHtml(label)} · 성장 신호 없음`;
+    const sessions = g.sessionCount != null ? ` · 4주 ${g.sessionCount}회` : '';
+    return `${escapeHtml(label)} · 성장 +${g.growthPct}%${sessions}`;
   }
 
   function formatLossTip(muscle, data, meshLabel) {
     const label = meshLabel || EN_LABELS[muscle] || muscle;
     const l = lossEntryForId(data && data.perMuscle, muscle);
-    if (!l) return `${escapeHtml(label)} · No data`;
-    if (!(l.lossPct > 0)) return `${escapeHtml(label)} · Stable · ${l.daysSince}d since last`;
-    return `${escapeHtml(label)} · Loss −${l.lossPct}% · ${l.daysSince}d idle`;
+    if (!l) return `${escapeHtml(label)} · 기록 없음`;
+    if (!(l.lossPct > 0)) return `${escapeHtml(label)} · 유지 · ${l.daysSince}일 전 운동`;
+    return `${escapeHtml(label)} · 손실 −${l.lossPct}% · ${l.daysSince}일 휴식`;
   }
 
   function tipForMode(state, muscle, label) {
@@ -766,35 +786,67 @@ const BodyMap3D = (() => {
     return null;
   }
 
-  function onPointerDown(state, e) {
-    state.dragging = true;
-    state.lastX = (e.clientX != null)
-      ? e.clientX
-      : ((e.touches && e.touches[0] && e.touches[0].clientX) || 0);
-    state.pointerMoved = 0;
-    if (state.hintEl) state.hintEl.classList.add('is-faded');
-    e.preventDefault();
+  const AXIS_LOCK_PX = 8;
+
+  function pointerXY(e) {
+    if (!e) return { x: 0, y: 0 };
+    if (e.clientX != null) return { x: e.clientX, y: e.clientY || 0 };
+    const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+    return t ? { x: t.clientX || 0, y: t.clientY || 0 } : { x: 0, y: 0 };
   }
 
-  function onPointerMove(state, e) {
+  function onPointerDown(state, e) {
+    if (e && e.pointerType === 'mouse' && e.button != null && e.button !== 0) return;
+    state.dragging = true;
+    state.dragAxis = null; // 'x' rotate | 'y' scroll | null undecided
+    const p = pointerXY(e);
+    state.lastX = p.x;
+    state.startX = p.x;
+    state.startY = p.y;
+    state.pointerMoved = 0;
+    if (state.hintEl) state.hintEl.classList.add('is-faded');
+    // Do not preventDefault on down — vertical page scroll must still start on the canvas.
+  }
+
+  function onPointerMove(state, e, rawEvent) {
     if (!state.dragging) return;
-    const x = (e.clientX != null)
-      ? e.clientX
-      : ((e.touches && e.touches[0] && e.touches[0].clientX) || 0);
-    const dx = x - state.lastX;
-    state.lastX = x;
+    const p = pointerXY(e);
+    const dxTotal = p.x - state.startX;
+    const dyTotal = p.y - state.startY;
+
+    if (!state.dragAxis) {
+      if (Math.abs(dxTotal) < AXIS_LOCK_PX && Math.abs(dyTotal) < AXIS_LOCK_PX) return;
+      state.dragAxis = Math.abs(dxTotal) >= Math.abs(dyTotal) ? 'x' : 'y';
+      if (state.dragAxis === 'x' && state.canvasWrap && e && e.pointerId != null
+          && typeof state.canvasWrap.setPointerCapture === 'function') {
+        try { state.canvasWrap.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
+    }
+
+    if (state.dragAxis === 'y') {
+      // Vertical intent: release rotate and let the browser scroll the page.
+      return;
+    }
+
+    const dx = p.x - state.lastX;
+    state.lastX = p.x;
     state.pointerMoved += Math.abs(dx);
     state.targetYaw += dx * 0.01;
-    e.preventDefault();
+    const ev = rawEvent || e;
+    if (ev && typeof ev.preventDefault === 'function' && (ev.cancelable !== false)) {
+      ev.preventDefault();
+    }
   }
 
   function onPointerUp(state, e) {
     if (!state.dragging) return;
+    const axis = state.dragAxis;
     state.dragging = false;
-    const clientX = e.clientX ?? (e.changedTouches && e.changedTouches[0] && e.changedTouches[0].clientX);
-    const clientY = e.clientY ?? (e.changedTouches && e.changedTouches[0] && e.changedTouches[0].clientY);
-    if (state.pointerMoved < 8 && clientX != null) {
-      const hit = pickMuscle(state, clientX, clientY);
+    state.dragAxis = null;
+    if (axis === 'y') return;
+    const p = pointerXY(e);
+    if (state.pointerMoved < AXIS_LOCK_PX && p) {
+      const hit = pickMuscle(state, p.x, p.y);
       if (hit) {
         showTip(state, tipForMode(state, hit.muscle, hit.label));
         if (typeof state.onMuscleTap === 'function') state.onMuscleTap(hit.muscle);
@@ -804,19 +856,48 @@ const BodyMap3D = (() => {
 
   function bindPointer(state) {
     const el = state.canvasWrap;
-    const down = (e) => onPointerDown(state, e.touches ? e.touches[0] : e);
-    const move = (e) => onPointerMove(state, e.touches ? e.touches[0] : e);
-    const up = (e) => onPointerUp(state, e.changedTouches ? e.changedTouches[0] : e);
-    el.addEventListener('pointerdown', down);
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    el.addEventListener('touchstart', (e) => { if (e.touches[0]) down(e); }, { passive: false });
-    el.addEventListener('touchmove', (e) => { if (e.touches[0]) move(e); }, { passive: false });
-    el.addEventListener('touchend', (e) => { up(e); }, { passive: false });
+    const usePointer = typeof window !== 'undefined' && window.PointerEvent;
+
+    if (usePointer) {
+      // Pointer Events alone — avoid also binding touch* (double-rotate / double-toggle on mobile).
+      const down = (e) => onPointerDown(state, e);
+      const move = (e) => onPointerMove(state, e, e);
+      const up = (e) => onPointerUp(state, e);
+      el.addEventListener('pointerdown', down);
+      el.addEventListener('pointermove', move, { passive: false });
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+      state._unbind = () => {
+        el.removeEventListener('pointerdown', down);
+        el.removeEventListener('pointermove', move);
+        el.removeEventListener('pointerup', up);
+        el.removeEventListener('pointercancel', up);
+      };
+      return;
+    }
+
+    // Legacy touch-only fallback (no PointerEvent)
+    const down = (e) => {
+      if (!e.touches || !e.touches[0]) return;
+      onPointerDown(state, e.touches[0]);
+    };
+    const move = (e) => {
+      if (!e.touches || !e.touches[0]) return;
+      onPointerMove(state, e.touches[0], e);
+    };
+    const up = (e) => {
+      const t = (e.changedTouches && e.changedTouches[0]) || null;
+      onPointerUp(state, t || e);
+    };
+    el.addEventListener('touchstart', down, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', up, { passive: true });
+    el.addEventListener('touchcancel', up, { passive: true });
     state._unbind = () => {
-      el.removeEventListener('pointerdown', down);
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
+      el.removeEventListener('touchstart', down);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', up);
+      el.removeEventListener('touchcancel', up);
     };
   }
 
@@ -1066,7 +1147,10 @@ const BodyMap3D = (() => {
       yaw: 0,
       targetYaw: 0,
       dragging: false,
+      dragAxis: null,
       lastX: 0,
+      startX: 0,
+      startY: 0,
       breath: 0,
       raf: 0,
       disposed: false,
@@ -1158,8 +1242,12 @@ const BodyMap3D = (() => {
   function bindModeToggle(root, onChange) {
     if (!root) return;
     root.querySelectorAll('[data-bm3-mode]').forEach((btn) => {
+      // Guard against re-binding when a parent re-renders the same button node
+      if (btn.dataset.bm3Bound === '1') return;
+      btn.dataset.bm3Bound = '1';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (btn.disabled) return;
         const mode = btn.getAttribute('data-bm3-mode') === '3d' ? '3d' : '2d';
         setPreferredMode(mode);
