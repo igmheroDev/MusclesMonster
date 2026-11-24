@@ -136,6 +136,35 @@ const MuscleHeatmap = (() => {
   let currentView = 'front';
   let lastRecovery = null;
   let lastActive = [];
+  let mapMode = '2d';
+  const BM3_MOUNT_ID = 'recovery';
+
+  function syncMapModeFromStorage() {
+    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.getPreferredMode) {
+      mapMode = BodyMap3D.getPreferredMode();
+    }
+  }
+
+  function teardown3d() {
+    if (typeof BodyMap3D !== 'undefined') BodyMap3D.unmount(BM3_MOUNT_ID);
+  }
+
+  async function mountOrUpdate3d() {
+    if (typeof BodyMap3D === 'undefined') return;
+    const host3d = document.getElementById('mh3dHost');
+    if (!host3d) return;
+    const data = { recovery: lastRecovery || {}, view: currentView };
+    if (host3d.querySelector('canvas')) {
+      BodyMap3D.update(BM3_MOUNT_ID, data, { colorMode: 'recovery' });
+      return;
+    }
+    await BodyMap3D.mount(BM3_MOUNT_ID, host3d, {
+      colorMode: 'recovery',
+      data,
+      showPedestal: false,
+      autoRotate: !prefersReducedMotion(),
+    });
+  }
 
   function getRecoveryColor(pct, hasData) {
     if (!hasData) return TERRACOTTA;
@@ -279,6 +308,25 @@ const MuscleHeatmap = (() => {
     const next = view === 'back' ? 'back' : 'front';
     if (next === currentView) return;
     currentView = next;
+    if (mapMode === '3d') {
+      // Rotate the 3D figure toward front/back instead of flipping SVG
+      if (typeof BodyMap3D !== 'undefined') {
+        const host3d = document.getElementById('mh3dHost');
+        // Remount with preferred yaw via data.view
+        teardown3d();
+        mountOrUpdate3d();
+      }
+      // Update toggle selected state without full wipe when possible
+      const card = document.getElementById('muscleHeatmapCard');
+      if (card) {
+        card.querySelectorAll('.mh-toggle-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('selected', btn.dataset.view === currentView);
+        });
+        const sub = card.querySelector('.mh-sub');
+        if (sub) sub.textContent = `${currentView === 'back' ? '후면' : '전면'} 보기 · 부위를 탭하면 상세 확인`;
+      }
+      return;
+    }
     const wrap = (typeof document !== 'undefined' && document.querySelector)
       ? document.querySelector('#muscleHeatmapCard .mh-body-wrap')
       : null;
@@ -334,15 +382,20 @@ const MuscleHeatmap = (() => {
     const container = document.getElementById('muscleHeatmapCard');
     if (!container) return;
 
+    syncMapModeFromStorage();
     lastRecovery = recovery || {};
     lastActive = activeMuscles || [];
 
     const hasData = lastActive.length > 0;
     const viewLabel = currentView === 'back' ? '후면' : '전면';
+    const modeToggle = (typeof BodyMap3D !== 'undefined' && BodyMap3D.buildModeToggle)
+      ? BodyMap3D.buildModeToggle(mapMode, { scope: 'recovery' })
+      : '';
 
     // 데이터 없을 때 대형 빈 바디맵을 그리면 라이트 모드에서
     // "홈이 하얗게 깨진 것처럼" 보이므로 컴팩트 안내만 표시
     if (!hasData) {
+      teardown3d();
       container.innerHTML = `
         <div class="mh-card mh-card--empty">
           <div class="mh-accent-bar"></div>
@@ -356,17 +409,29 @@ const MuscleHeatmap = (() => {
       return;
     }
 
+    // Keep live WebGL context across recovery data refreshes
+    if (mapMode === '3d' && container.querySelector('#mh3dHost canvas')) {
+      mountOrUpdate3d();
+      return;
+    }
+
+    teardown3d();
+
     container.innerHTML = `
       <div class="mh-card">
         <div class="mh-accent-bar"></div>
         <div class="mh-header">
           <div class="mh-title">💪 근육 회복 히트맵</div>
-          <div class="mh-toggle">
-            <button type="button" class="mh-toggle-btn ${currentView === 'front' ? 'selected' : ''}" data-view="front">전면</button>
-            <button type="button" class="mh-toggle-btn ${currentView === 'back' ? 'selected' : ''}" data-view="back">후면</button>
+          <div class="mh-header-actions" style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            ${modeToggle}
+            <div class="mh-toggle" data-mh-view-toggle>
+              <button type="button" class="mh-toggle-btn ${currentView === 'front' ? 'selected' : ''}" data-view="front">전면</button>
+              <button type="button" class="mh-toggle-btn ${currentView === 'back' ? 'selected' : ''}" data-view="back">후면</button>
+            </div>
           </div>
         </div>
-        <div class="mh-body-wrap">
+        <div class="mh-3d-host" id="mh3dHost" ${mapMode === '3d' ? '' : 'hidden'}></div>
+        <div class="mh-body-wrap" ${mapMode === '3d' ? 'hidden' : ''}>
           ${buildSvg(currentView, lastRecovery)}
           <div class="mh-tooltip" id="mhTooltip"></div>
         </div>
@@ -374,13 +439,31 @@ const MuscleHeatmap = (() => {
         <div class="mh-sub">${viewLabel} 보기 · 부위를 탭하면 상세 확인</div>
       </div>`;
 
-    container.querySelectorAll('.mh-toggle-btn').forEach((btn) => {
+    container.querySelectorAll('.mh-toggle-btn[data-view]').forEach((btn) => {
       btn.addEventListener('click', (ev) => {
         ev.preventDefault();
         setView(btn.dataset.view);
       });
     });
     container.querySelector('.mh-svg')?.addEventListener('click', onRegionTap);
+
+    if (typeof BodyMap3D !== 'undefined' && BodyMap3D.bindModeToggle) {
+      BodyMap3D.bindModeToggle(container, (mode) => {
+        mapMode = mode;
+        if (mode === '3d') {
+          const wrap = container.querySelector('.mh-body-wrap');
+          const host3d = container.querySelector('#mh3dHost');
+          if (wrap) wrap.hidden = true;
+          if (host3d) host3d.hidden = false;
+          mountOrUpdate3d();
+        } else {
+          teardown3d();
+          render(lastRecovery, lastActive);
+        }
+      });
+    }
+
+    if (mapMode === '3d') mountOrUpdate3d();
   }
 
   return {

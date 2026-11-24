@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>RECOVR — 3D Body Map Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg: #0a0a0f; --text: #e8e8f0; --muted: #6b6b85; --card: #1a1a24; --border: #2a2a3a; --mint: #3ee6b0; --coral: #ff3b5c; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px 14px 40px;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 0.08em; }
+    h1 span { color: var(--mint); }
+    .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+    .screens { display: flex; flex-direction: column; gap: 22px; max-width: 420px; margin: 0 auto; }
+    .screen {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 12px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .screen::before {
+      content: '';
+      position: absolute; left: 0; right: 0; top: 0; height: 2px;
+      background: linear-gradient(90deg, var(--coral), var(--mint));
+    }
+    .screen-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+    .legend { display: flex; gap: 12px; justify-content: center; margin-top: 10px; font-size: 11px; color: var(--muted); }
+    .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+    .host { min-height: 320px; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .stat { text-align: center; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 6px; }
+    .stat b { display: block; font-size: 15px; }
+    .stat span { font-size: 10px; color: var(--mint); font-weight: 700; }
+    .stat span.coral { color: var(--coral); }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+    .tag { font-size: 11px; padding: 5px 9px; border-radius: 999px; border: 1px solid rgba(255,59,92,0.35); background: rgba(255,59,92,0.1); }
+  </style>
+</head>
+<body>
+  <div class="screens">
+    <div>
+      <h1>REC<span>O</span>VR</h1>
+      <div class="sub">Experimental 3D muscle body map — mobile preview</div>
+    </div>
+
+    <section class="screen" id="screenLive" data-demo="live">
+      <div class="row">
+        <div class="screen-title">Workout · Live logging</div>
+        <div id="toggleLive"></div>
+      </div>
+      <div class="host" id="hostLive"></div>
+      <div class="tags">
+        <span class="tag">Chest · 4 sets</span>
+        <span class="tag">Shoulders · 3 sets</span>
+        <span class="tag">Triceps · 3 sets</span>
+      </div>
+    </section>
+
+    <section class="screen" id="screenRecovery" data-demo="recovery">
+      <div class="row">
+        <div class="screen-title">Recovery</div>
+        <div id="toggleRecovery"></div>
+      </div>
+      <div class="host" id="hostRecovery"></div>
+      <div class="legend">
+        <span><i style="background:#ff3b5c"></i>Fatigued</span>
+        <span><i style="background:#f5a524"></i>Recovering</span>
+        <span><i style="background:#3ee6b0"></i>Ready</span>
+      </div>
+    </section>
+
+    <section class="screen" id="screenComplete" data-demo="complete">
+      <div class="row">
+        <div class="screen-title">Workout Complete!</div>
+        <div id="toggleComplete"></div>
+      </div>
+      <div class="host" id="hostComplete"></div>
+      <div class="stats">
+        <div class="stat"><b>42 min</b><span>Time</span></div>
+        <div class="stat"><b>18</b><span class="coral">Sets</span></div>
+        <div class="stat"><b>6,240 kg</b><span>Volume</span></div>
+      </div>
+      <div class="tags">
+        <span class="tag">Chest</span>
+        <span class="tag">Shoulders</span>
+        <span class="tag">Triceps</span>
+        <span class="tag">Abs</span>
+      </div>
+    </section>
+  </div>
+
+  <script src="bodyMap3d.js"></script>
+  <script>
+    BodyMap3D.setPreferredMode('3d');
+    BodyMap3D.ensureStyles();
+
+    const liveLoads = { chest: 3.2, shoulder: 2.1, triceps: 1.8, core: 0.9 };
+    const liveSets = { chest: 4, shoulder: 3, triceps: 3, core: 2 };
+    const recovery = {
+      chest: { lastDate: '2026-11-23', recoveryPct: 22, recoveryHours: 48, hoursElapsed: 12 },
+      shoulder: { lastDate: '2026-11-23', recoveryPct: 35, recoveryHours: 48, hoursElapsed: 12 },
+      back: { lastDate: '2026-11-23', recoveryPct: 28, recoveryHours: 72, hoursElapsed: 18 },
+      triceps: { lastDate: '2026-11-23', recoveryPct: 40, recoveryHours: 48, hoursElapsed: 18 },
+      hamstrings: { lastDate: '2026-11-22', recoveryPct: 62, recoveryHours: 48, hoursElapsed: 30 },
+      calves: { lastDate: '2026-11-20', recoveryPct: 98, recoveryHours: 36, hoursElapsed: 80 },
+      quads: { lastDate: '2026-11-20', recoveryPct: 100, recoveryHours: 48, hoursElapsed: 90 },
+      core: { lastDate: '2026-11-21', recoveryPct: 70, recoveryHours: 36, hoursElapsed: 40 },
+      biceps: { lastDate: null, recoveryPct: 100 },
+      forearms: { lastDate: null, recoveryPct: 100 },
+      adductors: { lastDate: '2026-11-20', recoveryPct: 96, recoveryHours: 36, hoursElapsed: 70 },
+    };
+    const completeLoads = { chest: 3.5, shoulder: 2.4, triceps: 2.0, core: 1.4, biceps: 0.8, quads: 1.1, calves: 0.6 };
+
+    function wireToggle(el, mountId, host, optsFactory) {
+      el.innerHTML = BodyMap3D.buildModeToggle('3d', { scope: mountId });
+      BodyMap3D.bindModeToggle(el, async (mode) => {
+        if (mode === '3d') {
+          host.hidden = false;
+          await BodyMap3D.mount(mountId, host, optsFactory());
+        } else {
+          BodyMap3D.unmount(mountId);
+          host.innerHTML = '<div class="bm3-fallback">2D mode (preview stub)</div>';
+        }
+      });
+    }
+
+    (async () => {
+      wireToggle(document.getElementById('toggleLive'), 'demo-live', document.getElementById('hostLive'), () => ({
+        colorMode: 'intensity',
+        data: { loads: liveLoads, setCounts: liveSets },
+        showPedestal: false,
+      }));
+      wireToggle(document.getElementById('toggleRecovery'), 'demo-recovery', document.getElementById('hostRecovery'), () => ({
+        colorMode: 'recovery',
+        data: { recovery, view: 'back' },
+        showPedestal: false,
+      }));
+      wireToggle(document.getElementById('toggleComplete'), 'demo-complete', document.getElementById('hostComplete'), () => ({
+        colorMode: 'complete',
+        data: { loads: completeLoads, setCounts: { chest: 4, shoulder: 3, triceps: 3, core: 2 }, view: 'front' },
+        showPedestal: true,
+      }));
+
+      await BodyMap3D.mount('demo-live', document.getElementById('hostLive'), {
+        colorMode: 'intensity',
+        data: { loads: liveLoads, setCounts: liveSets },
+        showPedestal: false,
+      });
+      await BodyMap3D.mount('demo-recovery', document.getElementById('hostRecovery'), {
+        colorMode: 'recovery',
+        data: { recovery, view: 'back' },
+        showPedestal: false,
+      });
+      await BodyMap3D.mount('demo-complete', document.getElementById('hostComplete'), {
+        colorMode: 'complete',
+        data: { loads: completeLoads, setCounts: { chest: 4, shoulder: 3, triceps: 3, core: 2 }, view: 'front' },
+        showPedestal: true,
+      });
+      document.body.dataset.demoReady = '1';
+    })();
+  </script>
+</body>
+</html>
