@@ -13,18 +13,25 @@ const BodyMap3D = (() => {
   const MODEL_URL = 'vendor/anatomy/muscles-body.glb';
   const MAP_URL = 'vendor/anatomy/KEY_TO_APP.json';
   const MAX_PIXEL_RATIO = 2;
+  const TARGET_FPS = 50;
+  const FPS_SAMPLE_FRAMES = 45;
+  const GLOW_LAYER = 1;
 
   const CORAL = '#ff3b5c';
   const AMBER = '#f5a524';
   const MINT = '#3ee6b0';
-  const GROWTH = '#2ef0a0';
-  const GROWTH_DEEP = '#14c878';
+  // Growing (soft teal) vs Strong growth (lime) — high contrast in legend + mesh
+  const GROWTH = '#b8ff3d';       // Strong growth (lime)
+  const GROWTH_DEEP = '#1aa88a';  // Growing (deep teal)
   const LOSS = '#7b6cff';
   const LOSS_DEEP = '#4a3dc8';
-  const BASE_COLOR = '#3a3a44';
-  const CONTEXT_COLOR = '#2a2a32';
+  // Dark charcoal unlit — high contrast against glowing muscles
+  const BASE_COLOR = '#1e1e26';
+  const CONTEXT_COLOR = '#16161c';
   const BG = '#0a0a0f';
   const TRANSITION_MS = 400;
+  const GLOW_SHELL_SCALE = 1.028;
+  const GLOW_SHELL_SCALE_OUTER = 1.055;
 
   // App coarse ids that should also light related fine-only meshes
   const LOAD_ALIASES = {
@@ -287,6 +294,200 @@ const BodyMap3D = (() => {
     if (mat.userData.uFresnel) mat.userData.uFresnel.value = strength;
   }
 
+  function qualityAllowsGlow(level) {
+    return level >= 1;
+  }
+
+  function qualityAllowsOuterShell(level) {
+    return level >= 2;
+  }
+
+  function qualityAllowsPulse(level) {
+    return level >= 1;
+  }
+
+  function maxPixelRatioForQuality(level) {
+    if (level <= 0) return 1.15;
+    if (level === 1) return 1.5;
+    return MAX_PIXEL_RATIO;
+  }
+
+  function ensureGlowShells(mesh) {
+    if (!THREE || !mesh || !mesh.geometry) return;
+    if (mesh.userData.glowShell) return;
+    const makeShell = (scale, opacity) => {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const shell = new THREE.Mesh(mesh.geometry, mat);
+      shell.scale.setScalar(scale);
+      shell.renderOrder = 2;
+      shell.layers.set(GLOW_LAYER);
+      shell.frustumCulled = true;
+      shell.userData._bm3GlowShell = true;
+      mesh.add(shell);
+      return shell;
+    };
+    mesh.userData.glowShell = makeShell(GLOW_SHELL_SCALE, 0.2);
+    mesh.userData.glowShellOuter = makeShell(GLOW_SHELL_SCALE_OUTER, 0.1);
+    mesh.layers.enable(0);
+  }
+
+  function syncGlowShell(mesh, lit, colorHex, strength, qualityLevel) {
+    ensureGlowShells(mesh);
+    const inner = mesh.userData.glowShell;
+    const outer = mesh.userData.glowShellOuter;
+    const allow = lit && qualityAllowsGlow(qualityLevel) && strength > 0.02;
+    if (inner) {
+      inner.visible = allow;
+      if (allow) {
+        inner.material.color.setHex(colorHex);
+        inner.material.opacity = Math.min(0.45, 0.16 + strength * 0.48);
+      }
+    }
+    if (outer) {
+      const allowOuter = allow && qualityAllowsOuterShell(qualityLevel);
+      outer.visible = allowOuter;
+      if (allowOuter) {
+        outer.material.color.setHex(colorHex);
+        outer.material.opacity = Math.min(0.28, 0.08 + strength * 0.28);
+      }
+    }
+  }
+
+  function disposeGlowShells(mesh) {
+    ['glowShell', 'glowShellOuter'].forEach((key) => {
+      const shell = mesh.userData && mesh.userData[key];
+      if (!shell) return;
+      if (shell.parent) shell.parent.remove(shell);
+      if (shell.material && shell.material.dispose) shell.material.dispose();
+      mesh.userData[key] = null;
+    });
+  }
+
+  function highlightScore(state, mesh) {
+    const appIds = mesh.userData.appIds || [];
+    const { colorMode, data } = state;
+    if (colorMode === 'recovery') {
+      const { pct, hasData } = recoveryForMesh(appIds, data && data.recovery);
+      if (!hasData) return 0;
+      return Math.max(0, (100 - pct) / 100);
+    }
+    if (colorMode === 'growth') {
+      const { pct, hasData } = growthForMesh(appIds, data && data.perMuscle);
+      return hasData && pct > 0 ? pct : 0;
+    }
+    if (colorMode === 'loss') {
+      const { pct, hasData } = lossForMesh(appIds, data && data.perMuscle);
+      return hasData && pct > 0 ? pct : 0;
+    }
+    return activeLoadForMesh(appIds, data && data.loads) || 0;
+  }
+
+  function findPulseMesh(state) {
+    let best = null;
+    let bestScore = 0;
+    const seen = new Set();
+    state.muscleMeshes.forEach((meshes) => {
+      meshes.forEach((mesh) => {
+        if (seen.has(mesh)) return;
+        seen.add(mesh);
+        const score = highlightScore(state, mesh);
+        if (score > bestScore) {
+          bestScore = score;
+          best = mesh;
+        }
+      });
+    });
+    return bestScore > 0 ? best : null;
+  }
+
+  function initQuality(state) {
+    state.qualityLevel = 2;
+    state.fps = 60;
+    state._fpsFrames = 0;
+    state._fpsAccum = 0;
+    state._lastFrameTs = 0;
+    state._fpsWarmup = 90; // skip hitch from first mount frames
+    state._lowStreak = 0;
+    state._highStreak = 0;
+    state._pulseMesh = null;
+    state._pulseBaseEmissive = 0;
+  }
+
+  function sampleFps(state, now) {
+    if (!state._lastFrameTs) {
+      state._lastFrameTs = now;
+      return;
+    }
+    const dt = now - state._lastFrameTs;
+    state._lastFrameTs = now;
+    if (dt <= 0 || dt > 120) return; // ignore tab stalls / long hitches
+    if (state._fpsWarmup > 0) {
+      state._fpsWarmup -= 1;
+      return;
+    }
+    state._fpsAccum += dt;
+    state._fpsFrames += 1;
+    if (state._fpsFrames < FPS_SAMPLE_FRAMES) return;
+    const avg = state._fpsAccum / state._fpsFrames;
+    state.fps = Math.round(1000 / avg);
+    state._fpsAccum = 0;
+    state._fpsFrames = 0;
+    // Require consecutive windows before changing quality (avoid false drops)
+    if (state.fps < TARGET_FPS - 8 && state.qualityLevel > 0) {
+      state._lowStreak += 1;
+      state._highStreak = 0;
+      if (state._lowStreak >= 2) {
+        state.qualityLevel -= 1;
+        state._lowStreak = 0;
+        applyQuality(state);
+      }
+    } else if (state.fps >= TARGET_FPS + 6 && state.qualityLevel < 2) {
+      state._highStreak += 1;
+      state._lowStreak = 0;
+      if (state._highStreak >= 3) {
+        state.qualityLevel += 1;
+        state._highStreak = 0;
+        applyQuality(state);
+      }
+    } else {
+      state._lowStreak = 0;
+      state._highStreak = 0;
+    }
+  }
+
+  function applyQuality(state) {
+    if (!state.renderer) return;
+    const dprCap = maxPixelRatioForQuality(state.qualityLevel);
+    state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
+    resize(state);
+    // Re-sync shells for new quality
+    const seen = new Set();
+    state.muscleMeshes.forEach((meshes) => {
+      meshes.forEach((mesh) => {
+        if (seen.has(mesh)) return;
+        seen.add(mesh);
+        const target = computeMatTarget(state, mesh);
+        const lit = target.emissiveIntensity > 0.08
+          && target.emissive !== hexToInt(BASE_COLOR);
+        syncGlowShell(
+          mesh,
+          lit,
+          target.emissive,
+          Math.min(1, target.emissiveIntensity / 0.55),
+          state.qualityLevel
+        );
+      });
+    });
+  }
+
   async function loadKeyMap() {
     if (keyToApp) return keyToApp;
     const res = await fetch(`./${MAP_URL}?v=2`);
@@ -395,25 +596,28 @@ const BodyMap3D = (() => {
   }
 
   function recoveryVisual(pct, hasData) {
-    if (!hasData) return { color: BASE_COLOR, intensity: 0.04, albedoMix: 0, fresnel: 0 };
-    if (pct < 40) return { color: CORAL, intensity: 0.38, albedoMix: 0.82, fresnel: 0.95 };
-    if (pct < 95) return { color: AMBER, intensity: 0.3, albedoMix: 0.7, fresnel: 0.75 };
-    return { color: MINT, intensity: 0.26, albedoMix: 0.58, fresnel: 0.6 };
+    if (!hasData) return { color: BASE_COLOR, intensity: 0.035, albedoMix: 0, fresnel: 0 };
+    if (pct < 40) return { color: CORAL, intensity: 0.42, albedoMix: 0.78, fresnel: 1.15 };
+    if (pct < 95) return { color: AMBER, intensity: 0.34, albedoMix: 0.68, fresnel: 0.9 };
+    return { color: MINT, intensity: 0.3, albedoMix: 0.58, fresnel: 0.75 };
   }
 
   function growthVisual(growthPct, hasData) {
     if (!hasData || !(growthPct > 0)) {
-      return { color: BASE_COLOR, intensity: 0.03, albedoMix: 0, fresnel: 0 };
+      return { color: BASE_COLOR, intensity: 0.03, albedoMix: 0, fresnel: 0, tier: 'none' };
     }
     const maxG = (typeof MuscleGrowthTracker !== 'undefined' && MuscleGrowthTracker.MAX_GROWTH_PCT)
       ? MuscleGrowthTracker.MAX_GROWTH_PCT : 3;
     const t = Math.max(0, Math.min(1, growthPct / maxG));
-    const color = t > 0.55 ? GROWTH : GROWTH_DEEP;
+    // Strong growth (lime) vs Growing (deep teal) — distinct legend + mesh
+    const strong = t > 0.55;
+    const color = strong ? GROWTH : GROWTH_DEEP;
     return {
       color,
-      intensity: 0.18 + t * 0.34,
-      albedoMix: 0.55 + t * 0.35,
-      fresnel: 0.45 + t * 0.5,
+      intensity: strong ? (0.28 + t * 0.28) : (0.2 + t * 0.22),
+      albedoMix: strong ? (0.62 + t * 0.3) : (0.5 + t * 0.28),
+      fresnel: strong ? (0.7 + t * 0.45) : (0.5 + t * 0.35),
+      tier: strong ? 'strong' : 'growing',
     };
   }
 
@@ -569,13 +773,16 @@ const BodyMap3D = (() => {
   function computeMatTarget(state, mesh) {
     const appIds = mesh.userData.appIds || [];
     const { colorMode, data, showPedestal } = state;
+    // Charcoal unlit with slight definition (not flat black)
     const idle = {
       color: hexToInt(BASE_COLOR),
       emissive: hexToInt(BASE_COLOR),
-      emissiveIntensity: showPedestal ? 0.045 : 0.03,
-      roughness: 0.78,
-      fresnel: colorMode === 'complete' || colorMode === 'intensity' ? 0.15 : 0,
-      metalness: 0.08,
+      emissiveIntensity: showPedestal ? 0.04 : 0.025,
+      roughness: 0.86,
+      fresnel: 0.08,
+      metalness: 0.04,
+      lit: false,
+      glowStrength: 0,
     };
 
     if (colorMode === 'recovery') {
@@ -586,9 +793,11 @@ const BodyMap3D = (() => {
         color: mixHex(BASE_COLOR, vis.color, vis.albedoMix),
         emissive: hexToInt(vis.color),
         emissiveIntensity: vis.intensity,
-        roughness: 0.55,
+        roughness: 0.52,
         fresnel: vis.fresnel,
-        metalness: 0.08,
+        metalness: 0.07,
+        lit: true,
+        glowStrength: Math.min(1, vis.intensity / 0.5),
       };
     }
 
@@ -600,9 +809,11 @@ const BodyMap3D = (() => {
         color: mixHex(BASE_COLOR, vis.color, vis.albedoMix),
         emissive: hexToInt(vis.color),
         emissiveIntensity: vis.intensity,
-        roughness: 0.48,
+        roughness: 0.46,
         fresnel: vis.fresnel,
-        metalness: 0.06,
+        metalness: 0.05,
+        lit: true,
+        glowStrength: Math.min(1, vis.intensity / 0.5),
       };
     }
 
@@ -614,23 +825,27 @@ const BodyMap3D = (() => {
         color: mixHex(BASE_COLOR, vis.color, vis.albedoMix),
         emissive: hexToInt(vis.color),
         emissiveIntensity: vis.intensity,
-        roughness: 0.62,
+        roughness: 0.6,
         fresnel: vis.fresnel,
         metalness: 0.04,
+        lit: true,
+        glowStrength: Math.min(1, vis.intensity / 0.5),
       };
     }
 
     const load = activeLoadForMesh(appIds, data && data.loads);
     if (load > 0) {
       const t = Math.min(1, load / 3.5);
-      const emissive = intensityFromLoad(load) * (colorMode === 'complete' ? 1.05 : 1);
+      const emissive = intensityFromLoad(load) * (colorMode === 'complete' ? 1.08 : 1);
       return {
-        color: mixHex(BASE_COLOR, CORAL, 0.72 + t * 0.22),
+        color: mixHex(BASE_COLOR, CORAL, 0.7 + t * 0.24),
         emissive: hexToInt(CORAL),
         emissiveIntensity: emissive,
         roughness: 0.4 + (1 - t) * 0.16,
-        fresnel: 0.55 + t * 0.45,
+        fresnel: 0.65 + t * 0.55,
         metalness: 0.06,
+        lit: true,
+        glowStrength: Math.min(1, 0.35 + t * 0.65),
       };
     }
     return idle;
@@ -657,6 +872,7 @@ const BodyMap3D = (() => {
     const reduce = prefersReducedMotion();
     const seen = new Set();
     const transitions = [];
+    const q = state.qualityLevel != null ? state.qualityLevel : 2;
 
     state.muscleMeshes.forEach((meshes) => {
       meshes.forEach((mesh) => {
@@ -664,13 +880,28 @@ const BodyMap3D = (() => {
         seen.add(mesh);
         const mat = ensureUniqueMaterial(mesh);
         const target = computeMatTarget(state, mesh);
+        mesh.userData._bm3Target = target;
         if (animate && !reduce) {
-          transitions.push({ mat, from: captureMatSnapshot(mat), to: target });
+          transitions.push({ mat, from: captureMatSnapshot(mat), to: target, mesh });
         } else {
           applyMatTarget(mat, target);
         }
+        syncGlowShell(
+          mesh,
+          !!target.lit,
+          target.emissive,
+          target.glowStrength || 0,
+          q
+        );
       });
     });
+
+    state._pulseMesh = findPulseMesh(state);
+    if (state._pulseMesh && state._pulseMesh.userData._bm3Target) {
+      state._pulseBaseEmissive = state._pulseMesh.userData._bm3Target.emissiveIntensity || 0;
+    } else {
+      state._pulseBaseEmissive = 0;
+    }
 
     if (transitions.length) {
       state.colorTransition = {
@@ -905,7 +1136,8 @@ const BodyMap3D = (() => {
     if (!state.renderer || !state.camera || !state.canvasWrap) return;
     const w = Math.max(1, state.canvasWrap.clientWidth);
     const h = Math.max(1, state.canvasWrap.clientHeight);
-    state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+    const dprCap = maxPixelRatioForQuality(state.qualityLevel != null ? state.qualityLevel : 2);
+    state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
     state.renderer.setSize(w, h, false);
     state.camera.aspect = w / h;
     state.camera.updateProjectionMatrix();
@@ -914,6 +1146,8 @@ const BodyMap3D = (() => {
   function animate(state) {
     if (state.disposed) return;
     state.raf = requestAnimationFrame(() => animate(state));
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    sampleFps(state, now);
     const reduce = prefersReducedMotion();
     if (!reduce) {
       state.breath += 0.025;
@@ -924,19 +1158,46 @@ const BodyMap3D = (() => {
       }
     }
     if (state.colorTransition) {
-      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       const t = Math.min(1, (now - state.colorTransition.start) / state.colorTransition.duration);
       const eased = t * t * (3 - 2 * t);
       state.colorTransition.items.forEach((item) => lerpMat(item.mat, item.from, item.to, eased));
       if (t >= 1) {
-        state.colorTransition.items.forEach((item) => applyMatTarget(item.mat, item.to));
+        state.colorTransition.items.forEach((item) => {
+          applyMatTarget(item.mat, item.to);
+          if (item.mesh) {
+            syncGlowShell(
+              item.mesh,
+              !!item.to.lit,
+              item.to.emissive,
+              item.to.glowStrength || 0,
+              state.qualityLevel != null ? state.qualityLevel : 2
+            );
+          }
+        });
         state.colorTransition = null;
+      }
+    }
+    // Subtle pulse on the most-worked / highest-signal muscle
+    if (!reduce && qualityAllowsPulse(state.qualityLevel) && state._pulseMesh && state._pulseMesh.material) {
+      const mat = state._pulseMesh.material;
+      const base = state._pulseBaseEmissive || 0.25;
+      const pulse = 1 + Math.sin(now * 0.0042) * 0.14;
+      mat.emissiveIntensity = base * pulse;
+      const shell = state._pulseMesh.userData.glowShell;
+      if (shell && shell.visible && shell.material) {
+        const gs = (state._pulseMesh.userData._bm3Target && state._pulseMesh.userData._bm3Target.glowStrength) || 0.4;
+        shell.material.opacity = Math.min(0.42, (0.14 + gs * 0.35) * pulse);
       }
     }
     state.yaw += (state.targetYaw - state.yaw) * 0.12;
     if (state.root) state.root.rotation.y = state.yaw;
     if (state.pedestal) state.pedestal.rotation.y = -state.yaw * 0.15;
     if (state.renderer && state.scene && state.camera) {
+      // Main beauty pass (layer 0). Glow shells live on layer 1 as additive
+      // children — still rendered with the parent because mesh children inherit
+      // visibility; layer mask on shells keeps them out of picking noise.
+      state.camera.layers.enable(0);
+      state.camera.layers.enable(GLOW_LAYER);
       state.renderer.render(state.scene, state.camera);
     }
   }
@@ -964,9 +1225,8 @@ const BodyMap3D = (() => {
     }
     if (state.scene) {
       state.scene.traverse((obj) => {
-        if (obj.geometry && obj.geometry.dispose && !obj.userData._sharedGeo) {
-          // cloned scene owns materials; geometry may be shared from template — dispose materials only
-        }
+        if (obj.userData && obj.userData._bm3GlowShell) return;
+        if (obj.isMesh) disposeGlowShells(obj);
         if (obj.material) {
           if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose && m.dispose());
           else if (obj.material.dispose) obj.material.dispose();
@@ -978,6 +1238,7 @@ const BodyMap3D = (() => {
     state.pedestal = null;
     state.camera = null;
     state.muscleMeshes = new Map();
+    state._pulseMesh = null;
   }
 
   function buildPedestal(parent) {
@@ -1072,12 +1333,16 @@ const BodyMap3D = (() => {
     state.root = root;
     state.pedestal = pedestal;
     state.muscleMeshes = muscleMeshes;
+    initQuality(state);
+    camera.layers.enable(0);
+    camera.layers.enable(GLOW_LAYER);
 
     const preferBack = !!(state.data && state.data.view === 'back');
     state.yaw = preferBack ? Math.PI : (state.showPedestal ? 0.45 : 0.28);
     state.targetYaw = state.yaw;
 
     applyColors(state);
+    applyQuality(state);
     resize(state);
     bindPointer(state);
 
@@ -1260,6 +1525,19 @@ const BodyMap3D = (() => {
     return EN_LABELS[muscle] || muscle;
   }
 
+  function getQualityStats(id) {
+    const state = mounts.get(id);
+    if (!state) return null;
+    return {
+      fps: state.fps || 0,
+      qualityLevel: state.qualityLevel != null ? state.qualityLevel : 2,
+      glow: qualityAllowsGlow(state.qualityLevel),
+      outerShell: qualityAllowsOuterShell(state.qualityLevel),
+      pulse: qualityAllowsPulse(state.qualityLevel),
+      targetFps: TARGET_FPS,
+    };
+  }
+
   return {
     STORAGE_KEY,
     MUSCLE_IDS,
@@ -1272,7 +1550,9 @@ const BodyMap3D = (() => {
     GROWTH_DEEP,
     LOSS,
     LOSS_DEEP,
+    BASE_COLOR,
     TRANSITION_MS,
+    TARGET_FPS,
     getPreferredMode,
     setPreferredMode,
     isWebGLAvailable,
@@ -1283,6 +1563,7 @@ const BodyMap3D = (() => {
     transitionUpdate,
     hasMount,
     getYaw,
+    getQualityStats,
     unmount,
     unmountAll,
     loadThree,

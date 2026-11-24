@@ -146,10 +146,12 @@ const Heatmap3dModes = (() => {
 
   function legendHtml(mode) {
     if (mode === 'growth') {
+      const growing = (typeof BodyMap3D !== 'undefined' && BodyMap3D.GROWTH_DEEP) || '#1aa88a';
+      const strong = (typeof BodyMap3D !== 'undefined' && BodyMap3D.GROWTH) || '#b8ff3d';
       return `
-        <span><i style="background:#14c878"></i>성장 중</span>
-        <span><i style="background:#2ef0a0"></i>강한 성장</span>
-        <span><i style="background:#3a3a44"></i>신호 없음</span>`;
+        <span><i style="background:${growing}"></i>성장 중</span>
+        <span><i style="background:${strong}"></i>강한 성장</span>
+        <span><i style="background:#1e1e26"></i>신호 없음</span>`;
     }
     if (mode === 'loss') {
       return `
