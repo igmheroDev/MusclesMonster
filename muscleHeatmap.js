@@ -150,6 +150,11 @@ const MuscleHeatmap = (() => {
   }
 
   async function mountOrUpdate3d() {
+    // Shared home stage (Heatmap3dModes) owns the single WebGL context on home
+    if (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+      && Heatmap3dModes.ownsHome3d()) {
+      return;
+    }
     if (typeof BodyMap3D === 'undefined') return;
     const host3d = document.getElementById('mh3dHost');
     if (!host3d) return;

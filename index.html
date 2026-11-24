@@ -3213,10 +3213,13 @@
 
     <!-- 히트맵 인근 탭: 홈 헤더/하단 네비가 아니라 바디맵 바로 위에서 회복↔성장·손실 전환 -->
     <div id="heatmapModeHost" class="hmt-host">
-      <div class="hmt-tabs" role="tablist" aria-label="히트맵 보기">
-        <button type="button" class="hmt-tab selected" role="tab" id="hmtTabRecovery" data-hmt-mode="recovery" aria-controls="muscleHeatmapCard" aria-selected="true">회복</button>
-        <button type="button" class="hmt-tab" role="tab" id="hmtTabGrowth" data-hmt-mode="growth" aria-controls="muscleGrowthHeatmapCard" aria-selected="false" tabindex="-1">성장·손실</button>
+      <div class="hmt-tabs" role="tablist" aria-label="Body map mode">
+        <button type="button" class="hmt-tab selected" role="tab" id="hmtTabRecovery" data-hmt-mode="recovery" aria-controls="muscleHeatmapCard" aria-selected="true">Recovery</button>
+        <button type="button" class="hmt-tab" role="tab" id="hmtTabGrowth" data-hmt-mode="growth" aria-controls="muscleGrowthHeatmapCard" aria-selected="false" tabindex="-1">Growth</button>
+        <button type="button" class="hmt-tab" role="tab" id="hmtTabLoss" data-hmt-mode="loss" aria-controls="muscleGrowthHeatmapCard" aria-selected="false" tabindex="-1">Loss</button>
       </div>
+      <div id="h3dModesChrome" hidden></div>
+      <div id="h3dSharedHost" class="h3d-shared-host" hidden></div>
       <div id="muscleHeatmapCard" role="tabpanel" data-hmt-panel="recovery" aria-labelledby="hmtTabRecovery"></div>
       <div id="muscleGrowthHeatmapCard" role="tabpanel" data-hmt-panel="growth" aria-labelledby="hmtTabGrowth" hidden></div>
     </div>
@@ -3871,6 +3874,7 @@
 <script src="youtubeSearchLink.js"></script>
 <script src="navTabHighlight.js"></script>
 <script src="heatmapModeTabs.js"></script>
+<script src="heatmap3dModes.js"></script>
 <script src="prTrendDetail.js"></script>
 <script src="listQuickActions.js"></script>
 <script src="cardioListQuickActions.js"></script>

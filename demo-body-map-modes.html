@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>RECOVR — 3D Modes Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg: #0a0a0f; --text: #e8e8f0; --muted: #6b6b85; --card: #1a1a24; --border: #2a2a3a; --mint: #3ee6b0; --coral: #ff3b5c; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px 14px 40px;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 0.08em; }
+    h1 span { color: var(--mint); }
+    .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+    .screen {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 18px;
+    }
+    .screen-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .screen-title { font-size: 14px; font-weight: 700; }
+    .host { min-height: 320px; }
+  </style>
+</head>
+<body>
+  <h1>RECOVR <span>3D MODES</span></h1>
+  <div class="sub">Shared WebGL stage · Recovery / Growth / Loss · ~400ms crossfade</div>
+
+  <div id="heatmapModeHost" class="hmt-host screen">
+    <div class="screen-head">
+      <div class="screen-title">Home body map</div>
+    </div>
+    <div class="hmt-tabs" role="tablist" aria-label="Body map mode">
+      <button type="button" class="hmt-tab selected" role="tab" data-hmt-mode="recovery" aria-selected="true">Recovery</button>
+      <button type="button" class="hmt-tab" role="tab" data-hmt-mode="growth" aria-selected="false">Growth</button>
+      <button type="button" class="hmt-tab" role="tab" data-hmt-mode="loss" aria-selected="false">Loss</button>
+    </div>
+    <div id="h3dModesChrome"></div>
+    <div id="h3dSharedHost" class="h3d-shared-host"></div>
+    <div id="muscleHeatmapCard" role="tabpanel" data-hmt-panel="recovery"></div>
+    <div id="muscleGrowthHeatmapCard" role="tabpanel" data-hmt-panel="growth" hidden></div>
+  </div>
+
+  <script src="muscleGrowthTracker.js"></script>
+  <script src="heatmapModeTabs.js"></script>
+  <script src="bodyMap3d.js"></script>
+  <script src="heatmap3dModes.js"></script>
+  <script>
+    // Minimal stubs so Heatmap3dModes can compute without full app.js
+    window.MUSCLE_ORDER = ['chest','back','shoulder','biceps','triceps','quads','hamstrings','adductors','calves','core','forearms'];
+    window.getMusclesFromExerciseName = function(name) {
+      const n = String(name || '').toLowerCase();
+      const out = [];
+      if (/bench|chest|press/.test(n)) out.push('chest');
+      if (/shoulder|overhead|lateral/.test(n)) out.push('shoulder');
+      if (/tricep|pushdown|skull/.test(n)) out.push('triceps');
+      if (/squat|leg press/.test(n)) out.push('quads');
+      if (/rdl|dead|ham/.test(n)) out.push('hamstrings');
+      if (/curl|bicep/.test(n)) out.push('biceps');
+      if (/row|pull/.test(n)) out.push('back');
+      if (/crunch|plank|core/.test(n)) out.push('core');
+      if (/calf/.test(n)) out.push('calves');
+      return out;
+    };
+    window.getExerciseVolume = function(ex) {
+      return (ex.weight || 0) * (ex.reps || 0) * (ex.sets || 0);
+    };
+    window.getDurationLoad = function() { return 0; };
+
+    function daysAgo(n) {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    }
+
+    // Synthetic history: recent chest/shoulder growth; quads/hams idle → loss
+    const workouts = [];
+    for (let i = 0; i < 8; i++) {
+      workouts.push({
+        date: daysAgo(i * 2),
+        type: 'upper', fatigue: 3, duration: 55,
+        exercises: [
+          { name: 'Bench Press', weight: 60 + i, reps: 8, sets: 4 },
+          { name: 'Overhead Press', weight: 40 + i * 0.5, reps: 8, sets: 3 },
+          { name: 'Tricep Pushdown', weight: 25, reps: 12, sets: 3 },
+        ],
+      });
+    }
+    // Older lower-body only (so loss shows on legs)
+    for (let i = 20; i < 28; i++) {
+      workouts.push({
+        date: daysAgo(i),
+        type: 'lower', fatigue: 3, duration: 50,
+        exercises: [
+          { name: 'Squat', weight: 80, reps: 5, sets: 4 },
+          { name: 'RDL', weight: 70, reps: 8, sets: 3 },
+        ],
+      });
+    }
+    window.loadWorkouts = () => workouts;
+
+    window.calcMuscleRecovery = function() {
+      return {
+        chest: { lastDate: daysAgo(1), recoveryPct: 28, recoveryHours: 48, hoursElapsed: 14 },
+        shoulder: { lastDate: daysAgo(1), recoveryPct: 40, recoveryHours: 48, hoursElapsed: 14 },
+        triceps: { lastDate: daysAgo(1), recoveryPct: 55, recoveryHours: 36, hoursElapsed: 14 },
+        back: { lastDate: daysAgo(3), recoveryPct: 72, recoveryHours: 72, hoursElapsed: 50 },
+        quads: { lastDate: daysAgo(22), recoveryPct: 100, recoveryHours: 48, hoursElapsed: 90 },
+        hamstrings: { lastDate: daysAgo(22), recoveryPct: 100, recoveryHours: 48, hoursElapsed: 90 },
+        core: { lastDate: daysAgo(5), recoveryPct: 88, recoveryHours: 36, hoursElapsed: 40 },
+        biceps: { lastDate: null, recoveryPct: 100 },
+        calves: { lastDate: daysAgo(30), recoveryPct: 100, recoveryHours: 36, hoursElapsed: 100 },
+        adductors: { lastDate: null, recoveryPct: 100 },
+        forearms: { lastDate: null, recoveryPct: 100 },
+      };
+    };
+
+    BodyMap3D.setPreferredMode('3d');
+    HeatmapModeTabs.init();
+    Heatmap3dModes.afterHomeRender(calcMuscleRecovery());
+
+    // Cycle modes for transition capture
+    const order = ['recovery', 'growth', 'loss', 'recovery'];
+    let i = 0;
+    window.__demoCycle = async function() {
+      i = (i + 1) % order.length;
+      Heatmap3dModes.setMode(order[i]);
+      return order[i];
+    };
+    document.body.dataset.demoReady = '1';
+    document.body.dataset.mode = 'recovery';
+  </script>
+</body>
+</html>

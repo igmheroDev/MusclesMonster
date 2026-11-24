@@ -110,6 +110,11 @@ assert(BodyMap3D.recoveryVisual(20, true).color === BodyMap3D.CORAL, 'fatigued c
 assert(BodyMap3D.recoveryVisual(60, true).color === BodyMap3D.AMBER, 'recovering amber');
 assert(BodyMap3D.recoveryVisual(98, true).color === BodyMap3D.MINT, 'ready mint');
 assert(BodyMap3D.recoveryVisual(20, true).albedoMix > 0, 'recovery uses coral albedo mix');
+assert(typeof BodyMap3D.growthVisual === 'function', 'growthVisual');
+assert(typeof BodyMap3D.lossVisual === 'function', 'lossVisual');
+assert(typeof BodyMap3D.transitionUpdate === 'function', 'transitionUpdate');
+assert(BodyMap3D.growthVisual(3, true).intensity > 0.2, 'growth intensity');
+assert(BodyMap3D.lossVisual(6, true).albedoMix > 0.4, 'loss albedo');
 
 const src = fs.readFileSync(path.join(__dirname, 'bodyMap3d.js'), 'utf8');
 assert(src.includes('Drag to rotate'), 'english drag hint');
@@ -148,7 +153,7 @@ assert(fs.existsSync(path.join(__dirname, 'vendor/MODEL_SOURCE.md')), 'model sou
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.LICENSE.txt')), 'three license');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(sw.includes('recovr-cache-v84'), 'cache bumped to v84');
+assert(sw.includes('recovr-cache-v85'), 'cache bumped to v84');
 assert(sw.includes('bodyMap3d.js'), 'sw caches bodyMap3d');
 assert(sw.includes('vendor/three.module.min.js'), 'sw caches three');
 assert(sw.includes('vendor/anatomy/muscles-body.glb'), 'sw caches anatomy glb');
