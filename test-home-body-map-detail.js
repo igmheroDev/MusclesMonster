@@ -44,7 +44,7 @@ assert(indexHtml.includes('homeBodyMapDetail.js'), 'index loads module');
 assert(indexHtml.includes('id="hbmdOverlay"'), 'overlay container in DOM');
 assert(appJs.includes('HomeBodyMapDetail.afterHomeRender'), 'app hooks afterHomeRender');
 assert(swJs.includes('homeBodyMapDetail.js'), 'SW caches module');
-assert(swJs.includes('recovr-cache-v91'), 'SW cache bump v91');
+assert(swJs.includes('recovr-cache-v92'), 'SW cache bump v92');
 
 console.log('=== 3. Runtime helpers ===');
 global.MUSCLE_ORDER = ['chest', 'back', 'quads', 'biceps'];
@@ -111,6 +111,46 @@ const tipG = HomeBodyMapDetail.buildTipForTest('growth', {
   muscle: 'chest', hasSignal: true, pct: 2.4,
 });
 assert(tipG.includes('자극') || tipG.includes('페이스'), 'plain Korean growth tip');
+
+console.log('=== 3b. Growth value colors match map thresholds ===');
+assert(HomeBodyMapDetail.STRONG_GROWTH_PCT === 1.5, 'strong growth threshold 1.5');
+assert(HomeBodyMapDetail.GROWTH_TEAL === '#1aa88a', 'growing teal');
+assert(HomeBodyMapDetail.GROWTH_LIME === '#b8ff3d', 'strong growth lime');
+const growingRow = { muscle: 'back', hasSignal: true, pct: 0.8 };
+const strongRow = { muscle: 'chest', hasSignal: true, pct: 1.5 };
+const strongerRow = { muscle: 'chest', hasSignal: true, pct: 2.4 };
+const noGrowthRow = { muscle: 'biceps', hasSignal: false, pct: 0 };
+assert(
+  HomeBodyMapDetail.formatValueColorForTest('growth', growingRow) === HomeBodyMapDetail.GROWTH_TEAL,
+  'card/list growing uses teal'
+);
+assert(
+  HomeBodyMapDetail.formatValueColorForTest('growth', strongRow) === HomeBodyMapDetail.GROWTH_LIME,
+  'card/list ≥1.5% uses lime'
+);
+assert(
+  HomeBodyMapDetail.formatValueColorForTest('growth', strongerRow) === HomeBodyMapDetail.GROWTH_LIME,
+  'card/list strong growth uses lime'
+);
+assert(
+  HomeBodyMapDetail.formatValueColorForTest('growth', noGrowthRow) === 'var(--muted)',
+  'card/list no signal muted'
+);
+assert(
+  HomeBodyMapDetail.getFillForTest('growth', growingRow).fill
+    === HomeBodyMapDetail.formatValueColorForTest('growth', growingRow),
+  'map fill matches card/list for growing'
+);
+assert(
+  HomeBodyMapDetail.getFillForTest('growth', strongRow).fill
+    === HomeBodyMapDetail.formatValueColorForTest('growth', strongRow),
+  'map fill matches card/list at 1.5% threshold'
+);
+assert(
+  HomeBodyMapDetail.getFillForTest('growth', strongerRow).fill
+    === HomeBodyMapDetail.formatValueColorForTest('growth', strongerRow),
+  'map fill matches card/list for strong growth'
+);
 
 console.log('=== 4. Korean rotate hint ===');
 assert(bm3.includes('밀어 돌리기'), 'rotate hint Korean');

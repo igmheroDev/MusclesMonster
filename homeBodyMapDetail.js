@@ -15,6 +15,11 @@ const HomeBodyMapDetail = (() => {
   const HISTORY_FLAG = 'hbmdDetail';
   const ASSET_VERSION = (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.ASSET_VERSION) || 'v56';
   const MIN_TAP = 44;
+  // Must match map paint thresholds (getFill) for card + list value colors
+  const STRONG_GROWTH_PCT = 1.5;
+  const GROWTH_TEAL = '#1aa88a';
+  const GROWTH_LIME = '#b8ff3d';
+  const STRONG_LOSS_PCT = 4;
 
   const MODE_TITLES = {
     recovery: '회복 자세히 보기',
@@ -277,10 +282,11 @@ const HomeBodyMapDetail = (() => {
 
   function formatValueColor(row) {
     if (currentMode === 'growth') {
-      return row.hasSignal ? '#1aa88a' : 'var(--muted)';
+      if (!row.hasSignal) return 'var(--muted)';
+      return row.pct >= STRONG_GROWTH_PCT ? GROWTH_LIME : GROWTH_TEAL;
     }
     if (currentMode === 'loss') {
-      return row.hasSignal ? (row.pct >= 4 ? 'var(--red)' : 'var(--orange)') : 'var(--muted)';
+      return row.hasSignal ? (row.pct >= STRONG_LOSS_PCT ? 'var(--red)' : 'var(--orange)') : 'var(--muted)';
     }
     if (!row.hasSignal) return 'var(--muted)';
     if (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.getRecoveryColor) {
@@ -294,12 +300,12 @@ const HomeBodyMapDetail = (() => {
   function getFill(row) {
     if (currentMode === 'growth') {
       if (!row.hasSignal) return { fill: '#1e1e26', opacity: 0.35 };
-      const strong = row.pct >= 1.5;
-      return { fill: strong ? '#b8ff3d' : '#1aa88a', opacity: 0.35 + Math.min(0.35, row.pct / 3 * 0.35) };
+      const strong = row.pct >= STRONG_GROWTH_PCT;
+      return { fill: strong ? GROWTH_LIME : GROWTH_TEAL, opacity: 0.35 + Math.min(0.35, row.pct / 3 * 0.35) };
     }
     if (currentMode === 'loss') {
       if (!row.hasSignal) return { fill: '#3a3a44', opacity: 0.2 };
-      const deep = row.pct >= 4;
+      const deep = row.pct >= STRONG_LOSS_PCT;
       return { fill: deep ? '#4a3dc8' : '#7b6cff', opacity: 0.35 + Math.min(0.35, row.pct / 8 * 0.35) };
     }
     if (!row.hasSignal) {
@@ -763,6 +769,22 @@ const HomeBodyMapDetail = (() => {
     return tip;
   }
 
+  function formatValueColorForTest(mode, row) {
+    const prev = currentMode;
+    currentMode = mode;
+    const color = formatValueColor(row);
+    currentMode = prev;
+    return color;
+  }
+
+  function getFillForTest(mode, row) {
+    const prev = currentMode;
+    currentMode = mode;
+    const fill = getFill(row);
+    currentMode = prev;
+    return fill;
+  }
+
   function getSortedListForTest(mode, recovery, growth) {
     const prevMode = currentMode;
     const prevRec = recoveryCache;
@@ -784,7 +806,12 @@ const HomeBodyMapDetail = (() => {
     ensureOpenButton,
     getSortedListForTest,
     buildTipForTest,
+    formatValueColorForTest,
+    getFillForTest,
     formatValueLabel,
+    STRONG_GROWTH_PCT,
+    GROWTH_TEAL,
+    GROWTH_LIME,
     MODE_TITLES,
     OVERLAY_ID,
     BTN_WRAP_ID,

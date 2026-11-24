@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v91';
+const CACHE_NAME = 'recovr-cache-v92';
 const ASSETS = [
   './',
   './index.html',
