@@ -30,7 +30,7 @@ assert(src.includes('touchstart') && src.includes('touchmove'), 'swipe-to-close 
 assert(src.includes('min-height: 44px') || src.includes('MIN_TAP = 44'), '44px tap targets');
 assert(src.includes('touch-action: pan-y'), 'sheet body pan-y (no scroll trap)');
 assert(!/setPreferredMode\s*\(/.test(src), 'never calls setPreferredMode');
-assert(src.includes('MuscleHeatmap.FRONT_REGIONS') || src.includes('getFrontRegions'), 'reuses FRONT_REGIONS');
+assert(src.includes('DETAIL_FRONT_REGIONS') && src.includes('getFrontRegions'), 'detail front regions via getFrontRegions');
 assert(src.includes('DETAIL_BACK_REGIONS'), 'detail back region splits');
 assert(src.includes('packLabelLayouts'), 'label collision packer');
 assert(src.includes('ensureSelectionForView'), 'side-aware selection');
@@ -48,13 +48,33 @@ assert(indexHtml.includes('homeBodyMapDetail.js'), 'index loads module');
 assert(indexHtml.includes('id="hbmdOverlay"'), 'overlay container in DOM');
 assert(appJs.includes('HomeBodyMapDetail.afterHomeRender'), 'app hooks afterHomeRender');
 assert(swJs.includes('homeBodyMapDetail.js'), 'SW caches module');
-assert(swJs.includes('recovr-cache-v94'), 'SW cache bump v94');
+assert(swJs.includes('recovr-cache-v96'), 'SW cache bump v96');
 assert(src.includes('hbmdMask-'), 'uses SVG mask ids');
 assert(!/mask-image\s*:/.test(src), 'no CSS mask-image on fill layer');
 assert(src.includes('preserveAspectRatio="xMidYMid meet"'), 'image+mask preserveAspectRatio meet');
 assert(src.includes('maskUnits="userSpaceOnUse"'), 'maskUnits userSpaceOnUse in source');
 assert(src.includes('maskContentUnits="userSpaceOnUse"'), 'maskContentUnits userSpaceOnUse in source');
-assert(src.includes('FILL_CALIBRATE'), 'fill calibrate matrix present');
+assert(src.includes('DETAIL_FRONT_REGIONS'), 'art-aligned front fill paths');
+assert(src.includes('DETAIL_BACK_REGIONS'), 'art-aligned back fill paths');
+assert(!/\bFILL_CALIBRATE\b/.test(src), 'runtime FILL_CALIBRATE hack removed');
+// Calves must not paint feet (ankle clip ~Y=298 in 240×360 user space)
+(function () {
+  const ANKLE_Y = 298;
+  function maxY(d) {
+    const nums = String(d).match(/[-+]?\d*\.?\d+/g) || [];
+    let m = 0;
+    for (let i = 1; i < nums.length; i += 2) m = Math.max(m, parseFloat(nums[i]));
+    return m;
+  }
+  const calfRe = /muscle:\s*'calves'\s*,\s*d:\s*'([^']+)'/g;
+  let i = 0; let m;
+  while ((m = calfRe.exec(src))) {
+    assert(maxY(m[1]) < ANKLE_Y, `calf path[${i}] stops above ankle (${maxY(m[1])})`);
+    i += 1;
+  }
+  assert(i >= 4, `found calf paths to check (${i})`);
+})();
+assert(!/scale\(\$\{FILL_CALIBRATE/.test(src), 'no calibrate scale transform on fills');
 assert(src.includes('Do NOT reuse class "mh-svg"') || src.includes('class="hbmd-svg"'), 'detail SVG avoids mh-svg max-height trap');
 assert(!/class="mh-svg hbmd-svg"/.test(src), 'detail root class is not mh-svg');
 assert(src.includes('filter: none !important') || src.includes('filter:none'), 'detail fills disable glow filters');
@@ -300,11 +320,18 @@ assert(svgFront.includes('id="hbmdMask-front"'), 'SVG <mask> for front fills');
 assert(svgFront.includes('preserveAspectRatio="xMidYMid meet"'), 'front image+mask meet');
 assert(/class="hbmd-svg"/.test(svgFront), 'rendered root class is hbmd-svg only');
 assert(!/\bmh-svg\b/.test(svgFront), 'rendered SVG does not use mh-svg');
-assert(/hbmd-muscles[^>]*transform=/.test(svgFront) || svgFront.includes('FILL_CALIBRATE')
-  || /translate\(120/.test(svgFront), 'muscles group has calibrate transform');
-assert(HomeBodyMapDetail.FILL_CALIBRATE
-  && HomeBodyMapDetail.FILL_CALIBRATE.scale >= 1
-  && HomeBodyMapDetail.FILL_CALIBRATE.scale <= 1.1, 'calibrate scale is modest (≤1.1)');
+assert(/class="hbmd-muscles"/.test(svgFront), 'muscles group present');
+assert(!/hbmd-muscles[^>]*transform=/.test(svgFront), 'no runtime calibrate transform on muscles group');
+assert(
+  Array.isArray(HomeBodyMapDetail.DETAIL_FRONT_REGIONS)
+    && HomeBodyMapDetail.DETAIL_FRONT_REGIONS.length >= 8,
+  'DETAIL_FRONT_REGIONS exported with multiple paths'
+);
+assert(
+  Array.isArray(HomeBodyMapDetail.DETAIL_BACK_REGIONS)
+    && HomeBodyMapDetail.DETAIL_BACK_REGIONS.filter((r) => r.muscle === 'back').length >= 3,
+  'DETAIL_BACK_REGIONS keeps ≥3 back splits'
+);
 const svgGrowth = HomeBodyMapDetail.buildSvgForTest('front', 'growth', recovery, growth);
 assert(svgGrowth.includes('#b8ff3d') || svgGrowth.includes('#1aa88a'), 'growth SVG uses teal/lime fills');
 assert(svgGrowth.includes('data-muscle="chest"'), 'growth paints trained chest');

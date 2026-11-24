@@ -155,7 +155,7 @@ async function run() {
 
   assert(html.includes('backupOnComplete.js'), 'index loads module');
   assert(sw.includes('backupOnComplete.js'), 'sw caches module');
-assert(sw.includes('recovr-cache-v94'), 'sw cache v90');
+assert(sw.includes('recovr-cache-v96'), 'sw cache v90');
   assert(app.includes('syncBackupAfterWorkoutSave'), 'app wires sync');
   assert(app.includes('BackupOnComplete.syncAfterWorkoutSave'), 'app calls module');
   assert(/function triggerAutoBackup\(\)\s*\{\s*return;\s*\}/.test(app), 'progress auto backup disabled');

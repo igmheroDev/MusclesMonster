@@ -89,11 +89,26 @@ assert(BodyMap3D.setPreferredMode('2d') === '2d', 'set 2d');
 const required = ['chest', 'back', 'shoulder', 'biceps', 'triceps', 'quads', 'hamstrings', 'adductors', 'calves', 'core', 'forearms'];
 required.forEach((id) => {
   assert(BodyMap3D.MUSCLE_IDS.includes(id), `muscle id ${id}`);
-  assert(!!BodyMap3D.EN_LABELS[id], `english label ${id}`);
+  assert(!!BodyMap3D.KO_LABELS[id], `korean label ${id}`);
+  assert(/[\uac00-\ud7a3]/.test(BodyMap3D.KO_LABELS[id]), `korean chars ${id}`);
+  assert(!/[A-Za-z]/.test(BodyMap3D.KO_LABELS[id]), `no latin in label ${id}`);
 });
 
-assert(BodyMap3D.EN_LABELS.chest === 'Chest', 'Chest label');
-assert(BodyMap3D.EN_LABELS.core === 'Abs', 'Abs label');
+assert(BodyMap3D.KO_LABELS.chest === '가슴', '가슴 label');
+assert(BodyMap3D.KO_LABELS.core === '복근', '복근 label');
+assert(BodyMap3D.KO_LABELS.front_delts === '어깨(전면)', '어깨(전면)');
+assert(BodyMap3D.KO_LABELS.side_delts === '어깨(측면)', '어깨(측면)');
+assert(BodyMap3D.KO_LABELS.rear_delts === '어깨(후면)', '어깨(후면)');
+assert(BodyMap3D.KO_LABELS.lats === '광배', '광배');
+assert(BodyMap3D.KO_LABELS.traps === '승모근', '승모근');
+assert(BodyMap3D.KO_LABELS.lower_back === '기립근', '기립근');
+assert(BodyMap3D.KO_LABELS.obliques === '복사근', '복사근');
+assert(BodyMap3D.KO_LABELS.glutes === '둔근', '둔근');
+assert(typeof BodyMap3D.auditTappableLabels === 'function', 'auditTappableLabels');
+assert(typeof BodyMap3D.labelForMuscle === 'function', 'labelForMuscle');
+assert(BodyMap3D.labelForMuscle('chest') === '가슴', 'labelForMuscle chest');
+assert(BodyMap3D.labelForMuscle('pectoralis_major_clavicular') === '근육'
+  || BodyMap3D.labelForMuscle('unknown_xyz') === '근육', 'unknown → 근육 fallback not English');
 
 const html = BodyMap3D.buildModeToggle('2d', { scope: 'test' });
 assert(html.includes('data-bm3-mode="2d"'), '2d button');
@@ -130,10 +145,10 @@ assert(fs.existsSync(path.join(__dirname, 'vendor/anatomy/muscles-body.glb')), '
 assert(fs.statSync(path.join(__dirname, 'vendor/anatomy/muscles-body.glb')).size < 3 * 1024 * 1024, 'glb under 3MB');
 assert(fs.existsSync(path.join(__dirname, 'vendor/anatomy/KEY_TO_APP.json')), 'key map exists');
 assert(fs.existsSync(path.join(__dirname, 'vendor/GLTFLoader.js')), 'GLTFLoader vendored');
-assert(BodyMap3D.EN_LABELS.traps === 'Traps', 'fine id traps');
-assert(BodyMap3D.EN_LABELS.lats === 'Lats', 'fine id lats');
-assert(BodyMap3D.EN_LABELS.front_delts === 'Front Delts', 'fine id front delts');
-assert(BodyMap3D.EN_LABELS.glutes === 'Glutes', 'fine id glutes');
+assert(BodyMap3D.KO_LABELS.traps === '승모근', 'fine id traps');
+assert(BodyMap3D.KO_LABELS.lats === '광배', 'fine id lats');
+assert(BodyMap3D.KO_LABELS.front_delts === '어깨(전면)', 'fine id front delts');
+assert(BodyMap3D.KO_LABELS.glutes === '둔근', 'fine id glutes');
 assert(src.includes('MAX_PIXEL_RATIO = 2') || src.includes('MAX_PIXEL_RATIO=2'), 'pixel ratio cap');
 assert(src.includes('dispose'), 'dispose path');
 assert(src.includes('WEBGL_lose_context') || src.includes('loseContext'), 'lose context on dispose');
@@ -158,7 +173,7 @@ assert(fs.existsSync(path.join(__dirname, 'vendor/MODEL_SOURCE.md')), 'model sou
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.LICENSE.txt')), 'three license');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(sw.includes('recovr-cache-v94'), 'sw cache v90');
+assert(sw.includes('recovr-cache-v96'), 'sw cache v90');
 assert(sw.includes('bodyMap3d.js'), 'sw caches bodyMap3d');
 assert(sw.includes('vendor/three.module.min.js'), 'sw caches three');
 assert(sw.includes('vendor/anatomy/muscles-body.glb'), 'sw caches anatomy glb');

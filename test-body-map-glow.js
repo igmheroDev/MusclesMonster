@@ -15,6 +15,7 @@ const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
 
 console.log('=== 1. Glow polish primitives ===');
 assert(src.includes('ensureGlowShells'), 'glow shells');
+assert(src.includes('glowShellScalesForMesh'), 'scale-aware shell inflation');
 assert(src.includes('BackSide'), 'back-face shell');
 assert(src.includes('AdditiveBlending'), 'additive halo');
 assert(src.includes('sampleFps'), 'FPS sampler');
@@ -22,11 +23,16 @@ assert(src.includes('TARGET_FPS = 50') || src.includes('TARGET_FPS=50'), '50fps 
 assert(src.includes('qualityLevel'), 'adaptive quality');
 assert(src.includes('findPulseMesh'), 'pulse target');
 assert(src.includes('BASE_COLOR = \'#1e1e26\''), 'dark charcoal unlit');
+assert(/GLOW_SHELL_SCALE = 1\.0(1[0-5]|0\d)/.test(src), 'inner shell constant tight');
+assert(/GLOW_SHELL_SCALE_OUTER = 1\.0(2[0-9]|1\d)/.test(src), 'outer shell constant tight');
 
 console.log('=== 2. Growth legend contrast ===');
 const BodyMap3D = new Function(
   fs.readFileSync(path.join(__dirname, 'bodyMap3d.js'), 'utf8') + '; return BodyMap3D;'
 )();
+assert(BodyMap3D.GLOW_SHELL_SCALE <= 1.015, 'inner shell scale tight (≤1.015)');
+assert(BodyMap3D.GLOW_SHELL_SCALE_OUTER <= 1.03, 'outer shell scale tight (≤1.03)');
+assert(BodyMap3D.GLOW_SHELL_SCALE < BodyMap3D.GLOW_SHELL_SCALE_OUTER, 'outer > inner');
 assert(BodyMap3D.GROWTH === '#b8ff3d', 'strong growth lime');
 assert(BodyMap3D.GROWTH_DEEP === '#1aa88a', 'growing deep teal');
 assert(BodyMap3D.GROWTH !== BodyMap3D.GROWTH_DEEP, 'distinct growth colors');
@@ -45,7 +51,7 @@ assert(BodyMap3D.getQualityStats('missing') === null, 'missing mount → null');
 console.log('=== 4. Wiring ===');
 assert(modes.includes('GROWTH_DEEP') || modes.includes('#1aa88a'), 'modes legend uses new growing color');
 assert(modes.includes('b8ff3d') || modes.includes('GROWTH'), 'modes legend uses strong lime');
-assert(sw.includes('recovr-cache-v94'), 'sw cache v90');
+assert(sw.includes('recovr-cache-v96'), 'sw cache v90');
 
 console.log(failures === 0 ? '\n=== Glow polish tests passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);
 process.exit(failures === 0 ? 0 : 1);

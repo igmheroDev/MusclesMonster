@@ -6,7 +6,7 @@
   "serratus_anterior": ["chest"],
 
   "deltoid_anterior": ["shoulder", "front_delts"],
-  "deltoid_lateral": ["shoulder", "front_delts"],
+  "deltoid_lateral": ["shoulder", "side_delts"],
   "deltoid_posterior": ["shoulder", "rear_delts"],
   "supraspinatus": ["shoulder"],
   "infraspinatus": ["shoulder", "rear_delts"],

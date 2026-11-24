@@ -30,48 +30,67 @@ const BodyMap3D = (() => {
   const CONTEXT_COLOR = '#16161c';
   const BG = '#0a0a0f';
   const TRANSITION_MS = 400;
-  const GLOW_SHELL_SCALE = 1.028;
-  const GLOW_SHELL_SCALE_OUTER = 1.055;
+  // Tight back-face shells — previous 1.028/1.055 bled past muscle edges.
+  // Scale-aware: tiny meshes inflate less (absolute bleed ∝ radius × (s−1)).
+  const GLOW_SHELL_SCALE = 1.008;
+  const GLOW_SHELL_SCALE_OUTER = 1.016;
+  const GLOW_SHELL_REF_SIZE = 0.22; // local bbox diagonal reference
 
   // App coarse ids that should also light related fine-only meshes
   const LOAD_ALIASES = {
-    shoulder: ['front_delts', 'rear_delts'],
+    shoulder: ['front_delts', 'side_delts', 'rear_delts'],
     back: ['traps', 'lats', 'lower_back'],
     core: ['abs', 'obliques'],
     // App label "둔근/햄스트링" is one recovery/load bucket
     hamstrings: ['glutes'],
   };
 
-  // App-facing ids (coarse + finer where the model allows)
-  const EN_LABELS = {
-    chest: 'Chest',
-    back: 'Back',
-    shoulder: 'Shoulders',
-    front_delts: 'Front Delts',
-    rear_delts: 'Rear Delts',
-    biceps: 'Biceps',
-    triceps: 'Triceps',
-    quads: 'Quads',
-    hamstrings: 'Hamstrings',
-    glutes: 'Glutes',
-    adductors: 'Adductors',
-    calves: 'Calves',
-    core: 'Abs',
-    abs: 'Abs',
-    obliques: 'Obliques',
-    traps: 'Traps',
-    lats: 'Lats',
-    lower_back: 'Lower Back',
-    forearms: 'Forearms',
+  // Gym-goer Korean labels for every tappable app id (never fall back to Z-Anatomy English).
+  const KO_LABELS = {
+    chest: '가슴',
+    back: '등',
+    shoulder: '어깨',
+    front_delts: '어깨(전면)',
+    side_delts: '어깨(측면)',
+    rear_delts: '어깨(후면)',
+    biceps: '이두',
+    triceps: '삼두',
+    quads: '대퇴사두',
+    hamstrings: '햄스트링',
+    glutes: '둔근',
+    adductors: '내전근',
+    calves: '종아리',
+    core: '복근',
+    abs: '복근',
+    obliques: '복사근',
+    traps: '승모근',
+    lats: '광배',
+    lower_back: '기립근',
+    forearms: '전완',
   };
 
-  const MUSCLE_IDS = Object.keys(EN_LABELS);
+  // Backward-compatible alias (tests / older call sites)
+  const EN_LABELS = KO_LABELS;
+
+  const MUSCLE_IDS = Object.keys(KO_LABELS);
 
   // Prefer primary fine label when tapping a mesh
   const FINE_PRIORITY = [
-    'front_delts', 'rear_delts', 'traps', 'lats', 'glutes',
+    'front_delts', 'side_delts', 'rear_delts', 'traps', 'lats', 'glutes',
     'lower_back', 'obliques', 'abs',
   ];
+
+  function isKoreanLabel(text) {
+    return /[\uac00-\ud7a3]/.test(String(text || ''));
+  }
+
+  function labelForMuscle(muscle, fallback) {
+    const ko = KO_LABELS[muscle];
+    if (ko) return ko;
+    // Never surface Z-Anatomy / English mesh names in the tip UI
+    if (fallback && isKoreanLabel(fallback) && !/[A-Za-z]/.test(fallback)) return fallback;
+    return KO_LABELS.shoulder ? '근육' : '근육';
+  }
 
   let THREE = null;
   let GLTFLoader = null;
@@ -313,9 +332,25 @@ const BodyMap3D = (() => {
     return MAX_PIXEL_RATIO;
   }
 
+  function glowShellScalesForMesh(mesh) {
+    // Scale-aware inflation: absolute rim bleed ≈ radius × (scale−1).
+    // Tiny muscles (forearm slips) use less inflate; large ones stay near constants.
+    let size = GLOW_SHELL_REF_SIZE;
+    try {
+      if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
+      const r = mesh.geometry.boundingSphere && mesh.geometry.boundingSphere.radius;
+      if (r && r > 0) size = r * 2;
+    } catch (e) { /* keep ref */ }
+    const t = Math.min(1.15, Math.max(0.45, size / GLOW_SHELL_REF_SIZE));
+    const inner = 1 + (GLOW_SHELL_SCALE - 1) * t;
+    const outer = 1 + (GLOW_SHELL_SCALE_OUTER - 1) * t;
+    return { inner, outer };
+  }
+
   function ensureGlowShells(mesh) {
     if (!THREE || !mesh || !mesh.geometry) return;
     if (mesh.userData.glowShell) return;
+    const scales = glowShellScalesForMesh(mesh);
     const makeShell = (scale, opacity) => {
       const mat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
@@ -335,8 +370,8 @@ const BodyMap3D = (() => {
       mesh.add(shell);
       return shell;
     };
-    mesh.userData.glowShell = makeShell(GLOW_SHELL_SCALE, 0.2);
-    mesh.userData.glowShellOuter = makeShell(GLOW_SHELL_SCALE_OUTER, 0.1);
+    mesh.userData.glowShell = makeShell(scales.inner, 0.18);
+    mesh.userData.glowShellOuter = makeShell(scales.outer, 0.08);
     mesh.layers.enable(0);
   }
 
@@ -556,7 +591,7 @@ const BodyMap3D = (() => {
         obj.userData.appIds = appIds.slice();
         obj.userData.muscle = pickPrimaryId(appIds);
         obj.userData.atlasKey = key;
-        obj.userData.label = extras.label || EN_LABELS[obj.userData.muscle] || key;
+        obj.userData.label = labelForMuscle(obj.userData.muscle, extras.label);
         appIds.forEach((id) => {
           if (!muscleMeshes.has(id)) muscleMeshes.set(id, []);
           muscleMeshes.get(id).push(obj);
@@ -665,7 +700,7 @@ const BodyMap3D = (() => {
     if (r && r.lastDate != null) return r;
     // Fine ids fall back to coarse app buckets
     const reverse = {
-      front_delts: 'shoulder', rear_delts: 'shoulder',
+      front_delts: 'shoulder', side_delts: 'shoulder', rear_delts: 'shoulder',
       traps: 'back', lats: 'back', lower_back: 'back',
       abs: 'core', obliques: 'core',
       glutes: 'hamstrings',
@@ -688,7 +723,7 @@ const BodyMap3D = (() => {
   }
 
   const FINE_TO_COARSE = {
-    front_delts: 'shoulder', rear_delts: 'shoulder',
+    front_delts: 'shoulder', side_delts: 'shoulder', rear_delts: 'shoulder',
     traps: 'back', lats: 'back', lower_back: 'back',
     abs: 'core', obliques: 'core',
     glutes: 'hamstrings',
@@ -926,13 +961,13 @@ const BodyMap3D = (() => {
   }
 
   function formatRecoveryTip(muscle, data, meshLabel) {
-    const label = meshLabel || EN_LABELS[muscle] || muscle;
+    const label = labelForMuscle(muscle, meshLabel);
     const r = data && data.recovery && data.recovery[muscle];
     // Fall back across aliases for recovery lookup
     let rec = r;
     if ((!rec || rec.lastDate == null) && data && data.recovery) {
       const aliases = {
-        front_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back',
+        front_delts: 'shoulder', side_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back',
         lower_back: 'back', glutes: 'hamstrings', abs: 'core', obliques: 'core',
       };
       const alt = aliases[muscle];
@@ -945,7 +980,7 @@ const BodyMap3D = (() => {
     let hoursLeft = null;
     if (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.getHoursUntilReady) {
       const key = (data.recovery[muscle] && data.recovery[muscle].lastDate != null) ? muscle
-        : ({ front_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back', lower_back: 'back', glutes: 'hamstrings', abs: 'core', obliques: 'core' }[muscle] || muscle);
+        : ({ front_delts: 'shoulder', side_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back', lower_back: 'back', glutes: 'hamstrings', abs: 'core', obliques: 'core' }[muscle] || muscle);
       hoursLeft = MuscleHeatmap.getHoursUntilReady(key, data.recovery);
     } else {
       hoursLeft = Math.max(0, Math.round((rec.recoveryHours || 0) - (rec.hoursElapsed || 0)));
@@ -956,27 +991,27 @@ const BodyMap3D = (() => {
   }
 
   function formatIntensityTip(muscle, data, meshLabel) {
-    const label = meshLabel || EN_LABELS[muscle] || muscle;
+    const label = labelForMuscle(muscle, meshLabel);
     const loads = data && data.loads;
     let load = (loads && loads[muscle]) || 0;
     if (load <= 0 && loads) {
       const aliases = {
-        front_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back',
+        front_delts: 'shoulder', side_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back',
         lower_back: 'back', glutes: 'hamstrings', abs: 'core', obliques: 'core',
       };
       const alt = aliases[muscle];
       if (alt) load = loads[alt] || 0;
     }
-    if (load <= 0) return `${escapeHtml(label)} · Idle`;
+    if (load <= 0) return `${escapeHtml(label)} · 자극 없음`;
     if (data && data.setCounts && data.setCounts[muscle] != null) {
-      return `+${escapeHtml(String(data.setCounts[muscle]))} sets · ${escapeHtml(label)}`;
+      return `+${escapeHtml(String(data.setCounts[muscle]))}세트 · ${escapeHtml(label)}`;
     }
     const n = Math.max(1, Math.round(load * 2.2));
-    return `+${n} sets · ${escapeHtml(label)}`;
+    return `+${n}세트 · ${escapeHtml(label)}`;
   }
 
   function formatGrowthTip(muscle, data, meshLabel) {
-    const label = meshLabel || EN_LABELS[muscle] || muscle;
+    const label = labelForMuscle(muscle, meshLabel);
     const g = growthEntryForId(data && data.perMuscle, muscle);
     if (!g || !(g.growthPct > 0)) return `${escapeHtml(label)} · 성장 신호 없음`;
     const sessions = g.sessionCount != null ? ` · 4주 ${g.sessionCount}회` : '';
@@ -984,7 +1019,7 @@ const BodyMap3D = (() => {
   }
 
   function formatLossTip(muscle, data, meshLabel) {
-    const label = meshLabel || EN_LABELS[muscle] || muscle;
+    const label = labelForMuscle(muscle, meshLabel);
     const l = lossEntryForId(data && data.perMuscle, muscle);
     if (!l) return `${escapeHtml(label)} · 기록 없음`;
     if (!(l.lossPct > 0)) return `${escapeHtml(label)} · 유지 · ${l.daysSince}일 전 운동`;
@@ -1011,7 +1046,7 @@ const BodyMap3D = (() => {
       if (obj && obj.userData && obj.userData.muscle) {
         return {
           muscle: obj.userData.muscle,
-          label: obj.userData.label || EN_LABELS[obj.userData.muscle] || obj.userData.muscle,
+          label: labelForMuscle(obj.userData.muscle, obj.userData.label),
         };
       }
     }
@@ -1365,7 +1400,7 @@ const BodyMap3D = (() => {
       stage = document.createElement('div');
       stage.className = 'bm3-stage';
       stage.innerHTML = `
-        <div class="bm3-loading">Loading 3D anatomy…</div>
+        <div class="bm3-loading">3D 해부학 불러오는 중…</div>
         <div class="bm3-tip" aria-live="polite"></div>
         <div class="bm3-hint">
           <div class="bm3-hint-ring" aria-hidden="true">↻</div>
@@ -1523,7 +1558,28 @@ const BodyMap3D = (() => {
   }
 
   function getEnglishLabel(muscle) {
-    return EN_LABELS[muscle] || muscle;
+    // Historical name — now returns Korean gym labels
+    return labelForMuscle(muscle);
+  }
+
+  function getKoreanLabel(muscle) {
+    return labelForMuscle(muscle);
+  }
+
+  /** Every atlas key in KEY_TO_APP must resolve to a Korean tip label. */
+  function auditTappableLabels(mapping) {
+    const map = mapping || keyToApp || {};
+    const missing = [];
+    Object.keys(map).forEach((atlasKey) => {
+      const ids = map[atlasKey];
+      if (!ids || !ids.length) return;
+      const primary = pickPrimaryId(ids);
+      const label = labelForMuscle(primary);
+      if (!label || !isKoreanLabel(label) || /[A-Za-z]/.test(label)) {
+        missing.push({ atlasKey, primary, label });
+      }
+    });
+    return missing;
   }
 
   function getQualityStats(id) {
@@ -1543,7 +1599,14 @@ const BodyMap3D = (() => {
     STORAGE_KEY,
     MUSCLE_IDS,
     EN_LABELS,
+    KO_LABELS,
     MODEL_URL,
+    GLOW_SHELL_SCALE,
+    GLOW_SHELL_SCALE_OUTER,
+    labelForMuscle,
+    getKoreanLabel,
+    auditTappableLabels,
+    pickPrimaryId,
     CORAL,
     AMBER,
     MINT,
