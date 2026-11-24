@@ -20,12 +20,25 @@ const HomeBodyMapDetail = (() => {
   const GROWTH_TEAL = '#1aa88a';
   const GROWTH_LIME = '#b8ff3d';
   const STRONG_LOSS_PCT = 4;
-  const REGION_STROKE = 'rgba(8,8,14,0.98)';
-  const REGION_STROKE_W = 2.1;
+  const REGION_STROKE = 'rgba(8,8,14,0.85)';
+  const REGION_STROKE_W = 1.15;
   const LABEL_LINE_H = 28; // name + pct stack at ~390px CSS width
   const LABEL_MIN_GAP = 8;
   const LOSS_VIOLET = '#7b6cff';
   const LOSS_INDIGO = '#4a3dc8';
+  /**
+   * After SVG userSpaceOnUse masking, paths already sit near the silhouette.
+   * A tiny expand about mid-torso closes the ~3% halo between path edges and
+   * grey art outlines (measured on clean path-on-art composites). Same matrix
+   * for front & back — do NOT use large scales (they lift the chest/shoulders).
+   */
+  const FILL_CALIBRATE = {
+    cx: 120,
+    cy: 200,
+    scale: 1.04,
+    tx: 0,
+    ty: 3,
+  };
 
   const MODE_TITLES = {
     recovery: '회복 자세히 보기',
@@ -58,16 +71,21 @@ const HomeBodyMapDetail = (() => {
    * (all map to app key `back`) so fatigued "등" is not one giant blob.
    * Glutes are separate shapes mapped to `hamstrings` (app bucket 둔근/햄스트링).
    */
+  /**
+   * Split from MuscleHeatmap's measured back outline (viewBox 240×360) with NO
+   * horizontal inset — inset was shrinking fills vs the silhouette. Tiny Y gaps
+   * only for visible borders; glute band was the bottom of the old mega-path.
+   */
   const DETAIL_BACK_REGIONS = [
-    // Upper back / traps (gap below before lats)
-    { muscle: 'back', d: 'M113.3 52.0L112.6 56.2L109.2 60.8L102.1 65.2L94.6 70.5L98.7 75.0L101.7 79.5L104.0 84.0L107.0 89.2L108.1 93.8L108.9 96.0L130.8 96.0L131.6 93.8L133.0 89.2L135.3 84.0L137.9 79.5L140.2 75.0L145.0 70.5L137.2 65.2L130.4 60.8L127.0 56.2L126.3 52.0Z' },
+    // Upper back / traps
+    { muscle: 'back', d: 'M112.1 51.7L111.4 56.2L108.0 60.8L100.9 65.2L93.4 70.5L97.5 75.0L100.5 79.5L102.8 84.0L105.8 89.2L106.9 93.8L108.3 98.0L131.3 98.0L132.8 93.8L134.2 89.2L136.5 84.0L139.1 79.5L141.4 75.0L146.2 70.5L138.4 65.2L131.6 60.8L128.2 56.2L127.5 51.7Z' },
     // Mid back / lats
-    { muscle: 'back', d: 'M102.6 100.0L89.0 103.5L90.1 108.0L92.0 112.5L93.4 117.0L95.7 122.2L97.6 126.8L99.1 131.2L98.4 134.0L140.9 134.0L140.2 131.2L142.0 126.8L143.6 122.2L145.8 117.0L148.0 112.5L149.6 108.0L150.7 103.5L137.0 100.0Z' },
-    // Lower back / erectors — stops clearly above glutes
-    { muscle: 'back', d: 'M97.7 138.0L97.2 141.0L96.4 145.5L96.1 150.0L95.0 155.2L94.3 158.0L145.6 158.0L144.7 155.2L143.2 150.0L143.2 145.5L142.4 141.0L141.8 138.0Z' },
-    // Glutes (visual) → hamstrings app key (둔근/햄스트링 bucket, matches 3D)
-    { muscle: 'hamstrings', labelId: 'glutes', d: 'M110.0 160.0L102.0 162.0L95.0 167.0L91.0 174.0L89.5 182.0L90.5 190.0L94.0 196.0L101.0 199.5L110.0 200.0L116.5 196.0L119.0 188.0L119.0 178.0L116.0 168.0L110.0 160.0Z' },
-    { muscle: 'hamstrings', labelId: 'glutes', d: 'M130.0 160.0L124.0 168.0L121.0 178.0L121.0 188.0L123.5 196.0L130.0 200.0L139.0 199.5L146.0 196.0L149.5 190.0L150.5 182.0L149.0 174.0L145.0 167.0L138.0 162.0L130.0 160.0Z' },
+    { muscle: 'back', d: 'M97.5 101.0L87.8 103.5L88.9 108.0L90.8 112.5L92.2 117.0L94.5 122.2L96.4 126.8L97.9 131.2L96.8 135.8L96.5 138.0L143.0 138.0L142.5 135.8L141.4 131.2L143.2 126.8L144.8 122.2L147.0 117.0L149.2 112.5L150.8 108.0L151.9 103.5L142.1 101.0Z' },
+    // Lower back / erectors
+    { muscle: 'back', d: 'M96.0 141.0L95.2 145.5L94.9 150.0L93.8 155.2L92.6 159.8L91.1 164.2L91.0 165.0L148.2 165.0L148.1 164.2L147.4 159.8L145.9 155.2L144.4 150.0L144.4 145.5L143.6 141.0Z' },
+    // Glutes (was bottom of mega back path) → hamstrings app key
+    { muscle: 'hamstrings', labelId: 'glutes', d: 'M90.9 168.0L90.8 168.8L90.4 174.0L91.1 178.5L93.4 183.0L103.5 188.2L120.0 188.2L120.0 168.0Z' },
+    { muscle: 'hamstrings', labelId: 'glutes', d: 'M120.0 168.0L120.0 188.2L135.8 188.2L145.5 183.0L148.1 178.5L148.9 174.0L148.9 168.8L148.8 168.0Z' },
   ];
 
   // Spaced callouts for ~390px sheet width (collision packer still runs).
@@ -424,12 +442,13 @@ const HomeBodyMapDetail = (() => {
       const painted = opacity > 0.02;
       // White selection stroke on transparent paths reads as empty white bars — skip it.
       const selected = (selectedMuscle === region.muscle && painted) ? ' hbmd-region--selected' : '';
-      const statusCls = currentMode === 'recovery' ? ` ${recoveryStatusClass(row)}` : '';
+      // Skip mh-region--low/mid/ready: global drop-shadow filters make fills look like
+      // small floating blobs that no longer match the silhouette outlines.
       const stroke = painted ? REGION_STROKE : 'none';
       const sw = painted ? REGION_STROKE_W : 0;
       // Inline fill must win over global .mh-region--idle { fill:transparent !important }
-      const style = `fill:${fill};fill-opacity:${opacity}`;
-      return `<path class="mh-region hbmd-region${statusCls}${selected}" data-muscle="${region.muscle}"
+      const style = `fill:${fill};fill-opacity:${opacity};filter:none`;
+      return `<path class="hbmd-region${selected}" data-muscle="${region.muscle}"
         d="${region.d}" style="${style}"
         stroke="${stroke}" stroke-width="${sw}" pointer-events="all">
         <title>${escapeHtml(label)} · ${escapeHtml(formatValueLabel(row))}</title>
@@ -496,8 +515,15 @@ const HomeBodyMapDetail = (() => {
       const { labelId, dataKey, row, pos, y } = item;
       const name = getLabelShortName(labelId);
       const anchor = pos.anchor || 'middle';
-      const tipX = pos.tipX != null ? pos.tipX : pos.x;
-      const tipY = pos.tipY != null ? pos.tipY : pos.y;
+      // Tip anchors follow the same calibrate transform as fills so leaders land on paint.
+      const rawTipX = pos.tipX != null ? pos.tipX : pos.x;
+      const rawTipY = pos.tipY != null ? pos.tipY : pos.y;
+      const tipX = FILL_CALIBRATE.cx
+        + (rawTipX - FILL_CALIBRATE.cx) * FILL_CALIBRATE.scale
+        + FILL_CALIBRATE.tx;
+      const tipY = FILL_CALIBRATE.cy
+        + (rawTipY - FILL_CALIBRATE.cy) * FILL_CALIBRATE.scale
+        + FILL_CALIBRATE.ty;
       const midX = anchor === 'end' ? pos.x + 8 : (anchor === 'start' ? pos.x - 8 : pos.x);
       const pctText = currentMode === 'growth'
         ? `+${row.pct}%`
@@ -518,12 +544,30 @@ const HomeBodyMapDetail = (() => {
   function buildSvg(view) {
     const img = getBodyImage(view);
     const mask = getBodyMask(view);
-    return `<svg class="mh-svg hbmd-svg" viewBox="0 0 240 360" role="img" aria-label="${escapeHtml(MODE_TITLES[currentMode])} ${view === 'back' ? '후면' : '전면'}">
-      <image href="${img}" x="0" y="0" width="240" height="360" preserveAspectRatio="xMidYMid meet"></image>
-      <g style="mask-image:url('${mask}');-webkit-mask-image:url('${mask}');mask-size:100% 100%;-webkit-mask-size:100% 100%;">
+    // SVG <mask> must use userSpaceOnUse for BOTH units. Default maskUnits=
+    // objectBoundingBox sizes the mask to the path-group bbox — that shrinks and
+    // shifts fills upward vs the body outline image (same viewBox 240×360).
+    // Also avoid CSS mask-image on <g> (same bbox bug).
+    const maskId = `hbmdMask-${view}`;
+    // Do NOT reuse class "mh-svg" — home CSS caps max-height at 42vh/360px which
+    // distorts the CSS viewport vs viewBox and makes fills look shifted/undersized.
+    return `<svg class="hbmd-svg" viewBox="0 0 240 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeHtml(MODE_TITLES[currentMode])} ${view === 'back' ? '후면' : '전면'}">
+      <defs>
+        <mask id="${maskId}" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse"
+          x="0" y="0" width="240" height="360">
+          <image href="${mask}" x="0" y="0" width="240" height="360"
+            preserveAspectRatio="xMidYMid meet"/>
+        </mask>
+      </defs>
+      <image class="mh-body-image" href="${img}" x="0" y="0" width="240" height="360"
+        preserveAspectRatio="xMidYMid meet" pointer-events="none"></image>
+      <g class="hbmd-muscles" mask="url(#${maskId})"
+        transform="translate(${FILL_CALIBRATE.cx} ${FILL_CALIBRATE.cy}) scale(${FILL_CALIBRATE.scale}) translate(${-FILL_CALIBRATE.cx} ${-FILL_CALIBRATE.cy}) translate(${FILL_CALIBRATE.tx} ${FILL_CALIBRATE.ty})">
         ${buildRegionPaths(view)}
       </g>
-      ${buildRegionLabels(view)}
+      <g class="hbmd-labels" aria-hidden="false">
+        ${buildRegionLabels(view)}
+      </g>
     </svg>`;
   }
 
@@ -684,10 +728,19 @@ const HomeBodyMapDetail = (() => {
       .hbmd-view-btn.selected { background: rgba(255,255,255,0.08); color: var(--text); }
       .hbmd-map-wrap {
         position: relative; display: flex; justify-content: center;
-        margin: 0 auto 10px; max-width: 280px;
+        margin: 0 auto 10px; max-width: 280px; width: 100%;
       }
-      .hbmd-svg { width: 100%; height: auto; display: block; }
-      .hbmd-region { vector-effect: non-scaling-stroke; }
+      .hbmd-svg {
+        width: 100%; height: auto; display: block;
+        overflow: visible; max-width: 100%;
+        max-height: none !important; /* beat .mh-svg max-height if class leaks */
+        aspect-ratio: 240 / 360;
+      }
+      .hbmd-muscles { /* fills share SVG user space with body image — no CSS mask */ }
+      .hbmd-region {
+        vector-effect: non-scaling-stroke;
+        filter: none !important; /* no home heatmap glow on detail fills */
+      }
       .hbmd-region--selected { stroke: #fff !important; stroke-width: 2px; }
       .hbmd-svg .mh-region-label { font-size: 9.5px; }
       .hbmd-svg .mh-region-name { font-weight: 800; }
@@ -1100,6 +1153,7 @@ const HomeBodyMapDetail = (() => {
     GROWTH_LIME,
     LOSS_VIOLET,
     LOSS_INDIGO,
+    FILL_CALIBRATE,
     STRONG_LOSS_PCT,
     MODE_TITLES,
     OVERLAY_ID,

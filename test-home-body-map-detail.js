@@ -48,7 +48,17 @@ assert(indexHtml.includes('homeBodyMapDetail.js'), 'index loads module');
 assert(indexHtml.includes('id="hbmdOverlay"'), 'overlay container in DOM');
 assert(appJs.includes('HomeBodyMapDetail.afterHomeRender'), 'app hooks afterHomeRender');
 assert(swJs.includes('homeBodyMapDetail.js'), 'SW caches module');
-assert(swJs.includes('recovr-cache-v93'), 'SW cache bump v93');
+assert(swJs.includes('recovr-cache-v94'), 'SW cache bump v94');
+assert(src.includes('hbmdMask-'), 'uses SVG mask ids');
+assert(!/mask-image\s*:/.test(src), 'no CSS mask-image on fill layer');
+assert(src.includes('preserveAspectRatio="xMidYMid meet"'), 'image+mask preserveAspectRatio meet');
+assert(src.includes('maskUnits="userSpaceOnUse"'), 'maskUnits userSpaceOnUse in source');
+assert(src.includes('maskContentUnits="userSpaceOnUse"'), 'maskContentUnits userSpaceOnUse in source');
+assert(src.includes('FILL_CALIBRATE'), 'fill calibrate matrix present');
+assert(src.includes('Do NOT reuse class "mh-svg"') || src.includes('class="hbmd-svg"'), 'detail SVG avoids mh-svg max-height trap');
+assert(!/class="mh-svg hbmd-svg"/.test(src), 'detail root class is not mh-svg');
+assert(src.includes('filter: none !important') || src.includes('filter:none'), 'detail fills disable glow filters');
+assert(src.includes('aspect-ratio: 240 / 360') || src.includes('aspect-ratio:240/360'), 'SVG locks 240:360 aspect');
 
 console.log('=== 3. Runtime helpers ===');
 global.MUSCLE_ORDER = [
@@ -278,7 +288,23 @@ const svgBack = HomeBodyMapDetail.buildSvgForTest('back', 'recovery', recovery, 
 assert((svgBack.match(/data-muscle="back"/g) || []).length >= 3, 'SVG has ≥3 back paths');
 assert(svgBack.includes('data-muscle="hamstrings"'), 'SVG paints glute/hamstrings paths');
 assert(svgBack.includes('data-label-id="glutes"'), 'SVG has 둔근 label');
-assert(svgBack.includes('stroke="rgba(12,12,18,0.92)"') || svgBack.includes('stroke-width'), 'region borders present');
+assert(svgBack.includes('id="hbmdMask-back"'), 'SVG <mask> for back fills');
+assert(svgBack.includes('maskUnits="userSpaceOnUse"'), 'maskUnits userSpaceOnUse (not objectBoundingBox)');
+assert(svgBack.includes('maskContentUnits="userSpaceOnUse"'), 'maskContentUnits userSpaceOnUse');
+assert(svgBack.includes('mask="url(#hbmdMask-back)"'), 'muscles group uses SVG mask url');
+assert(!svgBack.includes('mask-image'), 'no CSS mask-image in rendered SVG');
+assert(!/maskUnits="objectBoundingBox"/.test(svgBack), 'no objectBoundingBox maskUnits');
+assert(svgBack.includes('stroke-width') || svgBack.includes('stroke='), 'region borders present');
+const svgFront = HomeBodyMapDetail.buildSvgForTest('front', 'recovery', recovery, growth);
+assert(svgFront.includes('id="hbmdMask-front"'), 'SVG <mask> for front fills');
+assert(svgFront.includes('preserveAspectRatio="xMidYMid meet"'), 'front image+mask meet');
+assert(/class="hbmd-svg"/.test(svgFront), 'rendered root class is hbmd-svg only');
+assert(!/\bmh-svg\b/.test(svgFront), 'rendered SVG does not use mh-svg');
+assert(/hbmd-muscles[^>]*transform=/.test(svgFront) || svgFront.includes('FILL_CALIBRATE')
+  || /translate\(120/.test(svgFront), 'muscles group has calibrate transform');
+assert(HomeBodyMapDetail.FILL_CALIBRATE
+  && HomeBodyMapDetail.FILL_CALIBRATE.scale >= 1
+  && HomeBodyMapDetail.FILL_CALIBRATE.scale <= 1.1, 'calibrate scale is modest (≤1.1)');
 const svgGrowth = HomeBodyMapDetail.buildSvgForTest('front', 'growth', recovery, growth);
 assert(svgGrowth.includes('#b8ff3d') || svgGrowth.includes('#1aa88a'), 'growth SVG uses teal/lime fills');
 assert(svgGrowth.includes('data-muscle="chest"'), 'growth paints trained chest');
