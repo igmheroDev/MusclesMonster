@@ -72,6 +72,11 @@ atlasKeys.forEach((atlasKey) => {
   assert(label !== atlasKey, `${atlasKey} does not fall back to atlas key`);
 });
 
+console.log('=== 2b. Loading copy is Korean (credit stays English) ===');
+assert(src.includes('3D 해부학 불러오는 중'), 'loading string Korean');
+assert(!src.includes('Loading 3D anatomy'), 'no English loading string');
+assert(src.includes('CC BY-SA 4.0'), 'CC BY-SA credit preserved');
+
 console.log('=== 3. Lateral delts map to 어깨(측면) ===');
 assert(
   Array.isArray(keyToApp.deltoid_lateral)

@@ -1400,7 +1400,7 @@ const BodyMap3D = (() => {
       stage = document.createElement('div');
       stage.className = 'bm3-stage';
       stage.innerHTML = `
-        <div class="bm3-loading">Loading 3D anatomy…</div>
+        <div class="bm3-loading">3D 해부학 불러오는 중…</div>
         <div class="bm3-tip" aria-live="polite"></div>
         <div class="bm3-hint">
           <div class="bm3-hint-ring" aria-hidden="true">↻</div>
