@@ -30,8 +30,32 @@ const BodyMap3D = (() => {
   const CONTEXT_COLOR = '#16161c';
   const BG = '#0a0a0f';
   const TRANSITION_MS = 400;
+  const POSE_MS = (typeof BodyMapPose !== 'undefined' && BodyMapPose.POSE_MS) || 600;
   const GLOW_SHELL_SCALE = 1.028;
   const GLOW_SHELL_SCALE_OUTER = 1.055;
+
+  function resolvePoseId(state, options) {
+    if (options && options.pose && typeof BodyMapPose !== 'undefined' && BodyMapPose.POSE_IDS
+      && BodyMapPose.POSE_IDS.indexOf(options.pose) >= 0) {
+      return options.pose;
+    }
+    if (typeof BodyMapPose !== 'undefined' && BodyMapPose.poseFromColorMode) {
+      return BodyMapPose.poseFromColorMode(state.colorMode, state.id);
+    }
+    return null;
+  }
+
+  function applyPoseForState(state, opts) {
+    if (!state || typeof BodyMapPose === 'undefined' || !BodyMapPose.setPose) return false;
+    if (!state.poseController) return false;
+    const poseId = resolvePoseId(state, opts);
+    if (!poseId) return false;
+    const reduce = prefersReducedMotion();
+    const duration = (opts && opts.poseDuration != null)
+      ? opts.poseDuration
+      : (reduce ? 0 : POSE_MS);
+    return !!BodyMapPose.setPose(state, poseId, { duration, reducedMotion: reduce });
+  }
 
   // App coarse ids that should also light related fine-only meshes
   const LOAD_ALIASES = {
@@ -1190,6 +1214,9 @@ const BodyMap3D = (() => {
         shell.material.opacity = Math.min(0.42, (0.14 + gs * 0.35) * pulse);
       }
     }
+    if (typeof BodyMapPose !== 'undefined' && BodyMapPose.update) {
+      BodyMapPose.update(state, now);
+    }
     state.yaw += (state.targetYaw - state.yaw) * 0.12;
     if (state.root) state.root.rotation.y = state.yaw;
     if (state.pedestal) state.pedestal.rotation.y = -state.yaw * 0.15;
@@ -1206,6 +1233,9 @@ const BodyMap3D = (() => {
   function disposeMount(state) {
     if (!state || state.disposed) return;
     state.disposed = true;
+    if (typeof BodyMapPose !== 'undefined' && BodyMapPose.dispose) {
+      try { BodyMapPose.dispose(state); } catch (e) { /* ignore */ }
+    }
     if (state.raf) cancelAnimationFrame(state.raf);
     state.raf = 0;
     if (state._unbind) state._unbind();
@@ -1342,6 +1372,16 @@ const BodyMap3D = (() => {
     state.yaw = preferBack ? Math.PI : (state.showPedestal ? 0.45 : 0.28);
     state.targetYaw = state.yaw;
 
+    // Stage 3: segment pose rig (independent module). Falls back to static if unavailable.
+    if (typeof BodyMapPose !== 'undefined' && BodyMapPose.attach) {
+      try {
+        BodyMapPose.attach(state, THREE);
+        applyPoseForState(state, { poseDuration: 0 });
+      } catch (e) {
+        console.warn('[BodyMap3D] pose attach skipped', e);
+      }
+    }
+
     applyColors(state);
     applyQuality(state);
     resize(state);
@@ -1447,6 +1487,7 @@ const BodyMap3D = (() => {
     if (options.colorMode) state.colorMode = options.colorMode;
     if (options.showPedestal != null) state.showPedestal = !!options.showPedestal;
     applyColors(state, { animate: !!options.animate, duration: options.duration });
+    applyPoseForState(state, options);
   }
 
   /** Soft mode switch: keep yaw/renderer, crossfade materials (~400ms). */
@@ -1468,7 +1509,20 @@ const BodyMap3D = (() => {
       animate: options.animate !== false,
       duration: options.duration != null ? options.duration : TRANSITION_MS,
     });
+    applyPoseForState(state, options);
     return true;
+  }
+
+  function setPose(id, poseId, options = {}) {
+    const state = mounts.get(id);
+    if (!state || state.disposed) return false;
+    return applyPoseForState(state, Object.assign({}, options, { pose: poseId }));
+  }
+
+  function getPose(id) {
+    const state = mounts.get(id);
+    if (!state || !state.poseController) return null;
+    return state.poseController.poseId || null;
   }
 
   function hasMount(id) {
@@ -1535,6 +1589,8 @@ const BodyMap3D = (() => {
       glow: qualityAllowsGlow(state.qualityLevel),
       outerShell: qualityAllowsOuterShell(state.qualityLevel),
       pulse: qualityAllowsPulse(state.qualityLevel),
+      pose: !!(state.poseController && state.poseController.enabled),
+      poseId: state.poseController ? state.poseController.poseId : null,
       targetFps: TARGET_FPS,
     };
   }
@@ -1553,7 +1609,10 @@ const BodyMap3D = (() => {
     LOSS_DEEP,
     BASE_COLOR,
     TRANSITION_MS,
+    POSE_MS,
     TARGET_FPS,
+    setPose,
+    getPose,
     getPreferredMode,
     setPreferredMode,
     isWebGLAvailable,
