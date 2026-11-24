@@ -20,6 +20,12 @@ const HomeBodyMapDetail = (() => {
   const GROWTH_TEAL = '#1aa88a';
   const GROWTH_LIME = '#b8ff3d';
   const STRONG_LOSS_PCT = 4;
+  const REGION_STROKE = 'rgba(8,8,14,0.98)';
+  const REGION_STROKE_W = 2.1;
+  const LABEL_LINE_H = 28; // name + pct stack at ~390px CSS width
+  const LABEL_MIN_GAP = 8;
+  const LOSS_VIOLET = '#7b6cff';
+  const LOSS_INDIGO = '#4a3dc8';
 
   const MODE_TITLES = {
     recovery: '회복 자세히 보기',
@@ -30,6 +36,62 @@ const HomeBodyMapDetail = (() => {
     recovery: '회복',
     growth: '성장',
     loss: '손실',
+  };
+
+  // Front / back muscles visible on that silhouette (app coarse keys).
+  const VIEW_MUSCLES = {
+    front: ['chest', 'shoulder', 'biceps', 'core', 'forearms', 'quads', 'adductors', 'calves'],
+    back: ['back', 'shoulder', 'triceps', 'forearms', 'hamstrings', 'adductors', 'calves'],
+  };
+
+  // Detail-only label ids that share an app muscle bucket (3D KEY_TO_APP / LOAD_ALIASES).
+  const LABEL_DATA_KEY = {
+    glutes: 'hamstrings',
+  };
+
+  const DETAIL_SHORT_NAMES = {
+    glutes: '둔근',
+  };
+
+  /**
+   * Detail-view back regions: traps / lats / lower-back are separate shapes
+   * (all map to app key `back`) so fatigued "등" is not one giant blob.
+   * Glutes are separate shapes mapped to `hamstrings` (app bucket 둔근/햄스트링).
+   */
+  const DETAIL_BACK_REGIONS = [
+    // Upper back / traps (gap below before lats)
+    { muscle: 'back', d: 'M113.3 52.0L112.6 56.2L109.2 60.8L102.1 65.2L94.6 70.5L98.7 75.0L101.7 79.5L104.0 84.0L107.0 89.2L108.1 93.8L108.9 96.0L130.8 96.0L131.6 93.8L133.0 89.2L135.3 84.0L137.9 79.5L140.2 75.0L145.0 70.5L137.2 65.2L130.4 60.8L127.0 56.2L126.3 52.0Z' },
+    // Mid back / lats
+    { muscle: 'back', d: 'M102.6 100.0L89.0 103.5L90.1 108.0L92.0 112.5L93.4 117.0L95.7 122.2L97.6 126.8L99.1 131.2L98.4 134.0L140.9 134.0L140.2 131.2L142.0 126.8L143.6 122.2L145.8 117.0L148.0 112.5L149.6 108.0L150.7 103.5L137.0 100.0Z' },
+    // Lower back / erectors — stops clearly above glutes
+    { muscle: 'back', d: 'M97.7 138.0L97.2 141.0L96.4 145.5L96.1 150.0L95.0 155.2L94.3 158.0L145.6 158.0L144.7 155.2L143.2 150.0L143.2 145.5L142.4 141.0L141.8 138.0Z' },
+    // Glutes (visual) → hamstrings app key (둔근/햄스트링 bucket, matches 3D)
+    { muscle: 'hamstrings', labelId: 'glutes', d: 'M110.0 160.0L102.0 162.0L95.0 167.0L91.0 174.0L89.5 182.0L90.5 190.0L94.0 196.0L101.0 199.5L110.0 200.0L116.5 196.0L119.0 188.0L119.0 178.0L116.0 168.0L110.0 160.0Z' },
+    { muscle: 'hamstrings', labelId: 'glutes', d: 'M130.0 160.0L124.0 168.0L121.0 178.0L121.0 188.0L123.5 196.0L130.0 200.0L139.0 199.5L146.0 196.0L149.5 190.0L150.5 182.0L149.0 174.0L145.0 167.0L138.0 162.0L130.0 160.0Z' },
+  ];
+
+  // Spaced callouts for ~390px sheet width (collision packer still runs).
+  const DETAIL_LABEL_POSITIONS = {
+    front: {
+      shoulder: { x: 16, y: 72, anchor: 'end', tipX: 78, tipY: 78 },
+      chest: { x: 16, y: 100, anchor: 'end', tipX: 100, tipY: 96 },
+      biceps: { x: 16, y: 132, anchor: 'end', tipX: 72, tipY: 118 },
+      core: { x: 224, y: 148, anchor: 'start', tipX: 150, tipY: 148 },
+      forearms: { x: 16, y: 172, anchor: 'end', tipX: 52, tipY: 168 },
+      quads: { x: 224, y: 230, anchor: 'start', tipX: 158, tipY: 220 },
+      adductors: { x: 224, y: 198, anchor: 'start', tipX: 132, tipY: 205 },
+      calves: { x: 224, y: 292, anchor: 'start', tipX: 158, tipY: 292 },
+    },
+    back: {
+      shoulder: { x: 14, y: 64, anchor: 'end', tipX: 78, tipY: 82 },
+      back: { x: 14, y: 108, anchor: 'end', tipX: 108, tipY: 112 },
+      triceps: { x: 14, y: 152, anchor: 'end', tipX: 70, tipY: 112 },
+      forearms: { x: 14, y: 196, anchor: 'end', tipX: 50, tipY: 168 },
+      glutes: { x: 226, y: 168, anchor: 'start', tipX: 128, tipY: 178 },
+      hamstrings: { x: 226, y: 218, anchor: 'start', tipX: 158, tipY: 230 },
+      adductors: { x: 226, y: 262, anchor: 'start', tipX: 128, tipY: 215 },
+      calves: { x: 226, y: 308, anchor: 'start', tipX: 158, tipY: 292 },
+    },
   };
 
   let currentView = 'front';
@@ -101,12 +163,38 @@ const HomeBodyMapDetail = (() => {
   }
 
   function getBackRegions() {
-    return (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.BACK_REGIONS) || [];
+    const base = (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.BACK_REGIONS) || [];
+    // Replace the single mega `back` path with split traps/lats/lower + glutes.
+    const withoutBack = base.filter((r) => r.muscle !== 'back');
+    return DETAIL_BACK_REGIONS.concat(withoutBack);
   }
 
   function getLabelPositions(view) {
-    return (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.LABEL_POSITIONS
-      && MuscleHeatmap.LABEL_POSITIONS[view]) || {};
+    return DETAIL_LABEL_POSITIONS[view] || {};
+  }
+
+  function resolveDataKey(labelOrMuscle) {
+    return LABEL_DATA_KEY[labelOrMuscle] || labelOrMuscle;
+  }
+
+  function musclesForView(view) {
+    return (VIEW_MUSCLES[view] || VIEW_MUSCLES.front).slice();
+  }
+
+  function pickDefaultMuscle(view) {
+    const allowed = new Set(musclesForView(view));
+    const rows = buildSortedList().filter((r) => allowed.has(r.muscle));
+    if (!rows.length) return musclesForView(view)[0] || null;
+    // Prefer a muscle that has a signal on this side; else first in sorted list.
+    const signaled = rows.find((r) => r.hasSignal);
+    return (signaled || rows[0]).muscle;
+  }
+
+  function ensureSelectionForView(view) {
+    const allowed = new Set(musclesForView(view));
+    if (!selectedMuscle || !allowed.has(selectedMuscle)) {
+      selectedMuscle = pickDefaultMuscle(view);
+    }
   }
 
   function loadWorkoutsSafe() {
@@ -286,7 +374,7 @@ const HomeBodyMapDetail = (() => {
       return row.pct >= STRONG_GROWTH_PCT ? GROWTH_LIME : GROWTH_TEAL;
     }
     if (currentMode === 'loss') {
-      return row.hasSignal ? (row.pct >= STRONG_LOSS_PCT ? 'var(--red)' : 'var(--orange)') : 'var(--muted)';
+      return row.hasSignal ? (row.pct >= STRONG_LOSS_PCT ? LOSS_INDIGO : LOSS_VIOLET) : 'var(--muted)';
     }
     if (!row.hasSignal) return 'var(--muted)';
     if (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.getRecoveryColor) {
@@ -297,24 +385,34 @@ const HomeBodyMapDetail = (() => {
     return '#3ee6b0';
   }
 
+  function recoveryStatusClass(row) {
+    // Do NOT use mh-region--idle — global CSS forces fill:transparent !important.
+    if (!row.hasSignal) return '';
+    if (row.pct < 40) return 'mh-region--low';
+    if (row.pct < 95) return 'mh-region--mid';
+    return 'mh-region--ready';
+  }
+
   function getFill(row) {
     if (currentMode === 'growth') {
-      if (!row.hasSignal) return { fill: '#1e1e26', opacity: 0.35 };
+      // No growth signal → leave silhouette unpainted (neutral), matching 3D unlit.
+      if (!row.hasSignal) return { fill: '#1e1e26', opacity: 0 };
       const strong = row.pct >= STRONG_GROWTH_PCT;
-      return { fill: strong ? GROWTH_LIME : GROWTH_TEAL, opacity: 0.35 + Math.min(0.35, row.pct / 3 * 0.35) };
+      return { fill: strong ? GROWTH_LIME : GROWTH_TEAL, opacity: 0.5 + Math.min(0.35, row.pct / 3 * 0.35) };
     }
     if (currentMode === 'loss') {
-      if (!row.hasSignal) return { fill: '#3a3a44', opacity: 0.2 };
+      if (!row.hasSignal) return { fill: '#3a3a44', opacity: 0 };
       const deep = row.pct >= STRONG_LOSS_PCT;
-      return { fill: deep ? '#4a3dc8' : '#7b6cff', opacity: 0.35 + Math.min(0.35, row.pct / 8 * 0.35) };
+      return { fill: deep ? LOSS_INDIGO : LOSS_VIOLET, opacity: 0.5 + Math.min(0.35, row.pct / 8 * 0.35) };
     }
     if (!row.hasSignal) {
-      return { fill: (MuscleHeatmap && MuscleHeatmap.IDLE_FILL) || '#3a3a44', opacity: 0.35 };
+      // Recovery: neutral grey only — not a status color.
+      return { fill: (MuscleHeatmap && MuscleHeatmap.IDLE_FILL) || '#2c2c36', opacity: 0.22 };
     }
     const color = (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.getRecoveryColor)
       ? MuscleHeatmap.getRecoveryColor(row.pct, true)
       : formatValueColor(row);
-    return { fill: color, opacity: 0.72 };
+    return { fill: color, opacity: 0.82 };
   }
 
   function buildRegionPaths(view) {
@@ -323,25 +421,80 @@ const HomeBodyMapDetail = (() => {
       const row = getRow(region.muscle);
       const { fill, opacity } = getFill(row);
       const label = getMuscleLabel(region.muscle);
-      const selected = selectedMuscle === region.muscle ? ' hbmd-region--selected' : '';
-      return `<path class="mh-region hbmd-region${selected}" data-muscle="${region.muscle}"
-        d="${region.d}" fill="${fill}" fill-opacity="${opacity}" stroke="none" pointer-events="all">
+      const painted = opacity > 0.02;
+      // White selection stroke on transparent paths reads as empty white bars — skip it.
+      const selected = (selectedMuscle === region.muscle && painted) ? ' hbmd-region--selected' : '';
+      const statusCls = currentMode === 'recovery' ? ` ${recoveryStatusClass(row)}` : '';
+      const stroke = painted ? REGION_STROKE : 'none';
+      const sw = painted ? REGION_STROKE_W : 0;
+      // Inline fill must win over global .mh-region--idle { fill:transparent !important }
+      const style = `fill:${fill};fill-opacity:${opacity}`;
+      return `<path class="mh-region hbmd-region${statusCls}${selected}" data-muscle="${region.muscle}"
+        d="${region.d}" style="${style}"
+        stroke="${stroke}" stroke-width="${sw}" pointer-events="all">
         <title>${escapeHtml(label)} · ${escapeHtml(formatValueLabel(row))}</title>
       </path>`;
     }).join('');
   }
 
+  function getLabelShortName(labelId) {
+    if (DETAIL_SHORT_NAMES[labelId]) return DETAIL_SHORT_NAMES[labelId];
+    return getShortName(resolveDataKey(labelId));
+  }
+
+  /**
+   * Pack callout labels on left (anchor end) / right (anchor start) columns
+   * so name+pct stacks do not overlap at ~390px sheet width.
+   */
+  function packLabelLayouts(entries) {
+    const bySide = { left: [], right: [] };
+    entries.forEach((e) => {
+      const side = (e.pos.anchor === 'start') ? 'right' : 'left';
+      bySide[side].push({ ...e, side, y: e.pos.y });
+    });
+    ['left', 'right'].forEach((side) => {
+      const list = bySide[side].sort((a, b) => a.y - b.y);
+      let prevBottom = -Infinity;
+      list.forEach((item) => {
+        const minY = prevBottom + LABEL_LINE_H / 2 + LABEL_MIN_GAP;
+        if (item.y < minY) item.y = minY;
+        // Keep inside viewBox with padding for the two-line stack
+        item.y = Math.max(28, Math.min(340, item.y));
+        prevBottom = item.y + LABEL_LINE_H / 2;
+      });
+      // If bottom overflowed, pull the column up while keeping gaps
+      const last = list[list.length - 1];
+      if (last && last.y > 340) {
+        const overflow = last.y - 340;
+        list.forEach((item) => { item.y -= overflow; });
+        let prev = -Infinity;
+        list.forEach((item) => {
+          const minY = prev + LABEL_LINE_H / 2 + LABEL_MIN_GAP;
+          if (item.y < minY) item.y = minY;
+          item.y = Math.max(28, item.y);
+          prev = item.y + LABEL_LINE_H / 2;
+        });
+      }
+    });
+    return bySide.left.concat(bySide.right);
+  }
+
   function buildRegionLabels(view) {
     const positions = getLabelPositions(view);
     const labeled = new Set();
-    return Object.keys(positions).map((muscle) => {
-      if (labeled.has(muscle)) return '';
-      labeled.add(muscle);
-      const row = getRow(muscle);
-      if (currentMode === 'recovery' && !row.hasSignal) return '';
-      if ((currentMode === 'growth' || currentMode === 'loss') && !row.hasSignal) return '';
-      const pos = positions[muscle];
-      const name = getShortName(muscle);
+    const entries = [];
+    Object.keys(positions).forEach((labelId) => {
+      if (labeled.has(labelId)) return;
+      labeled.add(labelId);
+      const dataKey = resolveDataKey(labelId);
+      const row = getRow(dataKey);
+      if (!row.hasSignal) return;
+      entries.push({ labelId, dataKey, row, pos: positions[labelId] });
+    });
+    const packed = packLabelLayouts(entries);
+    return packed.map((item) => {
+      const { labelId, dataKey, row, pos, y } = item;
+      const name = getLabelShortName(labelId);
       const anchor = pos.anchor || 'middle';
       const tipX = pos.tipX != null ? pos.tipX : pos.x;
       const tipY = pos.tipY != null ? pos.tipY : pos.y;
@@ -349,12 +502,14 @@ const HomeBodyMapDetail = (() => {
       const pctText = currentMode === 'growth'
         ? `+${row.pct}%`
         : (currentMode === 'loss' ? `−${row.pct}%` : `${row.pct}%`);
-      return `<g class="mh-label-group" data-muscle="${muscle}" pointer-events="none">
-          <path class="mh-label-leader" d="M${pos.x} ${pos.y} L${midX} ${pos.y} L${tipX} ${tipY}"/>
-          <text x="${pos.x}" y="${pos.y}" text-anchor="${anchor}" dominant-baseline="middle"
+      // Inline fill beats global `.mh-region-pct { fill:#3ee6b0 }` so loss/growth match legend.
+      const pctColor = formatValueColor(row);
+      return `<g class="mh-label-group" data-muscle="${dataKey}" data-label-id="${labelId}" pointer-events="none">
+          <path class="mh-label-leader" d="M${pos.x} ${y} L${midX} ${y} L${tipX} ${tipY}"/>
+          <text x="${pos.x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle"
             class="mh-region-label mh-region-label--active">
-            <tspan x="${pos.x}" dy="-5" class="mh-region-name">${escapeHtml(name)}</tspan>
-            <tspan x="${pos.x}" dy="12" class="mh-region-pct">${escapeHtml(pctText)}</tspan>
+            <tspan x="${pos.x}" dy="-6" class="mh-region-name">${escapeHtml(name)}</tspan>
+            <tspan x="${pos.x}" dy="13" class="mh-region-pct" style="fill:${pctColor}">${escapeHtml(pctText)}</tspan>
           </text>
         </g>`;
     }).join('');
@@ -451,8 +606,8 @@ const HomeBodyMapDetail = (() => {
         <span><i style="background:#1e1e26"></i>신호 없음</span>`;
     }
     if (currentMode === 'loss') {
-      return `<span><i style="background:#7b6cff"></i>손실</span>
-        <span><i style="background:#4a3dc8"></i>손실 심함</span>
+      return `<span><i style="background:${LOSS_VIOLET}"></i>손실</span>
+        <span><i style="background:${LOSS_INDIGO}"></i>손실 심함</span>
         <span><i style="background:#3a3a44"></i>유지</span>`;
     }
     return `<span><i style="background:#ff3b5c"></i>피로</span>
@@ -532,7 +687,20 @@ const HomeBodyMapDetail = (() => {
         margin: 0 auto 10px; max-width: 280px;
       }
       .hbmd-svg { width: 100%; height: auto; display: block; }
-      .hbmd-region--selected { stroke: #fff !important; stroke-width: 1.4px; }
+      .hbmd-region { vector-effect: non-scaling-stroke; }
+      .hbmd-region--selected { stroke: #fff !important; stroke-width: 2px; }
+      .hbmd-svg .mh-region-label { font-size: 9.5px; }
+      .hbmd-svg .mh-region-name { font-weight: 800; }
+      /* Override global mint-only pct color — inline style on tspan sets the real fill */
+      .hbmd-overlay .hbmd-svg .mh-region-pct { font-weight: 800; font-size: 8.5px; }
+      .hbmd-overlay .hbmd-svg .mh-label-leader {
+        stroke: rgba(240,240,245,0.35); stroke-width: 1px; fill: none;
+      }
+      /* Keep recovery glow but never let idle !important wipe detail fills */
+      .hbmd-overlay .hbmd-svg .mh-region.mh-region--idle {
+        fill: unset;
+        fill-opacity: unset;
+      }
       .hbmd-legend {
         display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: center;
         font-size: 11px; color: var(--muted); margin: 0 0 12px; word-break: keep-all;
@@ -667,7 +835,10 @@ const HomeBodyMapDetail = (() => {
 
     overlay.querySelectorAll('[data-hbmd-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        currentView = btn.getAttribute('data-hbmd-view') === 'back' ? 'back' : 'front';
+        const next = btn.getAttribute('data-hbmd-view') === 'back' ? 'back' : 'front';
+        if (next === currentView) return;
+        currentView = next;
+        ensureSelectionForView(currentView);
         renderSheet();
       });
     });
@@ -677,14 +848,23 @@ const HomeBodyMapDetail = (() => {
       map.addEventListener('click', (e) => {
         const region = e.target.closest('[data-muscle]');
         if (!region) return;
-        selectedMuscle = region.getAttribute('data-muscle');
+        const key = region.getAttribute('data-muscle');
+        selectedMuscle = resolveDataKey(key);
         renderSheet();
       });
     }
 
     overlay.querySelectorAll('[data-hbmd-muscle]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        selectedMuscle = btn.getAttribute('data-hbmd-muscle');
+        selectedMuscle = resolveDataKey(btn.getAttribute('data-hbmd-muscle'));
+        // If list picks a muscle only on the other side, flip the silhouette.
+        const frontSet = new Set(musclesForView('front'));
+        const backSet = new Set(musclesForView('back'));
+        if (currentView === 'back' && frontSet.has(selectedMuscle) && !backSet.has(selectedMuscle)) {
+          currentView = 'front';
+        } else if (currentView === 'front' && backSet.has(selectedMuscle) && !frontSet.has(selectedMuscle)) {
+          currentView = 'back';
+        }
         renderSheet();
         const detail = overlay.querySelector('[data-hbmd-detail]');
         if (detail && detail.scrollIntoView) {
@@ -701,8 +881,9 @@ const HomeBodyMapDetail = (() => {
     ensureHistoryHook();
     refreshCaches();
     currentMode = resolveMode(mode);
-    selectedMuscle = null;
     currentView = 'front';
+    selectedMuscle = null;
+    ensureSelectionForView(currentView);
     renderSheet();
     const overlay = ensureOverlay();
     overlay.classList.add('show');
@@ -799,6 +980,100 @@ const HomeBodyMapDetail = (() => {
     return list;
   }
 
+  function withTestState(mode, recovery, growth, fn) {
+    const prevMode = currentMode;
+    const prevRec = recoveryCache;
+    const prevGrowth = growthCache;
+    const prevView = currentView;
+    const prevSel = selectedMuscle;
+    currentMode = mode || prevMode;
+    if (recovery !== undefined) recoveryCache = recovery || {};
+    if (growth !== undefined) growthCache = growth || null;
+    const result = fn();
+    currentMode = prevMode;
+    recoveryCache = prevRec;
+    growthCache = prevGrowth;
+    currentView = prevView;
+    selectedMuscle = prevSel;
+    return result;
+  }
+
+  /** Every painted region must resolve to a known app muscle key (no stray aliases). */
+  function auditRegionMapping() {
+    const allowed = new Set(getMuscleOrder());
+    const issues = [];
+    ['front', 'back'].forEach((view) => {
+      const regions = view === 'back' ? getBackRegions() : getFrontRegions();
+      regions.forEach((r, i) => {
+        if (!allowed.has(r.muscle)) {
+          issues.push(`${view}[${i}] unknown muscle key: ${r.muscle}`);
+        }
+      });
+      const positions = getLabelPositions(view);
+      Object.keys(positions).forEach((labelId) => {
+        const key = resolveDataKey(labelId);
+        if (!allowed.has(key)) {
+          issues.push(`${view} label '${labelId}' → unknown key: ${key}`);
+        }
+      });
+    });
+    return issues;
+  }
+
+  function getBackRegionMusclesForTest() {
+    return getBackRegions().map((r) => r.muscle);
+  }
+
+  function countBackSplitsForTest() {
+    return getBackRegions().filter((r) => r.muscle === 'back').length;
+  }
+
+  function packLabelsForTest(view, mode, recovery, growth) {
+    return withTestState(mode, recovery, growth, () => {
+      currentMode = mode;
+      const positions = getLabelPositions(view);
+      const entries = [];
+      Object.keys(positions).forEach((labelId) => {
+        const dataKey = resolveDataKey(labelId);
+        const row = getRow(dataKey);
+        if (!row.hasSignal) return;
+        entries.push({ labelId, dataKey, row, pos: positions[labelId] });
+      });
+      return packLabelLayouts(entries).map((e) => ({
+        labelId: e.labelId,
+        dataKey: e.dataKey,
+        y: e.y,
+        side: e.side,
+      }));
+    });
+  }
+
+  function pickDefaultMuscleForTest(view, mode, recovery, growth) {
+    return withTestState(mode, recovery, growth, () => {
+      currentView = view;
+      selectedMuscle = null;
+      return pickDefaultMuscle(view);
+    });
+  }
+
+  function ensureSelectionForTest(view, mode, recovery, growth, current) {
+    return withTestState(mode, recovery, growth, () => {
+      currentView = view;
+      selectedMuscle = current;
+      ensureSelectionForView(view);
+      return selectedMuscle;
+    });
+  }
+
+  function buildSvgForTest(view, mode, recovery, growth) {
+    return withTestState(mode, recovery, growth, () => {
+      currentView = view;
+      currentMode = mode;
+      ensureSelectionForView(view);
+      return buildSvg(view);
+    });
+  }
+
   return {
     afterHomeRender,
     open,
@@ -809,9 +1084,23 @@ const HomeBodyMapDetail = (() => {
     formatValueColorForTest,
     getFillForTest,
     formatValueLabel,
+    auditRegionMapping,
+    getBackRegionMusclesForTest,
+    countBackSplitsForTest,
+    packLabelsForTest,
+    pickDefaultMuscleForTest,
+    ensureSelectionForTest,
+    buildSvgForTest,
+    resolveDataKey,
+    VIEW_MUSCLES,
+    LABEL_DATA_KEY,
+    DETAIL_LABEL_POSITIONS,
     STRONG_GROWTH_PCT,
     GROWTH_TEAL,
     GROWTH_LIME,
+    LOSS_VIOLET,
+    LOSS_INDIGO,
+    STRONG_LOSS_PCT,
     MODE_TITLES,
     OVERLAY_ID,
     BTN_WRAP_ID,

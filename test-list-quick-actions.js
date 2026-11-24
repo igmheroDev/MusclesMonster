@@ -291,7 +291,7 @@ assert(swJs.includes("'./listQuickActions.js'"), 'sw ASSETS 등록');
 assert(swJs.includes("'/listQuickActions.js'"), 'sw NETWORK_FIRST 등록');
 assert(swJs.includes("'./prTrendDetail.js'"), 'sw ASSETS에 prTrendDetail.js 등록');
 assert(swJs.includes("'/prTrendDetail.js'"), 'sw NETWORK_FIRST에 prTrendDetail.js 등록');
-assert(swJs.includes('recovr-cache-v92'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v93'), 'sw cache bump');
 
 console.log(`\n=== 최종: ${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'} ===`);
 process.exit(failures === 0 ? 0 : 1);
