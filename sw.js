@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v82';
+const CACHE_NAME = 'recovr-cache-v83';
 const ASSETS = [
   './',
   './index.html',
@@ -22,8 +22,13 @@ const ASSETS = [
   './bodyMapLive.js',
   './workoutCompleteMap.js',
   './vendor/three.module.min.js',
+  './vendor/GLTFLoader.js',
+  './vendor/BufferGeometryUtils.js',
   './vendor/three.LICENSE.txt',
   './vendor/MODEL_SOURCE.md',
+  './vendor/anatomy/muscles-body.glb',
+  './vendor/anatomy/KEY_TO_APP.json',
+  './vendor/anatomy/ATTRIBUTION.txt',
   './body-map-front.png',
   './body-map-back.png',
   './body-map-front-dark.png',
@@ -80,6 +85,10 @@ const NETWORK_FIRST_PATHS = [
   '/bodyMapLive.js',
   '/workoutCompleteMap.js',
   '/vendor/three.module.min.js',
+  '/vendor/GLTFLoader.js',
+  '/vendor/BufferGeometryUtils.js',
+  '/vendor/anatomy/muscles-body.glb',
+  '/vendor/anatomy/KEY_TO_APP.json',
   '/body-map-front.png',
   '/body-map-back.png',
   '/body-map-front-dark.png',

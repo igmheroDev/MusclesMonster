@@ -113,6 +113,16 @@ assert(BodyMap3D.recoveryVisual(98, true).color === BodyMap3D.MINT, 'ready mint'
 const src = fs.readFileSync(path.join(__dirname, 'bodyMap3d.js'), 'utf8');
 assert(src.includes('Drag to rotate'), 'english drag hint');
 assert(src.includes('vendor/three.module.min.js'), 'vendors three');
+assert(src.includes('muscles-body.glb') || src.includes('MODEL_URL'), 'loads anatomy glb');
+assert(src.includes('GLTFLoader'), 'uses GLTFLoader');
+assert(fs.existsSync(path.join(__dirname, 'vendor/anatomy/muscles-body.glb')), 'anatomy glb exists');
+assert(fs.statSync(path.join(__dirname, 'vendor/anatomy/muscles-body.glb')).size < 3 * 1024 * 1024, 'glb under 3MB');
+assert(fs.existsSync(path.join(__dirname, 'vendor/anatomy/KEY_TO_APP.json')), 'key map exists');
+assert(fs.existsSync(path.join(__dirname, 'vendor/GLTFLoader.js')), 'GLTFLoader vendored');
+assert(BodyMap3D.EN_LABELS.traps === 'Traps', 'fine id traps');
+assert(BodyMap3D.EN_LABELS.lats === 'Lats', 'fine id lats');
+assert(BodyMap3D.EN_LABELS.front_delts === 'Front Delts', 'fine id front delts');
+assert(BodyMap3D.EN_LABELS.glutes === 'Glutes', 'fine id glutes');
 assert(src.includes('MAX_PIXEL_RATIO = 2') || src.includes('MAX_PIXEL_RATIO=2'), 'pixel ratio cap');
 assert(src.includes('dispose'), 'dispose path');
 assert(src.includes('WEBGL_lose_context') || src.includes('loseContext'), 'lose context on dispose');
@@ -123,9 +133,10 @@ assert(fs.existsSync(path.join(__dirname, 'vendor/MODEL_SOURCE.md')), 'model sou
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.LICENSE.txt')), 'three license');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(sw.includes('recovr-cache-v82'), 'cache bumped to v82');
+assert(sw.includes('recovr-cache-v83'), 'cache bumped to v82');
 assert(sw.includes('bodyMap3d.js'), 'sw caches bodyMap3d');
 assert(sw.includes('vendor/three.module.min.js'), 'sw caches three');
+assert(sw.includes('vendor/anatomy/muscles-body.glb'), 'sw caches anatomy glb');
 
 const index = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 assert(index.includes('bodyMap3d.js'), 'index loads bodyMap3d');

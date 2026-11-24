@@ -1,71 +1,67 @@
 // ============================================================
 // RECOVR - Experimental interactive 3D muscle body map
-// Independent module. Lazy-loads vendored three.js (ESM).
-// Procedural stylized figure — see vendor/MODEL_SOURCE.md
+// Independent module. Lazy-loads vendored three.js + GLTFLoader.
+// Anatomical model: vendor/anatomy/muscles-body.glb (CC BY-SA 4.0)
+// See vendor/MODEL_SOURCE.md
 // ============================================================
 
 const BodyMap3D = (() => {
   const STYLE_ID = 'body-map-3d-styles';
   const STORAGE_KEY = 'recovr_bodymap_view_mode';
   const THREE_URL = 'vendor/three.module.min.js';
+  const LOADER_URL = 'vendor/GLTFLoader.js';
+  const MODEL_URL = 'vendor/anatomy/muscles-body.glb';
+  const MAP_URL = 'vendor/anatomy/KEY_TO_APP.json';
   const MAX_PIXEL_RATIO = 2;
 
   const CORAL = '#ff3b5c';
   const AMBER = '#f5a524';
   const MINT = '#3ee6b0';
   const BASE_COLOR = '#3a3a44';
+  const CONTEXT_COLOR = '#2a2a32';
   const BG = '#0a0a0f';
 
+  // App-facing ids (coarse + finer where the model allows)
   const EN_LABELS = {
     chest: 'Chest',
     back: 'Back',
     shoulder: 'Shoulders',
+    front_delts: 'Front Delts',
+    rear_delts: 'Rear Delts',
     biceps: 'Biceps',
     triceps: 'Triceps',
     quads: 'Quads',
-    hamstrings: 'Glutes/Hams',
+    hamstrings: 'Hamstrings',
+    glutes: 'Glutes',
     adductors: 'Adductors',
     calves: 'Calves',
     core: 'Abs',
+    abs: 'Abs',
+    obliques: 'Obliques',
+    traps: 'Traps',
+    lats: 'Lats',
+    lower_back: 'Lower Back',
     forearms: 'Forearms',
   };
 
   const MUSCLE_IDS = Object.keys(EN_LABELS);
 
+  // Prefer primary fine label when tapping a mesh
+  const FINE_PRIORITY = [
+    'front_delts', 'rear_delts', 'traps', 'lats', 'glutes',
+    'lower_back', 'obliques', 'abs',
+  ];
+
   let THREE = null;
+  let GLTFLoader = null;
   let loadPromise = null;
+  let modelPromise = null;
+  let keyToApp = null;
   let stylesReady = false;
+  let cachedModelTemplate = null; // cloned per mount
 
-  /** @type {Map<string, MountState>} */
+  /** @type {Map<string, object>} */
   const mounts = new Map();
-
-  /**
-   * @typedef {object} MountState
-   * @property {string} id
-   * @property {HTMLElement} host
-   * @property {HTMLElement} canvasWrap
-   * @property {HTMLElement} tipEl
-   * @property {HTMLElement} hintEl
-   * @property {object|null} renderer
-   * @property {object|null} scene
-   * @property {object|null} camera
-   * @property {object|null} root
-   * @property {object|null} pedestal
-   * @property {Map<string, object[]>} muscleMeshes
-   * @property {string} colorMode
-   * @property {object} data
-   * @property {number} yaw
-   * @property {number} targetYaw
-   * @property {boolean} dragging
-   * @property {number} lastX
-   * @property {number} breath
-   * @property {number} raf
-   * @property {boolean} disposed
-   * @property {ResizeObserver|null} ro
-   * @property {Function|null} onMuscleTap
-   * @property {boolean} showPedestal
-   * @property {boolean} autoRotate
-   */
 
   function prefersReducedMotion() {
     try {
@@ -118,141 +114,77 @@ const BodyMap3D = (() => {
     style.id = STYLE_ID;
     style.textContent = `
       .bm3-mode-toggle {
-        display: inline-flex;
-        align-items: stretch;
-        border-radius: 999px;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,0.14);
-        background: rgba(255,255,255,0.04);
-        flex-shrink: 0;
+        display: inline-flex; align-items: stretch; border-radius: 999px; overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.04); flex-shrink: 0;
       }
       .bm3-mode-btn {
-        border: none;
-        background: transparent;
-        color: rgba(232,232,240,0.72);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        padding: 6px 11px;
-        cursor: pointer;
-        font-family: 'Space Grotesk', sans-serif;
+        border: none; background: transparent; color: rgba(232,232,240,0.72);
+        font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 6px 11px;
+        cursor: pointer; font-family: 'Space Grotesk', sans-serif;
       }
-      .bm3-mode-btn.selected {
-        background: ${CORAL};
-        color: #fff;
-      }
-      .bm3-mode-btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
+      .bm3-mode-btn.selected { background: ${CORAL}; color: #fff; }
+      .bm3-mode-btn:disabled { opacity: 0.4; cursor: not-allowed; }
       .bm3-stage {
-        position: relative;
-        width: min(100%, 280px);
-        margin: 0 auto;
-        aspect-ratio: 3 / 4;
-        border-radius: 16px;
-        overflow: hidden;
+        position: relative; width: min(100%, 280px); margin: 0 auto; aspect-ratio: 3 / 4;
+        border-radius: 16px; overflow: hidden;
         background: radial-gradient(ellipse at 50% 42%, #14141c 0%, ${BG} 72%);
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
+        touch-action: none; user-select: none; -webkit-user-select: none;
       }
-      .bm3-stage canvas {
-        display: block;
-        width: 100% !important;
-        height: 100% !important;
-      }
+      .bm3-stage canvas { display: block; width: 100% !important; height: 100% !important; }
       .bm3-hint {
-        position: absolute;
-        right: 10px;
-        top: 46%;
-        transform: translateY(-50%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        pointer-events: none;
-        opacity: 0.72;
-        transition: opacity 0.4s ease;
+        position: absolute; right: 10px; top: 46%; transform: translateY(-50%);
+        display: flex; flex-direction: column; align-items: center; gap: 4px;
+        pointer-events: none; opacity: 0.72; transition: opacity 0.4s ease;
       }
       .bm3-hint.is-faded { opacity: 0; }
       .bm3-hint-ring {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        border: 1px solid rgba(62,230,176,0.35);
-        background: rgba(10,10,15,0.55);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: ${MINT};
-        font-size: 16px;
+        width: 42px; height: 42px; border-radius: 50%;
+        border: 1px solid rgba(62,230,176,0.35); background: rgba(10,10,15,0.55);
+        display: flex; align-items: center; justify-content: center; color: ${MINT}; font-size: 16px;
       }
       .bm3-hint-text {
-        font-size: 9.5px;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-        color: rgba(232,232,240,0.75);
-        text-align: center;
-        max-width: 64px;
-        line-height: 1.2;
+        font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
+        color: rgba(232,232,240,0.75); text-align: center; max-width: 64px; line-height: 1.2;
       }
       .bm3-tip {
-        position: absolute;
-        left: 50%;
-        top: 18%;
-        transform: translateX(-50%);
-        z-index: 4;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.18s ease;
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 700;
-        font-size: 12.5px;
-        color: #fff;
-        background: rgba(16,16,22,0.92);
-        border: 1.5px solid ${CORAL};
-        border-radius: 999px;
-        padding: 5px 12px;
-        box-shadow: 0 0 18px rgba(255,59,92,0.35);
-        white-space: nowrap;
-        max-width: 90%;
+        position: absolute; left: 50%; top: 16%; transform: translateX(-50%); z-index: 4;
+        pointer-events: none; opacity: 0; transition: opacity 0.18s ease;
+        font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 12.5px; color: #fff;
+        background: rgba(16,16,22,0.92); border: 1.5px solid ${CORAL}; border-radius: 999px;
+        padding: 5px 12px; box-shadow: 0 0 18px rgba(255,59,92,0.35);
+        white-space: nowrap; max-width: 92%;
       }
       .bm3-tip.visible { opacity: 1; }
       .bm3-loading {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--muted, #6b6b85);
-        font-size: 12px;
-        font-weight: 600;
-        pointer-events: none;
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        color: var(--muted, #6b6b85); font-size: 12px; font-weight: 600; pointer-events: none;
       }
       .bm3-fallback {
-        padding: 18px 12px;
-        text-align: center;
-        font-size: 12px;
-        color: var(--muted, #6b6b85);
+        padding: 18px 12px; text-align: center; font-size: 12px; color: var(--muted, #6b6b85);
       }
+      .bm3-credit {
+        margin-top: 6px; font-size: 9px; line-height: 1.35; color: var(--muted, #6b6b85); text-align: center;
+      }
+      .bm3-credit a { color: ${MINT}; }
     `;
     document.head.appendChild(style);
     stylesReady = true;
   }
 
   function loadThree() {
-    if (THREE) return Promise.resolve(THREE);
+    if (THREE && GLTFLoader) return Promise.resolve(THREE);
     if (loadPromise) return loadPromise;
-    loadPromise = import(`./${THREE_URL}?v=r170`)
-      .then((mod) => {
-        THREE = mod;
-        return THREE;
-      })
-      .catch((err) => {
-        loadPromise = null;
-        throw err;
-      });
+    loadPromise = Promise.all([
+      import(`./${THREE_URL}?v=r170`),
+      import(`./${LOADER_URL}?v=r170`),
+    ]).then(([threeMod, loaderMod]) => {
+      THREE = threeMod;
+      GLTFLoader = loaderMod.GLTFLoader;
+      return THREE;
+    }).catch((err) => {
+      loadPromise = null;
+      throw err;
+    });
     return loadPromise;
   }
 
@@ -260,146 +192,130 @@ const BodyMap3D = (() => {
     return parseInt(String(hex).replace('#', ''), 16);
   }
 
-  function makeMat(emissiveHex, emissiveIntensity) {
+  function makeMuscleMat() {
     return new THREE.MeshStandardMaterial({
       color: hexToInt(BASE_COLOR),
-      roughness: 0.88,
-      metalness: 0.04,
-      emissive: hexToInt(emissiveHex || BASE_COLOR),
-      emissiveIntensity: emissiveIntensity || 0,
+      roughness: 0.86,
+      metalness: 0.05,
+      emissive: hexToInt(BASE_COLOR),
+      emissiveIntensity: 0.04,
+      flatShading: false,
     });
   }
 
-  function addPart(root, muscleMeshes, muscle, geo, x, y, z, sx, sy, sz, rx, ry, rz) {
-    const mesh = new THREE.Mesh(geo, makeMat(BASE_COLOR, 0));
-    mesh.position.set(x, y, z);
-    mesh.scale.set(sx, sy, sz);
-    if (rx || ry || rz) mesh.rotation.set(rx || 0, ry || 0, rz || 0);
-    mesh.userData.muscle = muscle;
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
-    root.add(mesh);
-    if (!muscleMeshes.has(muscle)) muscleMeshes.set(muscle, []);
-    muscleMeshes.get(muscle).push(mesh);
-    return mesh;
+  function makeContextMat() {
+    return new THREE.MeshStandardMaterial({
+      color: hexToInt(CONTEXT_COLOR),
+      roughness: 0.92,
+      metalness: 0.02,
+      emissive: hexToInt(CONTEXT_COLOR),
+      emissiveIntensity: 0.02,
+    });
   }
 
-  function buildProceduralFigure(root) {
+  async function loadKeyMap() {
+    if (keyToApp) return keyToApp;
+    const res = await fetch(`./${MAP_URL}?v=1`);
+    keyToApp = await res.json();
+    return keyToApp;
+  }
+
+  function normalizeKeyFromName(name, extras) {
+    if (extras && extras.key) return String(extras.key);
+    if (extras && extras.muscleId) {
+      return String(extras.muscleId).replace(/_(left|right)$/i, '');
+    }
+    return String(name || '')
+      .replace(/__mobile(\.\d+)?$/i, '')
+      .replace(/_(left|right)$/i, '')
+      .trim();
+  }
+
+  function pickPrimaryId(appIds) {
+    for (let i = 0; i < FINE_PRIORITY.length; i += 1) {
+      if (appIds.includes(FINE_PRIORITY[i])) return FINE_PRIORITY[i];
+    }
+    return appIds[0] || null;
+  }
+
+  function prepareFigure(gltfScene, mapping) {
+    const root = new THREE.Group();
+    root.name = 'musclesBody';
     const muscleMeshes = new Map();
-    const sphere = new THREE.SphereGeometry(1, 18, 14);
-    const capsule = new THREE.CapsuleGeometry(0.5, 1, 6, 12);
-    const box = new THREE.BoxGeometry(1, 1, 1);
+    const box = new THREE.Box3();
+    const tmp = new THREE.Vector3();
 
-    // Head / neck (neutral — not a tracked muscle)
-    const head = new THREE.Mesh(sphere, makeMat(BASE_COLOR, 0));
-    head.position.set(0, 1.62, 0);
-    head.scale.set(0.18, 0.22, 0.2);
-    head.userData.muscle = null;
-    root.add(head);
+    gltfScene.updateMatrixWorld(true);
+    box.setFromObject(gltfScene);
+    const size = box.getSize(tmp.clone());
+    const center = box.getCenter(tmp.clone());
+    const targetHeight = 2.15;
+    const scale = targetHeight / Math.max(size.y, 0.001);
 
-    const neck = new THREE.Mesh(capsule, makeMat(BASE_COLOR, 0));
-    neck.position.set(0, 1.38, 0);
-    neck.scale.set(0.22, 0.22, 0.22);
-    neck.userData.muscle = null;
-    root.add(neck);
+    const wrapper = new THREE.Group();
+    wrapper.add(gltfScene);
+    // Center on origin, feet near y=0 after scale
+    gltfScene.position.set(-center.x, -box.min.y, -center.z);
+    wrapper.scale.setScalar(scale);
+    root.add(wrapper);
 
-    // Torso shell (back / traps / lats grouped under `back`)
-    addPart(root, muscleMeshes, 'back', sphere, 0, 1.02, -0.1, 0.36, 0.28, 0.2); // traps
-    addPart(root, muscleMeshes, 'back', sphere, -0.14, 0.88, -0.12, 0.22, 0.32, 0.16); // lats L
-    addPart(root, muscleMeshes, 'back', sphere, 0.14, 0.88, -0.12, 0.22, 0.32, 0.16); // lats R
-    addPart(root, muscleMeshes, 'back', box, 0, 0.58, -0.08, 0.3, 0.26, 0.14); // lower back
+    const muscleMat = makeMuscleMat();
+    const contextMat = makeContextMat();
 
-    // Chest
-    addPart(root, muscleMeshes, 'chest', sphere, -0.15, 1.06, 0.13, 0.2, 0.16, 0.13);
-    addPart(root, muscleMeshes, 'chest', sphere, 0.15, 1.06, 0.13, 0.2, 0.16, 0.13);
-    addPart(root, muscleMeshes, 'chest', sphere, 0, 0.98, 0.14, 0.16, 0.1, 0.1);
+    gltfScene.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const extras = (obj.userData && Object.keys(obj.userData).length)
+        ? obj.userData
+        : (obj.parent && obj.parent.userData) || {};
+      const key = normalizeKeyFromName(obj.name, extras);
+      const appIds = mapping[key] || null;
+      const isSupport = !appIds && (
+        /bone|skeleton|skull|context|support|connective|cartilage/i.test(obj.name)
+        || (extras && (extras.kind === 'bone' || extras.kind === 'support'))
+      );
 
-    // Core / abs + obliques
-    addPart(root, muscleMeshes, 'core', box, 0, 0.74, 0.12, 0.24, 0.34, 0.11);
-    addPart(root, muscleMeshes, 'core', sphere, 0, 0.56, 0.12, 0.18, 0.14, 0.09);
-    addPart(root, muscleMeshes, 'core', sphere, -0.16, 0.7, 0.08, 0.1, 0.18, 0.08);
-    addPart(root, muscleMeshes, 'core', sphere, 0.16, 0.7, 0.08, 0.1, 0.18, 0.08);
+      if (appIds && appIds.length) {
+        const mat = muscleMat.clone();
+        obj.material = mat;
+        obj.castShadow = false;
+        obj.receiveShadow = false;
+        obj.userData.appIds = appIds;
+        obj.userData.muscle = pickPrimaryId(appIds);
+        obj.userData.atlasKey = key;
+        obj.userData.label = extras.label || EN_LABELS[obj.userData.muscle] || key;
+        appIds.forEach((id) => {
+          if (!muscleMeshes.has(id)) muscleMeshes.set(id, []);
+          muscleMeshes.get(id).push(obj);
+        });
+      } else {
+        obj.material = contextMat.clone();
+        obj.userData.muscle = null;
+        obj.userData.appIds = [];
+        // Keep light context (bones) faintly visible for silhouette
+        if (isSupport) obj.material.opacity = 1;
+      }
+    });
 
-    // Shoulders (front + rear delts share `shoulder`)
-    addPart(root, muscleMeshes, 'shoulder', sphere, -0.34, 1.16, 0.04, 0.15, 0.13, 0.13);
-    addPart(root, muscleMeshes, 'shoulder', sphere, 0.34, 1.16, 0.04, 0.15, 0.13, 0.13);
-    addPart(root, muscleMeshes, 'shoulder', sphere, -0.36, 1.12, -0.06, 0.12, 0.1, 0.11);
-    addPart(root, muscleMeshes, 'shoulder', sphere, 0.36, 1.12, -0.06, 0.12, 0.1, 0.11);
-
-    // Biceps (front of upper arm)
-    addPart(root, muscleMeshes, 'biceps', capsule, -0.42, 0.9, 0.07, 0.2, 0.26, 0.18, 0.12, 0, 0.18);
-    addPart(root, muscleMeshes, 'biceps', capsule, 0.42, 0.9, 0.07, 0.2, 0.26, 0.18, 0.12, 0, -0.18);
-
-    // Triceps (back of upper arm)
-    addPart(root, muscleMeshes, 'triceps', capsule, -0.44, 0.88, -0.05, 0.18, 0.28, 0.16, 0.15, 0, 0.15);
-    addPart(root, muscleMeshes, 'triceps', capsule, 0.44, 0.88, -0.05, 0.18, 0.28, 0.16, 0.15, 0, -0.15);
-
-    // Forearms
-    addPart(root, muscleMeshes, 'forearms', capsule, -0.5, 0.52, 0.03, 0.16, 0.28, 0.14, 0.28, 0, 0.12);
-    addPart(root, muscleMeshes, 'forearms', capsule, 0.5, 0.52, 0.03, 0.16, 0.28, 0.14, 0.28, 0, -0.12);
-
-    // Quads
-    addPart(root, muscleMeshes, 'quads', capsule, -0.13, 0.14, 0.07, 0.24, 0.4, 0.22);
-    addPart(root, muscleMeshes, 'quads', capsule, 0.13, 0.14, 0.07, 0.24, 0.4, 0.22);
-    addPart(root, muscleMeshes, 'quads', sphere, -0.13, -0.1, 0.08, 0.13, 0.14, 0.12);
-    addPart(root, muscleMeshes, 'quads', sphere, 0.13, -0.1, 0.08, 0.13, 0.14, 0.12);
-
-    // Hamstrings / glutes (posterior) — app id covers both
-    addPart(root, muscleMeshes, 'hamstrings', sphere, -0.11, 0.34, -0.1, 0.15, 0.13, 0.13);
-    addPart(root, muscleMeshes, 'hamstrings', sphere, 0.11, 0.34, -0.1, 0.15, 0.13, 0.13);
-    addPart(root, muscleMeshes, 'hamstrings', capsule, -0.13, 0.06, -0.07, 0.22, 0.36, 0.2);
-    addPart(root, muscleMeshes, 'hamstrings', capsule, 0.13, 0.06, -0.07, 0.22, 0.36, 0.2);
-
-    // Adductors (inner thigh)
-    addPart(root, muscleMeshes, 'adductors', capsule, -0.04, 0.12, 0.02, 0.12, 0.3, 0.12);
-    addPart(root, muscleMeshes, 'adductors', capsule, 0.04, 0.12, 0.02, 0.12, 0.3, 0.12);
-
-    // Calves
-    addPart(root, muscleMeshes, 'calves', sphere, -0.13, -0.4, -0.02, 0.11, 0.16, 0.12);
-    addPart(root, muscleMeshes, 'calves', sphere, 0.13, -0.4, -0.02, 0.11, 0.16, 0.12);
-    addPart(root, muscleMeshes, 'calves', capsule, -0.13, -0.6, 0, 0.14, 0.2, 0.12);
-    addPart(root, muscleMeshes, 'calves', capsule, 0.13, -0.6, 0, 0.14, 0.2, 0.12);
-
-    // Feet (neutral)
-    const footL = new THREE.Mesh(box, makeMat(BASE_COLOR, 0));
-    footL.position.set(-0.14, -0.88, 0.06);
-    footL.scale.set(0.14, 0.06, 0.28);
-    footL.userData.muscle = null;
-    root.add(footL);
-    const footR = footL.clone();
-    footR.position.x = 0.14;
-    root.add(footR);
-
-    return muscleMeshes;
+    return { root, muscleMeshes };
   }
 
-  function buildPedestal(parent) {
-    const group = new THREE.Group();
-    const mats = [
-      new THREE.MeshStandardMaterial({ color: 0x101018, roughness: 0.9, metalness: 0.05, emissive: hexToInt(MINT), emissiveIntensity: 0.15 }),
-      new THREE.MeshStandardMaterial({ color: 0x0c0c12, roughness: 0.92, metalness: 0.04, emissive: hexToInt(MINT), emissiveIntensity: 0.1 }),
-      new THREE.MeshStandardMaterial({ color: 0x08080e, roughness: 0.95, metalness: 0.02, emissive: hexToInt(MINT), emissiveIntensity: 0.08 }),
-    ];
-    const tiers = [
-      { y: -1.02, r: 0.55, h: 0.06 },
-      { y: -1.1, r: 0.72, h: 0.06 },
-      { y: -1.18, r: 0.9, h: 0.06 },
-    ];
-    tiers.forEach((t, i) => {
-      const geo = new THREE.CylinderGeometry(t.r, t.r * 1.05, t.h, 48);
-      const mesh = new THREE.Mesh(geo, mats[i]);
-      mesh.position.y = t.y;
-      group.add(mesh);
-      const rim = new THREE.Mesh(
-        new THREE.TorusGeometry(t.r * 0.98, 0.012, 8, 48),
-        new THREE.MeshBasicMaterial({ color: hexToInt(MINT) })
-      );
-      rim.rotation.x = Math.PI / 2;
-      rim.position.y = t.y + t.h * 0.45;
-      group.add(rim);
+  async function loadModelTemplate() {
+    if (cachedModelTemplate) return cachedModelTemplate;
+    if (modelPromise) return modelPromise;
+    modelPromise = (async () => {
+      await loadThree();
+      const mapping = await loadKeyMap();
+      const loader = new GLTFLoader();
+      const gltf = await new Promise((resolve, reject) => {
+        loader.load(`./${MODEL_URL}?v=1`, resolve, undefined, reject);
+      });
+      cachedModelTemplate = { scene: gltf.scene, mapping };
+      return cachedModelTemplate;
+    })().catch((err) => {
+      modelPromise = null;
+      throw err;
     });
-    parent.add(group);
-    return group;
+    return modelPromise;
   }
 
   function intensityFromLoad(load) {
@@ -414,35 +330,56 @@ const BodyMap3D = (() => {
     return { color: MINT, intensity: 0.55 };
   }
 
+  function activeLoadForMesh(appIds, loads) {
+    if (!loads || !appIds) return 0;
+    let best = 0;
+    appIds.forEach((id) => {
+      const v = loads[id] || 0;
+      if (v > best) best = v;
+    });
+    // Coarse aliases already included in appIds via KEY_TO_APP
+    return best;
+  }
+
+  function recoveryForMesh(appIds, recovery) {
+    if (!recovery || !appIds) return { pct: 100, hasData: false };
+    let best = null;
+    appIds.forEach((id) => {
+      const r = recovery[id];
+      if (!r || r.lastDate == null) return;
+      if (!best || (r.recoveryPct ?? 100) < (best.recoveryPct ?? 100)) best = r;
+    });
+    if (!best) return { pct: 100, hasData: false };
+    return { pct: best.recoveryPct ?? 100, hasData: true };
+  }
+
   function applyColors(state) {
     const { muscleMeshes, colorMode, data, showPedestal } = state;
-    MUSCLE_IDS.forEach((id) => {
-      const meshes = muscleMeshes.get(id) || [];
-      let color = BASE_COLOR;
-      let intensity = 0.04;
-
-      if (colorMode === 'recovery') {
-        const r = data && data.recovery && data.recovery[id];
-        const hasData = !!(r && r.lastDate !== null && r.lastDate !== undefined);
-        const pct = hasData ? (r.recoveryPct ?? 100) : 100;
-        const vis = recoveryVisual(pct, hasData);
-        color = vis.color;
-        intensity = vis.intensity;
-      } else {
-        // intensity / complete — only worked muscles glow
-        const load = (data && data.loads && data.loads[id]) || 0;
-        if (load > 0) {
-          color = CORAL;
-          intensity = intensityFromLoad(load);
-          if (colorMode === 'complete') intensity *= 1.15;
-        } else {
-          color = BASE_COLOR;
-          intensity = showPedestal ? 0.06 : 0.04;
-        }
-      }
-
+    const seen = new Set();
+    muscleMeshes.forEach((meshes) => {
       meshes.forEach((mesh) => {
+        if (seen.has(mesh)) return;
+        seen.add(mesh);
+        const appIds = mesh.userData.appIds || [];
         const mat = mesh.material;
+        let color = BASE_COLOR;
+        let intensity = 0.04;
+
+        if (colorMode === 'recovery') {
+          const { pct, hasData } = recoveryForMesh(appIds, data && data.recovery);
+          const vis = recoveryVisual(pct, hasData);
+          color = vis.color;
+          intensity = vis.intensity;
+        } else {
+          const load = activeLoadForMesh(appIds, data && data.loads);
+          if (load > 0) {
+            color = CORAL;
+            intensity = intensityFromLoad(load) * (colorMode === 'complete' ? 1.15 : 1);
+          } else {
+            intensity = showPedestal ? 0.06 : 0.04;
+          }
+        }
+
         mat.color.setHex(hexToInt(BASE_COLOR));
         mat.emissive.setHex(hexToInt(color));
         mat.emissiveIntensity = intensity;
@@ -461,34 +398,53 @@ const BodyMap3D = (() => {
     }, 3200);
   }
 
-  function formatRecoveryTip(muscle, data) {
-    const label = EN_LABELS[muscle] || muscle;
+  function formatRecoveryTip(muscle, data, meshLabel) {
+    const label = meshLabel || EN_LABELS[muscle] || muscle;
     const r = data && data.recovery && data.recovery[muscle];
-    if (!r || r.lastDate == null) {
+    // Fall back across aliases for recovery lookup
+    let rec = r;
+    if ((!rec || rec.lastDate == null) && data && data.recovery) {
+      const aliases = {
+        front_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back',
+        lower_back: 'back', glutes: 'hamstrings', abs: 'core', obliques: 'core',
+      };
+      const alt = aliases[muscle];
+      if (alt) rec = data.recovery[alt];
+    }
+    if (!rec || rec.lastDate == null) {
       return `<strong>${escapeHtml(label)}</strong> · No data`;
     }
-    const pct = Math.round(r.recoveryPct || 0);
+    const pct = Math.round(rec.recoveryPct || 0);
     let hoursLeft = null;
     if (typeof MuscleHeatmap !== 'undefined' && MuscleHeatmap.getHoursUntilReady) {
-      hoursLeft = MuscleHeatmap.getHoursUntilReady(muscle, data.recovery);
+      const key = (data.recovery[muscle] && data.recovery[muscle].lastDate != null) ? muscle
+        : ({ front_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back', lower_back: 'back', glutes: 'hamstrings', abs: 'core', obliques: 'core' }[muscle] || muscle);
+      hoursLeft = MuscleHeatmap.getHoursUntilReady(key, data.recovery);
     } else {
-      hoursLeft = Math.max(0, Math.round((r.recoveryHours || 0) - (r.hoursElapsed || 0)));
+      hoursLeft = Math.max(0, Math.round((rec.recoveryHours || 0) - (rec.hoursElapsed || 0)));
     }
-    if (pct < 40) {
-      return `${escapeHtml(label)} · Fatigued${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
-    }
-    if (pct < 95) {
-      return `${escapeHtml(label)} · Recovering${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
-    }
+    if (pct < 40) return `${escapeHtml(label)} · Fatigued${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
+    if (pct < 95) return `${escapeHtml(label)} · Recovering${hoursLeft > 0 ? ` · ${hoursLeft}h to recover` : ''}`;
     return `${escapeHtml(label)} · Ready`;
   }
 
-  function formatIntensityTip(muscle, data) {
-    const label = EN_LABELS[muscle] || muscle;
-    const load = (data && data.loads && data.loads[muscle]) || 0;
+  function formatIntensityTip(muscle, data, meshLabel) {
+    const label = meshLabel || EN_LABELS[muscle] || muscle;
+    const loads = data && data.loads;
+    let load = (loads && loads[muscle]) || 0;
+    if (load <= 0 && loads) {
+      const aliases = {
+        front_delts: 'shoulder', rear_delts: 'shoulder', traps: 'back', lats: 'back',
+        lower_back: 'back', glutes: 'hamstrings', abs: 'core', obliques: 'core',
+      };
+      const alt = aliases[muscle];
+      if (alt) load = loads[alt] || 0;
+    }
     if (load <= 0) return `${escapeHtml(label)} · Idle`;
-    const sets = data && data.setCounts && data.setCounts[muscle];
-    if (sets != null) return `+${escapeHtml(String(sets))} sets · ${escapeHtml(label)}`;
+    const sets = data && data.setCounts && (data.setCounts[muscle] || data.setCounts.shoulder || data.setCounts.back);
+    if (data && data.setCounts && data.setCounts[muscle] != null) {
+      return `+${escapeHtml(String(data.setCounts[muscle]))} sets · ${escapeHtml(label)}`;
+    }
     const n = Math.max(1, Math.round(load * 2.2));
     return `+${n} sets · ${escapeHtml(label)}`;
   }
@@ -502,8 +458,13 @@ const BodyMap3D = (() => {
     raycaster.setFromCamera({ x, y }, state.camera);
     const hits = raycaster.intersectObjects(state.root.children, true);
     for (let i = 0; i < hits.length; i += 1) {
-      const m = hits[i].object && hits[i].object.userData && hits[i].object.userData.muscle;
-      if (m) return m;
+      const obj = hits[i].object;
+      if (obj && obj.userData && obj.userData.muscle) {
+        return {
+          muscle: obj.userData.muscle,
+          label: obj.userData.label || EN_LABELS[obj.userData.muscle] || obj.userData.muscle,
+        };
+      }
     }
     return null;
   }
@@ -536,13 +497,13 @@ const BodyMap3D = (() => {
     const clientX = e.clientX ?? (e.changedTouches && e.changedTouches[0] && e.changedTouches[0].clientX);
     const clientY = e.clientY ?? (e.changedTouches && e.changedTouches[0] && e.changedTouches[0].clientY);
     if (state.pointerMoved < 8 && clientX != null) {
-      const muscle = pickMuscle(state, clientX, clientY);
-      if (muscle) {
+      const hit = pickMuscle(state, clientX, clientY);
+      if (hit) {
         const html = state.colorMode === 'recovery'
-          ? formatRecoveryTip(muscle, state.data)
-          : formatIntensityTip(muscle, state.data);
+          ? formatRecoveryTip(hit.muscle, state.data, hit.label)
+          : formatIntensityTip(hit.muscle, state.data, hit.label);
         showTip(state, html);
-        if (typeof state.onMuscleTap === 'function') state.onMuscleTap(muscle);
+        if (typeof state.onMuscleTap === 'function') state.onMuscleTap(hit.muscle);
       }
     }
   }
@@ -581,8 +542,8 @@ const BodyMap3D = (() => {
     const reduce = prefersReducedMotion();
     if (!reduce) {
       state.breath += 0.025;
-      const breathe = 1 + Math.sin(state.breath) * 0.012;
-      if (state.root) state.root.scale.set(breathe, breathe, breathe);
+      const breathe = 1 + Math.sin(state.breath) * 0.008;
+      if (state.root) state.root.scale.setScalar(breathe);
       if (!state.dragging && state.autoRotate) {
         state.targetYaw += state.showPedestal ? 0.006 : 0.0035;
       }
@@ -618,10 +579,12 @@ const BodyMap3D = (() => {
     }
     if (state.scene) {
       state.scene.traverse((obj) => {
-        if (obj.geometry) obj.geometry.dispose();
+        if (obj.geometry && obj.geometry.dispose && !obj.userData._sharedGeo) {
+          // cloned scene owns materials; geometry may be shared from template — dispose materials only
+        }
         if (obj.material) {
-          if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
-          else obj.material.dispose();
+          if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose && m.dispose());
+          else if (obj.material.dispose) obj.material.dispose();
         }
       });
       state.scene = null;
@@ -632,16 +595,45 @@ const BodyMap3D = (() => {
     state.muscleMeshes = new Map();
   }
 
+  function buildPedestal(parent) {
+    const group = new THREE.Group();
+    const mats = [
+      new THREE.MeshStandardMaterial({ color: 0x101018, roughness: 0.9, metalness: 0.05, emissive: hexToInt(MINT), emissiveIntensity: 0.15 }),
+      new THREE.MeshStandardMaterial({ color: 0x0c0c12, roughness: 0.92, metalness: 0.04, emissive: hexToInt(MINT), emissiveIntensity: 0.1 }),
+      new THREE.MeshStandardMaterial({ color: 0x08080e, roughness: 0.95, metalness: 0.02, emissive: hexToInt(MINT), emissiveIntensity: 0.08 }),
+    ];
+    const tiers = [
+      { y: -0.04, r: 0.42, h: 0.05 },
+      { y: -0.1, r: 0.55, h: 0.05 },
+      { y: -0.16, r: 0.7, h: 0.05 },
+    ];
+    tiers.forEach((t, i) => {
+      const geo = new THREE.CylinderGeometry(t.r, t.r * 1.05, t.h, 48);
+      const mesh = new THREE.Mesh(geo, mats[i]);
+      mesh.position.y = t.y;
+      group.add(mesh);
+      const rim = new THREE.Mesh(
+        new THREE.TorusGeometry(t.r * 0.98, 0.01, 8, 48),
+        new THREE.MeshBasicMaterial({ color: hexToInt(MINT) })
+      );
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = t.y + t.h * 0.45;
+      group.add(rim);
+    });
+    parent.add(group);
+    return group;
+  }
+
   async function createScene(state) {
-    await loadThree();
+    const template = await loadModelTemplate();
     if (state.disposed) return;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(hexToInt(BG));
 
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 40);
-    camera.position.set(0, 0.45, 3.55);
-    camera.lookAt(0, 0.35, 0);
+    const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 40);
+    camera.position.set(0, 1.05, 3.35);
+    camera.lookAt(0, 0.95, 0);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -652,43 +644,36 @@ const BodyMap3D = (() => {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     state.canvasWrap.appendChild(renderer.domElement);
 
-    // Lighting — soft fill + rim
-    const ambient = new THREE.AmbientLight(0x6a6a78, 0.55);
+    const ambient = new THREE.AmbientLight(0x7a7a88, 0.55);
     scene.add(ambient);
-    const key = new THREE.DirectionalLight(0xffffff, 0.55);
-    key.position.set(1.2, 2.2, 2.4);
+    const key = new THREE.DirectionalLight(0xffffff, 0.65);
+    key.position.set(1.4, 2.4, 2.2);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0xa8c4ff, 0.85);
-    rim.position.set(-1.8, 1.2, -2.2);
+    const rim = new THREE.DirectionalLight(0xb0c8ff, 0.9);
+    rim.position.set(-2.0, 1.4, -2.4);
     scene.add(rim);
     const rim2 = new THREE.DirectionalLight(0xffc8b0, 0.35);
-    rim2.position.set(2.0, 0.4, -1.2);
+    rim2.position.set(2.2, 0.6, -1.4);
     scene.add(rim2);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.25);
-    fill.position.set(0, -1.5, 1.5);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.28);
+    fill.position.set(0, -1.2, 1.8);
     scene.add(fill);
 
-    const root = new THREE.Group();
-    root.position.y = -0.05;
+    const cloned = template.scene.clone(true);
+    const { root, muscleMeshes } = prepareFigure(cloned, template.mapping);
     scene.add(root);
-    const muscleMeshes = buildProceduralFigure(root);
 
     let pedestal = null;
     if (state.showPedestal) {
       pedestal = buildPedestal(scene);
-      root.position.y = 0.05;
-    }
-
-    // Accent energy rings on complete
-    if (state.showPedestal) {
-      const ringMat1 = new THREE.MeshBasicMaterial({ color: hexToInt(CORAL), transparent: true, opacity: 0.55 });
-      const ringMat2 = new THREE.MeshBasicMaterial({ color: hexToInt(MINT), transparent: true, opacity: 0.45 });
-      const r1 = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.012, 8, 64), ringMat1);
-      r1.position.set(0, 0.75, 0);
+      const ringMat1 = new THREE.MeshBasicMaterial({ color: hexToInt(CORAL), transparent: true, opacity: 0.5 });
+      const ringMat2 = new THREE.MeshBasicMaterial({ color: hexToInt(MINT), transparent: true, opacity: 0.4 });
+      const r1 = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.01, 8, 64), ringMat1);
+      r1.position.set(0, 1.05, 0);
       r1.rotation.x = Math.PI / 2.4;
       scene.add(r1);
-      const r2 = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.01, 8, 64), ringMat2);
-      r2.position.set(0, 0.45, 0);
+      const r2 = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.008, 8, 64), ringMat2);
+      r2.position.set(0, 0.72, 0);
       r2.rotation.x = Math.PI / 2.6;
       scene.add(r2);
     }
@@ -699,8 +684,9 @@ const BodyMap3D = (() => {
     state.root = root;
     state.pedestal = pedestal;
     state.muscleMeshes = muscleMeshes;
+
     const preferBack = !!(state.data && state.data.view === 'back');
-    state.yaw = preferBack ? Math.PI : (state.showPedestal ? 0.5 : 0.35);
+    state.yaw = preferBack ? Math.PI : (state.showPedestal ? 0.45 : 0.28);
     state.targetYaw = state.yaw;
 
     applyColors(state);
@@ -725,23 +711,23 @@ const BodyMap3D = (() => {
       stage = document.createElement('div');
       stage.className = 'bm3-stage';
       stage.innerHTML = `
-        <div class="bm3-loading">Loading 3D…</div>
+        <div class="bm3-loading">Loading 3D anatomy…</div>
         <div class="bm3-tip" aria-live="polite"></div>
         <div class="bm3-hint">
           <div class="bm3-hint-ring" aria-hidden="true">↻</div>
           <div class="bm3-hint-text">Drag to rotate</div>
         </div>`;
       host.appendChild(stage);
+      if (!host.querySelector('.bm3-credit')) {
+        const credit = document.createElement('div');
+        credit.className = 'bm3-credit';
+        credit.innerHTML = 'Anatomy: Z-Anatomy / BodyParts3D · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>';
+        host.appendChild(credit);
+      }
     }
     return stage;
   }
 
-  /**
-   * Mount or remount a 3D view into host.
-   * @param {string} id unique mount id
-   * @param {HTMLElement} host
-   * @param {object} options
-   */
   async function mount(id, host, options = {}) {
     if (!host) return false;
     ensureStyles();
@@ -756,7 +742,6 @@ const BodyMap3D = (() => {
     if (existing) disposeMount(existing);
 
     const stage = ensureStageDom(host);
-    /** @type {MountState} */
     const state = {
       id,
       host,
@@ -790,8 +775,8 @@ const BodyMap3D = (() => {
       await createScene(state);
       return true;
     } catch (err) {
-      console.warn('[BodyMap3D] failed to mount', err);
-      host.innerHTML = `<div class="bm3-fallback">Could not load 3D. Falling back to 2D.</div>`;
+      console.warn('[BodyMap3D] failed to mount anatomical model', err);
+      host.innerHTML = `<div class="bm3-fallback">Could not load 3D anatomy. Falling back to 2D.</div>`;
       disposeMount(state);
       mounts.delete(id);
       return false;
@@ -852,6 +837,7 @@ const BodyMap3D = (() => {
     STORAGE_KEY,
     MUSCLE_IDS,
     EN_LABELS,
+    MODEL_URL,
     CORAL,
     AMBER,
     MINT,
@@ -865,6 +851,7 @@ const BodyMap3D = (() => {
     unmount,
     unmountAll,
     loadThree,
+    loadModelTemplate,
     getEnglishLabel,
     ensureStyles,
     intensityFromLoad,
