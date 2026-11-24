@@ -133,7 +133,9 @@ const BodyMap3D = (() => {
       }
       .bm3-mode-btn {
         border: none; background: transparent; color: rgba(232,232,240,0.72);
-        font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 6px 11px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+        /* Mobile tap target >= 44px (WCAG / Apple HIG) */
+        min-width: 44px; min-height: 44px; padding: 10px 14px;
         cursor: pointer; font-family: 'Space Grotesk', sans-serif;
       }
       .bm3-mode-btn.selected { background: ${CORAL}; color: #fff; }
@@ -184,7 +186,11 @@ const BodyMap3D = (() => {
       .bm3-credit {
         margin-top: 6px; font-size: 9px; line-height: 1.35; color: var(--muted, #6b6b85); text-align: center;
       }
-      .bm3-credit a { color: ${MINT}; }
+      .bm3-credit a {
+        color: ${MINT};
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 44px; padding: 10px 8px;
+      }
       /* Hidden 2D/3D hosts must never intercept taps (some WebViews keep layout briefly) */
       .mh-body-wrap[hidden], .bml-2d-only[hidden], .wcm-2d-only[hidden],
       .mh-3d-host[hidden], .bml-3d-host[hidden], .wcm-3d-host[hidden],
