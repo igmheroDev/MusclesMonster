@@ -22,6 +22,21 @@ Home heatmap uses **one shared WebGL stage** (`Heatmap3dModes` → `BodyMap3D` m
 - Subtle emissive pulse on the highest-signal muscle
 - Fake shells chosen over UnrealBloomPass for mobile cost; no extra postprocessing vendor files
 
+## Poses (Stage 3)
+Independent module `bodyMapPose.js` — **segment-based rigid FK** (not full skinning).
+
+| Screen / mode | Pose id | Intent |
+|---------------|---------|--------|
+| Home 회복 | `relaxed` | soft A-stance |
+| Home 성장 | `flex` | double biceps flex |
+| Home 손실 | `slump` | slightly slumped |
+| Live logging (`intensity`) | `ready` | athletic ready |
+| Workout complete | `victory` | arms-up victory flex |
+
+- Tween ~**600ms** (`POSE_MS`) on tab / screen changes; yaw drag still works
+- FK rotates each muscle mesh’s bind `matrixWorld` around joint pivots (`T·R·T⁻¹·M`); meshes stay parented so glow shells follow
+- Why this route: `muscles-body.glb` has 221 static meshes (origins at model root, shape in geometry) and **no** skins/clips; auto-skinning would be mobile-CPU heavy and fight per-mesh glow shells; a Mixamo base would replace the CC BY-SA anatomy. GLB size unchanged; static-pose fallback if attach fails.
+
 ## Formulas (from `MuscleGrowthTracker`, estimates — not DXA)
 
 ### Growth (per muscle)

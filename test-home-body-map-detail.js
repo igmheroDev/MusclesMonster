@@ -44,7 +44,7 @@ assert(indexHtml.includes('homeBodyMapDetail.js'), 'index loads module');
 assert(indexHtml.includes('id="hbmdOverlay"'), 'overlay container in DOM');
 assert(appJs.includes('HomeBodyMapDetail.afterHomeRender'), 'app hooks afterHomeRender');
 assert(swJs.includes('homeBodyMapDetail.js'), 'SW caches module');
-assert(swJs.includes('recovr-cache-v92'), 'SW cache bump v92');
+assert(swJs.includes('recovr-cache-v93'), 'SW cache bump v93');
 
 console.log('=== 3. Runtime helpers ===');
 global.MUSCLE_ORDER = ['chest', 'back', 'quads', 'biceps'];
