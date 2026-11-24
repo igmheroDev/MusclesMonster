@@ -645,8 +645,9 @@
 
   .set-checklist-header {
     display: grid;
-    grid-template-columns: 32px 1fr 1fr 38px 32px;
-    gap: 6px;
+    /* Columns match ≥44px .set-check / .set-del so rows never overflow iPhone width */
+    grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 44px 44px;
+    gap: 4px;
     font-size: 9px;
     color: var(--muted);
     text-align: center;
@@ -657,15 +658,15 @@
 
   .set-row {
     display: grid;
-    grid-template-columns: 32px 1fr 1fr 38px 32px;
-    gap: 6px;
+    grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 44px 44px;
+    gap: 4px;
     align-items: center;
     margin-bottom: 6px;
   }
   .set-row:last-child { margin-bottom: 0; }
 
   .set-num {
-    width: 32px; height: 38px;
+    width: 32px; height: 44px;
     background: var(--card);
     border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
@@ -675,14 +676,17 @@
   }
 
   .set-row input {
-    padding: 9px 6px;
+    padding: 9px 4px;
     font-size: 13px;
     text-align: center;
-    height: 38px;
+    height: 44px;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .set-check {
-    width: 38px; height: 38px;
+    width: 44px; height: 44px;
     border-radius: 9px;
     border: 1px solid var(--border);
     background: var(--card);
@@ -692,6 +696,7 @@
     font-weight: 700;
     cursor: pointer;
     margin: 0 auto;
+    box-sizing: border-box;
   }
   .set-check.checked {
     background: var(--green);
@@ -701,10 +706,11 @@
   .set-check:active { transform: scale(0.92); }
 
   .set-del {
-    width: 32px; height: 38px;
+    width: 44px; height: 44px;
     display: flex; align-items: center; justify-content: center;
     color: var(--muted2); font-size: 14px; cursor: pointer;
     background: none; border: none;
+    box-sizing: border-box;
   }
   .set-del:active { color: var(--red); }
 

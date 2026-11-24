@@ -206,9 +206,11 @@ const BodyMap3D = (() => {
   function loadThree() {
     if (THREE && GLTFLoader) return Promise.resolve(THREE);
     if (loadPromise) return loadPromise;
+    // Import without query strings so GLTFLoader's static `from './three.module.min.js'`
+    // resolves to the SAME module instance (avoids "Multiple instances of Three.js").
     loadPromise = Promise.all([
-      import(`./${THREE_URL}?v=r170`),
-      import(`./${LOADER_URL}?v=r170`),
+      import(`./${THREE_URL}`),
+      import(`./${LOADER_URL}`),
     ]).then(([threeMod, loaderMod]) => {
       THREE = threeMod;
       GLTFLoader = loaderMod.GLTFLoader;
@@ -793,7 +795,7 @@ const BodyMap3D = (() => {
     return t ? { x: t.clientX || 0, y: t.clientY || 0 } : { x: 0, y: 0 };
   }
 
-  function onPointerDown(state, e, rawEvent) {
+  function onPointerDown(state, e) {
     if (e && e.pointerType === 'mouse' && e.button != null && e.button !== 0) return;
     state.dragging = true;
     state.dragAxis = null; // 'x' rotate | 'y' scroll | null undecided
@@ -804,7 +806,6 @@ const BodyMap3D = (() => {
     state.pointerMoved = 0;
     if (state.hintEl) state.hintEl.classList.add('is-faded');
     // Do not preventDefault on down — vertical page scroll must still start on the canvas.
-    void rawEvent;
   }
 
   function onPointerMove(state, e, rawEvent) {
@@ -859,7 +860,7 @@ const BodyMap3D = (() => {
 
     if (usePointer) {
       // Pointer Events alone — avoid also binding touch* (double-rotate / double-toggle on mobile).
-      const down = (e) => onPointerDown(state, e, e);
+      const down = (e) => onPointerDown(state, e);
       const move = (e) => onPointerMove(state, e, e);
       const up = (e) => onPointerUp(state, e);
       el.addEventListener('pointerdown', down);
@@ -878,7 +879,7 @@ const BodyMap3D = (() => {
     // Legacy touch-only fallback (no PointerEvent)
     const down = (e) => {
       if (!e.touches || !e.touches[0]) return;
-      onPointerDown(state, e.touches[0], e);
+      onPointerDown(state, e.touches[0]);
     };
     const move = (e) => {
       if (!e.touches || !e.touches[0]) return;

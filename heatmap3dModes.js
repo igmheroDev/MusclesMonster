@@ -119,16 +119,13 @@ const Heatmap3dModes = (() => {
     return true;
   }
 
-  /** Home is 3D-only; ignore stored 2D preference. Fall back to 2D only without WebGL. */
+  /**
+   * Home view is 3D-only (local mapMode). Do NOT call BodyMap3D.setPreferredMode —
+   * that writes recovr_bodymap_view_mode used by live/complete screens.
+   * Fall back to 2D cards only when WebGL is unavailable.
+   */
   function resolveHomeMapMode() {
-    if (webglOk()) {
-      mapMode = '3d';
-      if (typeof BodyMap3D !== 'undefined' && BodyMap3D.setPreferredMode) {
-        try { BodyMap3D.setPreferredMode('3d'); } catch (e) { /* ignore */ }
-      }
-    } else {
-      mapMode = '2d';
-    }
+    mapMode = webglOk() ? '3d' : '2d';
     return mapMode;
   }
 
@@ -353,6 +350,28 @@ const Heatmap3dModes = (() => {
     setMode(mode);
   }
 
+  function onTabKeydown(e) {
+    const host = getHost();
+    if (!host) return;
+    const focused = e.target && e.target.closest ? e.target.closest('[data-hmt-mode]') : null;
+    if (!focused || !host.contains(focused)) return;
+    const tabs = Array.prototype.slice.call(host.querySelectorAll('[data-hmt-mode]'));
+    if (!tabs.length) return;
+    const current = tabs.filter((t) => t.getAttribute('aria-selected') === 'true')[0] || focused || tabs[0];
+    const idx = tabs.indexOf(current);
+    let next = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabs.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const mode = tabs[next].getAttribute('data-hmt-mode');
+    setMode(mode);
+    if (tabs[next].focus) tabs[next].focus();
+  }
+
   function refreshDataCaches() {
     try {
       if (typeof loadWorkouts === 'function' && typeof calcMuscleRecovery === 'function') {
@@ -377,7 +396,9 @@ const Heatmap3dModes = (() => {
     if (wired) return;
     const host = getHost();
     if (!host) return;
+    // Capture so HeatmapModeTabs cannot desync aria vs legend/mode state
     host.addEventListener('click', onTabClick, true);
+    host.addEventListener('keydown', onTabKeydown, true);
     wired = true;
   }
 

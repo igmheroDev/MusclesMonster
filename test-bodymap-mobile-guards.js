@@ -51,7 +51,7 @@ assert(heat.includes('ownsHome3d'), 'recovery heatmap yields home 3D to Heatmap3
 assert(heat.includes("scope: 'recovery'") || heat.includes('scope: "recovery"'), 'recovery scope still defined for non-home');
 
 assert(tabs.includes('ownsHome3d'), 'HeatmapModeTabs defers to Heatmap3dModes');
-assert(sw.includes('recovr-cache-v88'), 'SW cache bumped to v88');
+assert(sw.includes('recovr-cache-v89'), 'SW cache bumped to v89');
 
 console.log(failures === 0 ? '\n=== bodymap mobile guards passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);
 process.exit(failures === 0 ? 0 : 1);

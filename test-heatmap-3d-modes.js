@@ -29,6 +29,8 @@ assert(src.includes('바디맵 모드'), 'Korean aria-label');
 assert(src.includes('h3dSharedHost') || src.includes('SHARED_HOST_ID'), 'shared host');
 assert(src.includes('resolveHomeMapMode'), '3D-only home resolver');
 assert(src.includes('isWebGLAvailable'), 'WebGL fallback gate');
+assert(!/\.setPreferredMode\s*\(/.test(src), 'home does not write global view-mode pref');
+assert(src.includes('onTabKeydown'), 'keyboard tabs owned by Heatmap3dModes');
 assert(!/buildModeToggle\(mapMode/.test(src), 'home does not build 2D/3D toggle');
 assert(!src.includes("scope: 'home-modes'"), 'no home-modes toggle scope');
 assert(src.includes('3D를 사용할 수 없어'), 'Korean WebGL fallback note');
@@ -79,7 +81,7 @@ assert(indexHtml.includes('aria-label="바디맵 모드"'), 'index Korean aria')
 assert(!indexHtml.includes('>Recovery<'), 'no English Recovery tab');
 assert(appJs.includes('Heatmap3dModes.afterHomeRender'), 'app hooks afterHomeRender');
 assert(heat.includes('Heatmap3dModes.ownsHome3d'), 'heatmap yields home 3D');
-assert(swJs.includes('recovr-cache-v88'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v89'), 'sw cache bump');
 assert(swJs.includes('heatmap3dModes.js'), 'sw caches module');
 
 console.log(failures === 0 ? '\n=== Heatmap3dModes tests passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);

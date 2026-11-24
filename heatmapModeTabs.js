@@ -137,6 +137,11 @@ const HeatmapModeTabs = (() => {
   }
 
   function onTabKeydown(e) {
+    // Same ownership gate as click — Heatmap3dModes owns arrow-key tab changes.
+    if (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
+        && Heatmap3dModes.ownsHome3d()) {
+      return;
+    }
     const host = getHost();
     if (!host) return;
     const tabs = Array.prototype.slice.call(host.querySelectorAll('[data-hmt-mode]'));
@@ -163,14 +168,13 @@ const HeatmapModeTabs = (() => {
       return false;
     }
     if (!initialized) {
-      // When Heatmap3dModes is loaded it owns Recovery/Growth/Loss clicks
-      // (capture + stopPropagation). Skip our bubble click to avoid double handlers.
+      // When Heatmap3dModes owns tabs, skip BOTH click and keydown (it handles them).
       const modesOwnsTabs = (typeof Heatmap3dModes !== 'undefined' && Heatmap3dModes.ownsHome3d
         && Heatmap3dModes.ownsHome3d());
       if (!modesOwnsTabs) {
         host.addEventListener('click', onTabClick);
+        host.addEventListener('keydown', onTabKeydown);
       }
-      host.addEventListener('keydown', onTabKeydown);
       initialized = true;
     }
     applyMode(host);

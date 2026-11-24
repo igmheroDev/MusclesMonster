@@ -154,7 +154,7 @@ assert(fs.existsSync(path.join(__dirname, 'vendor/MODEL_SOURCE.md')), 'model sou
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.LICENSE.txt')), 'three license');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(sw.includes('recovr-cache-v88'), 'cache bumped to v84');
+assert(sw.includes('recovr-cache-v89'), 'cache bumped to v84');
 assert(sw.includes('bodyMap3d.js'), 'sw caches bodyMap3d');
 assert(sw.includes('vendor/three.module.min.js'), 'sw caches three');
 assert(sw.includes('vendor/anatomy/muscles-body.glb'), 'sw caches anatomy glb');
