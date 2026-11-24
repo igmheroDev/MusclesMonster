@@ -12,8 +12,15 @@ Home heatmap uses **one shared WebGL stage** (`Heatmap3dModes` → `BodyMap3D` m
 | Mode | Palette |
 |------|---------|
 | Recovery | Coral fatigued · Amber recovering · Mint ready |
-| Growth | Deep mint → bright mint by growth amount |
+| Growth | Deep teal `#1aa88a` (성장 중) → lime `#b8ff3d` (강한 성장) |
 | Loss | Violet → deep indigo by loss amount |
+
+## Glow polish (Stage 2)
+- Lit muscles: MeshStandard albedo + emissive + fresnel rim + additive back-face shells (soft halo)
+- Unlit: dark charcoal `#1e1e26` with subtle roughness definition
+- Adaptive quality from FPS (target ≥50): drop outer shell → drop glow → lower DPR
+- Subtle emissive pulse on the highest-signal muscle
+- Fake shells chosen over UnrealBloomPass for mobile cost; no extra postprocessing vendor files
 
 ## Formulas (from `MuscleGrowthTracker`, estimates — not DXA)
 

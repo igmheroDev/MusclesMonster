@@ -115,6 +115,9 @@ assert(typeof BodyMap3D.lossVisual === 'function', 'lossVisual');
 assert(typeof BodyMap3D.transitionUpdate === 'function', 'transitionUpdate');
 assert(BodyMap3D.growthVisual(3, true).intensity > 0.2, 'growth intensity');
 assert(BodyMap3D.lossVisual(6, true).albedoMix > 0.4, 'loss albedo');
+assert(BodyMap3D.GROWTH === '#b8ff3d', 'strong growth lime');
+assert(BodyMap3D.growthVisual(2.8, true).tier === 'strong', 'strong tier');
+assert(typeof BodyMap3D.getQualityStats === 'function', 'quality stats API');
 
 const src = fs.readFileSync(path.join(__dirname, 'bodyMap3d.js'), 'utf8');
 assert(src.includes('Drag to rotate'), 'drag hint present');
@@ -154,7 +157,7 @@ assert(fs.existsSync(path.join(__dirname, 'vendor/MODEL_SOURCE.md')), 'model sou
 assert(fs.existsSync(path.join(__dirname, 'vendor/three.LICENSE.txt')), 'three license');
 
 const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf8');
-assert(sw.includes('recovr-cache-v89'), 'cache bumped to v84');
+assert(sw.includes('recovr-cache-v90'), 'sw cache v90');
 assert(sw.includes('bodyMap3d.js'), 'sw caches bodyMap3d');
 assert(sw.includes('vendor/three.module.min.js'), 'sw caches three');
 assert(sw.includes('vendor/anatomy/muscles-body.glb'), 'sw caches anatomy glb');

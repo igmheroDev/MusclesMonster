@@ -81,7 +81,7 @@ assert(indexHtml.includes('aria-label="바디맵 모드"'), 'index Korean aria')
 assert(!indexHtml.includes('>Recovery<'), 'no English Recovery tab');
 assert(appJs.includes('Heatmap3dModes.afterHomeRender'), 'app hooks afterHomeRender');
 assert(heat.includes('Heatmap3dModes.ownsHome3d'), 'heatmap yields home 3D');
-assert(swJs.includes('recovr-cache-v89'), 'sw cache bump');
+assert(swJs.includes('recovr-cache-v90'), 'sw cache bump');
 assert(swJs.includes('heatmap3dModes.js'), 'sw caches module');
 
 console.log(failures === 0 ? '\n=== Heatmap3dModes tests passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);
