@@ -1,5 +1,5 @@
 // RECOVR Service Worker - 오프라인 캐싱
-const CACHE_NAME = 'recovr-cache-v96';
+const CACHE_NAME = 'recovr-cache-v97';
 const ASSETS = [
   './',
   './index.html',
@@ -55,6 +55,21 @@ const ASSETS = [
   './hypeFx.js',
   './muscleGrowthTracker.js',
   './muscleGrowthDetail.js',
+  './workoutCelebrateVideo.js',
+  './assets/celebrate/chest.mp4',
+  './assets/celebrate/chest-poster.jpg',
+  './assets/celebrate/shoulders.mp4',
+  './assets/celebrate/shoulders-poster.jpg',
+  './assets/celebrate/arms.mp4',
+  './assets/celebrate/arms-poster.jpg',
+  './assets/celebrate/back.mp4',
+  './assets/celebrate/back-poster.jpg',
+  './assets/celebrate/abs.mp4',
+  './assets/celebrate/abs-poster.jpg',
+  './assets/celebrate/legs-front.mp4',
+  './assets/celebrate/legs-front-poster.jpg',
+  './assets/celebrate/legs-back.mp4',
+  './assets/celebrate/legs-back-poster.jpg',
   './youtubeSearchLink.js',
   './navTabHighlight.js',
   './heatmapModeTabs.js',
@@ -118,6 +133,7 @@ const NETWORK_FIRST_PATHS = [
   '/hypeFx.js',
   '/muscleGrowthTracker.js',
   '/muscleGrowthDetail.js',
+  '/workoutCelebrateVideo.js',
   '/youtubeSearchLink.js',
   '/navTabHighlight.js',
   '/heatmapModeTabs.js',
@@ -157,10 +173,88 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// 운동 완료 축하 영상: iOS Safari는 <video>에 Range 요청을 보내므로
+// 캐시된 전체 파일에서 잘라 206으로 응답해야 오프라인에서도 재생된다.
+function isCelebrateMedia(url) {
+  return url.origin === self.location.origin && /\/assets\/celebrate\/[^/]+\.mp4$/.test(url.pathname);
+}
+
+function parseRange(header, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header || '').trim());
+  if (!m) return null;
+  let start;
+  let end;
+  if (m[1] === '' && m[2] === '') return null;
+  if (m[1] === '') {
+    const suffix = parseInt(m[2], 10);
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  } else {
+    start = parseInt(m[1], 10);
+    end = m[2] === '' ? size - 1 : Math.min(parseInt(m[2], 10), size - 1);
+  }
+  if (!(start >= 0) || start > end || start >= size) return null;
+  return { start, end };
+}
+
+async function rangeResponseFrom(response, rangeHeader) {
+  const buf = await response.arrayBuffer();
+  const size = buf.byteLength;
+  const type = response.headers.get('Content-Type') || 'video/mp4';
+  if (!rangeHeader) {
+    return new Response(buf, {
+      status: 200,
+      headers: { 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' },
+    });
+  }
+  const r = parseRange(rangeHeader, size);
+  if (!r) {
+    return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+  }
+  const chunk = buf.slice(r.start, r.end + 1);
+  return new Response(chunk, {
+    status: 206,
+    statusText: 'Partial Content',
+    headers: {
+      'Content-Type': type,
+      'Content-Length': String(chunk.byteLength),
+      'Content-Range': `bytes ${r.start}-${r.end}/${size}`,
+      'Accept-Ranges': 'bytes',
+    },
+  });
+}
+
+async function handleCelebrateMedia(request) {
+  const range = request.headers.get('Range');
+  const cache = await caches.open(CACHE_NAME);
+  const key = request.url.split('#')[0];
+  let cached = await cache.match(key, { ignoreSearch: true });
+  if (!cached) {
+    try {
+      // Range 없이 전체 파일을 받아 캐시해 둔다 (206은 캐시 불가)
+      const full = await fetch(key, { credentials: 'same-origin' });
+      if (full && full.status === 200) {
+        await cache.put(key, full.clone());
+        cached = full;
+      } else {
+        return full;
+      }
+    } catch (e) {
+      return new Response(null, { status: 504 });
+    }
+  }
+  return rangeResponseFrom(cached, range);
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  if (isCelebrateMedia(url)) {
+    event.respondWith(handleCelebrateMedia(event.request));
+    return;
+  }
 
   if (isNetworkFirstRequest(url)) {
     event.respondWith(
