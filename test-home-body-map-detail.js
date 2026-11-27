@@ -48,7 +48,7 @@ assert(indexHtml.includes('homeBodyMapDetail.js'), 'index loads module');
 assert(indexHtml.includes('id="hbmdOverlay"'), 'overlay container in DOM');
 assert(appJs.includes('HomeBodyMapDetail.afterHomeRender'), 'app hooks afterHomeRender');
 assert(swJs.includes('homeBodyMapDetail.js'), 'SW caches module');
-assert(swJs.includes('recovr-cache-v96'), 'SW cache bump v96');
+assert(swJs.includes('recovr-cache-v97'), 'SW cache bump v97');
 assert(src.includes('hbmdMask-'), 'uses SVG mask ids');
 assert(!/mask-image\s*:/.test(src), 'no CSS mask-image on fill layer');
 assert(src.includes('preserveAspectRatio="xMidYMid meet"'), 'image+mask preserveAspectRatio meet');
