@@ -230,10 +230,10 @@ async function state(page) {
       await sw.page.reload({ waitUntil: 'load' });
       await sleep(1500);
       const rangeProbe = await sw.page.evaluate(async () => {
-        const r = await fetch('assets/celebrate/back.mp4', { headers: { Range: 'bytes=100-199' } });
+        const r = await fetch('assets/celebrate/lats.mp4', { headers: { Range: 'bytes=100-199' } });
         return { status: r.status, contentRange: r.headers.get('Content-Range'), len: (await r.arrayBuffer()).byteLength };
       });
-      await sw.page.evaluate(() => WorkoutCelebrateVideo.show({ scene: 'back', pct: 0.9 }, { force: true }));
+      await sw.page.evaluate(() => WorkoutCelebrateVideo.show({ scene: 'lats', pct: 0.9 }, { force: true }));
       await sleep(4000);
       const offline = await state(sw.page);
       await sw.page.screenshot({ path: path.join(OUT, 'iPhone13-offline-back-4s.png') });

@@ -1,9 +1,10 @@
 // ============================================================
 // RECOVR - 운동 완료 축하 영상 (독립 모듈)
-// 저장(#saveBtn) 직후, 이번 세션에서 가장 많이 성장한 부위 그룹의
+// 저장(#saveBtn) 직후, 이번 세션에서 가장 많이 성장한 개별 부위의
 // 보디빌더 포즈 영상(5초)을 전체 화면으로 한 번 보여준다.
 // - 성장 데이터: MuscleGrowthTracker.computeMuscleGrowth (읽기 전용)
-// - 성장 데이터 없으면: 이번 세션에서 가장 많이 자극한 부위
+// - 성장 데이터 없으면: 이번 세션에서 가장 많이 자극한 개별 부위
+// - 근력 부위가 없고 유산소 분이 있으면: 유산소 장면
 // - 아무것도 없으면: 건너뜀
 // 기존 운동 완료 요약(WorkoutCompleteMap)은 그대로 아래에 뜨고,
 // 이 영상 오버레이가 닫히면 그대로 보인다. 다른 모듈은 수정하지 않는다.
@@ -23,27 +24,48 @@ const WorkoutCelebrateVideo = (() => {
   const RECENT_SAVE_MS = 15000;
 
   // 장면(영상) → 부위 키 (bodyMap3d KO_LABELS 키 + app.js MUSCLE_ORDER 키)
+  // 고유 근육 15개 + 유산소. 어깨 세부(전/측/후면)와 core/abs는 같은 장면으로 묶는다.
+  // 우산 키 `back`(등)은 sceneForMuscle에서 광배/승모근/기립근 중 자극이 큰 쪽으로 보낸다.
   const SCENES = {
     chest:        { label: '가슴',     muscles: ['chest'] },
-    shoulders:    { label: '어깨',     muscles: ['shoulder', 'front_delts', 'side_delts', 'rear_delts'] },
-    arms:         { label: '팔',       muscles: ['biceps', 'triceps', 'forearms'] },
-    back:         { label: '등',       muscles: ['back', 'lats', 'traps', 'lower_back'] },
-    abs:          { label: '복근',     muscles: ['core', 'abs', 'obliques'] },
-    'legs-front': { label: '하체 앞',  muscles: ['quads', 'adductors'] },
-    'legs-back':  { label: '하체 뒤',  muscles: ['glutes', 'hamstrings', 'calves'] },
+    shoulder:     { label: '어깨',     muscles: ['shoulder', 'front_delts', 'side_delts', 'rear_delts'] },
+    biceps:       { label: '이두',     muscles: ['biceps'] },
+    triceps:      { label: '삼두',     muscles: ['triceps'] },
+    forearms:     { label: '전완',     muscles: ['forearms'] },
+    lats:         { label: '광배',     muscles: ['lats'] },
+    traps:        { label: '승모근',   muscles: ['traps'] },
+    lower_back:   { label: '기립근',   muscles: ['lower_back'] },
+    abs:          { label: '복근',     muscles: ['core', 'abs'] },
+    obliques:     { label: '복사근',   muscles: ['obliques'] },
+    quads:        { label: '대퇴사두', muscles: ['quads'] },
+    adductors:    { label: '내전근',   muscles: ['adductors'] },
+    glutes:       { label: '둔근',     muscles: ['glutes'] },
+    hamstrings:   { label: '햄스트링', muscles: ['hamstrings'] },
+    calves:       { label: '종아리',   muscles: ['calves'] },
+    cardio:       { label: '유산소',   muscles: [] },
   };
-  const SCENE_ORDER = ['chest', 'shoulders', 'arms', 'back', 'abs', 'legs-front', 'legs-back'];
+  const SCENE_ORDER = [
+    'chest', 'shoulder', 'biceps', 'triceps', 'forearms',
+    'lats', 'traps', 'lower_back', 'abs', 'obliques',
+    'quads', 'adductors', 'glutes', 'hamstrings', 'calves', 'cardio',
+  ];
+  const BACK_SCENES = ['lats', 'traps', 'lower_back'];
 
   const MUSCLE_TO_SCENE = {};
   SCENE_ORDER.forEach((scene) => {
-    SCENES[scene].muscles.forEach((m) => { MUSCLE_TO_SCENE[m] = scene; });
+    (SCENES[scene].muscles || []).forEach((m) => { MUSCLE_TO_SCENE[m] = scene; });
   });
 
   let initialized = false;
   let lastShownAt = 0;
   let active = null; // { overlay, video, timers, onKey }
 
-  function sceneForMuscle(muscle) {
+  function sceneForMuscle(muscle, loads) {
+    if (muscle === 'back') {
+      const map = loads || {};
+      const best = BACK_SCENES.reduce((acc, m) => ((map[m] || 0) > (map[acc] || 0) ? m : acc), 'lats');
+      return best;
+    }
     return MUSCLE_TO_SCENE[muscle] || null;
   }
 
@@ -57,6 +79,53 @@ const WorkoutCelebrateVideo = (() => {
   function formatPct(pct) {
     const n = Math.round((Number(pct) || 0) * 10) / 10;
     return `+${n.toFixed(1)}%`;
+  }
+
+  function formatMinutes(min) {
+    const n = Math.max(0, Math.round(Number(min) || 0));
+    return `${n}분`;
+  }
+
+  // 오버레이 문구 (순수 함수 — 테스트 대상)
+  function overlayCopy(pick) {
+    if (!pick || !SCENES[pick.scene]) return null;
+    const label = pick.label || SCENES[pick.scene].label;
+    if (pick.scene === 'cardio') {
+      return { kicker: '오늘의 운동', bigText: `${label} ${formatMinutes(pick.minutes)}`, color: TEAL };
+    }
+    const hasPct = pick.pct != null && Number.isFinite(Number(pick.pct));
+    if (hasPct) {
+      return { kicker: '오늘의 성장', bigText: `${label} ${formatPct(pick.pct)}`, color: colorForPct(pick.pct) };
+    }
+    return { kicker: '오늘의 운동', bigText: `${label} 완료!`, color: TEAL };
+  }
+
+  function getCardioMinutes(workout, opts) {
+    const o = opts || {};
+    if (o.cardioMinutes != null) return Math.max(0, Number(o.cardioMinutes) || 0);
+    try {
+      if (typeof CardioTracker !== 'undefined' && CardioTracker.getWorkoutCardioMinutes) {
+        return Math.max(0, CardioTracker.getWorkoutCardioMinutes(workout) || 0);
+      }
+    } catch (e) { /* ignore */ }
+    if (workout && workout.type === 'cardio') {
+      const fromEx = ((workout.exercises) || []).reduce((sum, ex) => {
+        const m = ex && (parseInt(ex.durationMin, 10) || parseInt(ex.duration, 10) || 0);
+        return sum + (m || 0);
+      }, 0);
+      if (fromEx > 0) return fromEx;
+      return Math.max(0, parseInt(workout.duration, 10) || 0);
+    }
+    return 0;
+  }
+
+  function mergeBackLoad(loads) {
+    const out = Object.assign({}, loads);
+    if (!(out.back > 0)) return out;
+    const best = BACK_SCENES.reduce((acc, m) => ((out[m] || 0) > (out[acc] || 0) ? m : acc), 'lats');
+    out[best] = (out[best] || 0) + out.back;
+    delete out.back;
+    return out;
   }
 
   // ------------------------------------------------------------
@@ -103,50 +172,54 @@ const WorkoutCelebrateVideo = (() => {
   // ------------------------------------------------------------
   // 장면 고르기 (순수 함수 — 테스트 대상)
   // opts.growthFn(workouts, muscleKey, now) → { growthPct } | null
-  // 반환: { scene, label, pct|null, source: 'growth'|'trained' } | null
+  // 반환: { scene, label, pct|null, minutes?, source: 'growth'|'trained'|'cardio' } | null
   // ------------------------------------------------------------
   function pickScene(workout, workouts, opts) {
     if (!workout) return null;
     const o = opts || {};
-    const loads = o.loads || sessionLoads(workout);
-    const trained = Object.keys(loads).filter((m) => loads[m] > 0 && sceneForMuscle(m));
-    if (!trained.length) return null;
+    const loads = mergeBackLoad(o.loads || sessionLoads(workout));
+    const trained = Object.keys(loads).filter((m) => loads[m] > 0 && sceneForMuscle(m, loads));
 
     const growthFn = o.growthFn !== undefined ? o.growthFn
       : ((typeof MuscleGrowthTracker !== 'undefined' && MuscleGrowthTracker.computeMuscleGrowth)
         ? MuscleGrowthTracker.computeMuscleGrowth : null);
     const now = o.now || (workout.date ? toMidday(workout.date) : new Date());
 
-    // 1) 성장 데이터: 장면별 최대 성장률
-    const sceneGrowth = {};
-    const sceneLoad = {};
-    trained.forEach((m) => {
-      const scene = sceneForMuscle(m);
-      sceneLoad[scene] = (sceneLoad[scene] || 0) + loads[m];
-      if (!growthFn) return;
-      let g = null;
-      try { g = growthFn(workouts || [], m, now); } catch (e) { g = null; }
-      const pct = g && Number.isFinite(g.growthPct) ? g.growthPct : null;
-      if (pct != null && pct > 0 && (sceneGrowth[scene] == null || pct > sceneGrowth[scene])) {
-        sceneGrowth[scene] = pct;
-      }
-    });
-
     const byOrder = (a, b) => SCENE_ORDER.indexOf(a) - SCENE_ORDER.indexOf(b);
-    const growthScenes = Object.keys(sceneGrowth).sort(byOrder);
-    if (growthScenes.length) {
-      const best = growthScenes.reduce((acc, s) => (
-        sceneGrowth[s] > sceneGrowth[acc]
-        || (sceneGrowth[s] === sceneGrowth[acc] && (sceneLoad[s] || 0) > (sceneLoad[acc] || 0)) ? s : acc
-      ));
-      return { scene: best, label: SCENES[best].label, pct: sceneGrowth[best], source: 'growth' };
+
+    if (trained.length) {
+      // 1) 개별 근육 성장률 최대, 동점이면 자극량
+      const growthByMuscle = {};
+      trained.forEach((m) => {
+        if (!growthFn) return;
+        let g = null;
+        try { g = growthFn(workouts || [], m, now); } catch (e) { g = null; }
+        const pct = g && Number.isFinite(g.growthPct) ? g.growthPct : null;
+        if (pct != null && pct > 0) growthByMuscle[m] = pct;
+      });
+      const growthMuscles = Object.keys(growthByMuscle).sort(byOrder);
+      if (growthMuscles.length) {
+        const best = growthMuscles.reduce((acc, m) => (
+          growthByMuscle[m] > growthByMuscle[acc]
+          || (growthByMuscle[m] === growthByMuscle[acc] && (loads[m] || 0) > (loads[acc] || 0)) ? m : acc
+        ));
+        const scene = sceneForMuscle(best, loads);
+        return { scene, label: SCENES[scene].label, pct: growthByMuscle[best], source: 'growth' };
+      }
+
+      // 2) 성장 데이터 없음 → 가장 많이 자극한 개별 부위
+      const loadMuscles = trained.slice().sort(byOrder);
+      const top = loadMuscles.reduce((acc, m) => (loads[m] > loads[acc] ? m : acc));
+      const scene = sceneForMuscle(top, loads);
+      return { scene, label: SCENES[scene].label, pct: null, source: 'trained' };
     }
 
-    // 2) 성장 데이터 없음 → 가장 많이 자극한 부위
-    const loadScenes = Object.keys(sceneLoad).sort(byOrder);
-    if (!loadScenes.length) return null;
-    const top = loadScenes.reduce((acc, s) => (sceneLoad[s] > sceneLoad[acc] ? s : acc));
-    return { scene: top, label: SCENES[top].label, pct: null, source: 'trained' };
+    // 3) 근력 장면 없음 → 유산소 분이 있으면 유산소 장면
+    const minutes = getCardioMinutes(workout, o);
+    if (minutes > 0) {
+      return { scene: 'cardio', label: SCENES.cardio.label, pct: null, minutes, source: 'cardio' };
+    }
+    return null;
   }
 
   // ------------------------------------------------------------
@@ -280,11 +353,10 @@ const WorkoutCelebrateVideo = (() => {
     ensureStyles();
 
     const scene = pick.scene;
-    const label = pick.label || SCENES[scene].label;
-    const hasPct = pick.pct != null && Number.isFinite(Number(pick.pct));
-    const color = hasPct ? colorForPct(pick.pct) : TEAL;
-    const bigText = hasPct ? `${label} ${formatPct(pick.pct)}` : `${label} 완료!`;
-    const kicker = hasPct ? '오늘의 성장' : '오늘의 운동';
+    const copy = overlayCopy(pick);
+    const color = copy.color;
+    const bigText = copy.bigText;
+    const kicker = copy.kicker;
     const reduced = o.reducedMotion != null ? !!o.reducedMotion : prefersReducedMotion();
 
     const overlay = document.createElement('div');
@@ -426,6 +498,9 @@ const WorkoutCelebrateVideo = (() => {
     sceneForMuscle,
     colorForPct,
     formatPct,
+    formatMinutes,
+    overlayCopy,
+    getCardioMinutes,
     handleSaved,
     SCENES,
     SCENE_ORDER,
