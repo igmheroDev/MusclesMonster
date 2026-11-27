@@ -51,7 +51,7 @@ assert(BodyMap3D.getQualityStats('missing') === null, 'missing mount → null');
 console.log('=== 4. Wiring ===');
 assert(modes.includes('GROWTH_DEEP') || modes.includes('#1aa88a'), 'modes legend uses new growing color');
 assert(modes.includes('b8ff3d') || modes.includes('GROWTH'), 'modes legend uses strong lime');
-assert(sw.includes('recovr-cache-v97'), 'sw cache v90');
+assert(sw.includes('recovr-cache-v98'), 'sw cache v90');
 
 console.log(failures === 0 ? '\n=== Glow polish tests passed ✓ ===' : `\n=== ${failures} FAILED ✗ ===`);
 process.exit(failures === 0 ? 0 : 1);

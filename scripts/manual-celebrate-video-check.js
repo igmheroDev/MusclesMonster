@@ -14,7 +14,7 @@ const path = require('path');
 const http = require('http');
 
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..'));
-const OUT = process.env.OUT || '/workspace/mm-crosscheck-shots/celebrate';
+const OUT = process.env.OUT || '/workspace/mm-crosscheck-shots/celebrate-v2';
 const TAG = process.env.TAG || 'branch';
 const HOME_ONLY = !!process.env.HOME_ONLY;
 const { chromium, devices } = require(process.env.PW_PATH || 'playwright');
@@ -207,6 +207,27 @@ async function state(page) {
       await sleep(300);
       r.reduced.closedOk = await rm.page.evaluate(() => !document.getElementById('wcvOverlay'));
       await rm.ctx.close();
+
+      // 여러 장면 디버그 훅 (유산소 포함) — 4초에 문구가 뜬 상태를 찍는다
+      const gal = await newPage(browser, base, dev);
+      const gallery = [
+        { scene: 'cardio', minutes: 30 },
+        { scene: 'biceps', pct: 1.8 },
+        { scene: 'lats', pct: 0.9 },
+        { scene: 'quads', pct: 2.1 },
+        { scene: 'traps', pct: 1.2 },
+        { scene: 'calves', pct: 1.6 },
+      ];
+      r.gallery = {};
+      for (const item of gallery) {
+        await gal.page.evaluate((it) => WorkoutCelebrateVideo.show(it, { force: true }), item);
+        await sleep(4000);
+        r.gallery[item.scene] = await state(gal.page);
+        await gal.page.screenshot({ path: path.join(OUT, `${dev.name}-scene-${item.scene}-4s.png`) });
+        await gal.page.evaluate(() => WorkoutCelebrateVideo.hide());
+        await sleep(200);
+      }
+      await gal.ctx.close();
     }
 
     if (!HOME_ONLY) {
@@ -230,13 +251,13 @@ async function state(page) {
       await sw.page.reload({ waitUntil: 'load' });
       await sleep(1500);
       const rangeProbe = await sw.page.evaluate(async () => {
-        const r = await fetch('assets/celebrate/back.mp4', { headers: { Range: 'bytes=100-199' } });
+        const r = await fetch('assets/celebrate/lats.mp4', { headers: { Range: 'bytes=100-199' } });
         return { status: r.status, contentRange: r.headers.get('Content-Range'), len: (await r.arrayBuffer()).byteLength };
       });
-      await sw.page.evaluate(() => WorkoutCelebrateVideo.show({ scene: 'back', pct: 0.9 }, { force: true }));
+      await sw.page.evaluate(() => WorkoutCelebrateVideo.show({ scene: 'lats', pct: 0.9 }, { force: true }));
       await sleep(4000);
       const offline = await state(sw.page);
-      await sw.page.screenshot({ path: path.join(OUT, 'iPhone13-offline-back-4s.png') });
+      await sw.page.screenshot({ path: path.join(OUT, 'iPhone13-offline-lats-4s.png') });
       report.offline = { cached, rangeProbe, state: offline, errors: sw.errors.slice(0, 10) };
       await sw.ctx.close();
     }
