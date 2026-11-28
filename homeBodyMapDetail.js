@@ -127,7 +127,6 @@ const HomeBodyMapDetail = (() => {
   let isOpen = false;
   let recoveryCache = null;
   let growthCache = null;
-  let historyHooked = false;
   let swipeStartY = null;
 
   function escapeHtml(str) {
@@ -586,6 +585,36 @@ const HomeBodyMapDetail = (() => {
     return rows;
   }
 
+  // 홈(ExerciseStimHeatmap)과 같은 부위→추천 운동 시트를 재사용.
+  // 자세히 보기 시트가 z-index 1300이라, 열린 동안 esh 오버레이를 더 위로 올린다.
+  function openMuscleExercises(muscleKey) {
+    if (!muscleKey) return false;
+    if (typeof ExerciseStimHeatmap !== 'undefined' && typeof ExerciseStimHeatmap.openMuscle === 'function') {
+      ExerciseStimHeatmap.openMuscle(muscleKey);
+      return true;
+    }
+    return false;
+  }
+
+  function applyListSelection(muscleKey, opts) {
+    selectedMuscle = resolveDataKey(muscleKey);
+    const frontSet = new Set(musclesForView('front'));
+    const backSet = new Set(musclesForView('back'));
+    if (currentView === 'back' && frontSet.has(selectedMuscle) && !backSet.has(selectedMuscle)) {
+      currentView = 'front';
+    } else if (currentView === 'front' && backSet.has(selectedMuscle) && !frontSet.has(selectedMuscle)) {
+      currentView = 'back';
+    }
+    renderSheet();
+    const overlay = document.getElementById(OVERLAY_ID);
+    const detail = overlay && overlay.querySelector('[data-hbmd-detail]');
+    if (detail && detail.scrollIntoView) {
+      detail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    if (!opts || opts.openExercises !== false) openMuscleExercises(selectedMuscle);
+    return selectedMuscle;
+  }
+
   function buildDetailCard(muscle) {
     if (!muscle) {
       return `<div class="hbmd-detail hbmd-detail--empty" data-hbmd-detail>
@@ -683,6 +712,8 @@ const HomeBodyMapDetail = (() => {
         overscroll-behavior: contain;
       }
       .hbmd-overlay.show { display: flex; animation: fadeIn 0.18s ease; }
+      body.hbmd-detail-open #eshMuscleOverlay { z-index: 1400; }
+      body.hbmd-detail-open #eshExerciseOverlay { z-index: 1410; }
       .hbmd-sheet {
         width: min(560px, 100%); height: 100%; max-height: 100%;
         background: var(--bg, #0c0c12); color: var(--text, #eee);
@@ -824,14 +855,6 @@ const HomeBodyMapDetail = (() => {
     return overlay;
   }
 
-  function ensureHistoryHook() {
-    if (historyHooked) return;
-    historyHooked = true;
-    window.addEventListener('popstate', () => {
-      if (isOpen) close({ fromPopstate: true });
-    });
-  }
-
   function bindSwipe(header) {
     if (!header) return;
     const onStart = (e) => {
@@ -901,27 +924,13 @@ const HomeBodyMapDetail = (() => {
         const region = e.target.closest('[data-muscle]');
         if (!region) return;
         const key = region.getAttribute('data-muscle');
-        selectedMuscle = resolveDataKey(key);
-        renderSheet();
+        applyListSelection(key);
       });
     }
 
     overlay.querySelectorAll('[data-hbmd-muscle]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        selectedMuscle = resolveDataKey(btn.getAttribute('data-hbmd-muscle'));
-        // If list picks a muscle only on the other side, flip the silhouette.
-        const frontSet = new Set(musclesForView('front'));
-        const backSet = new Set(musclesForView('back'));
-        if (currentView === 'back' && frontSet.has(selectedMuscle) && !backSet.has(selectedMuscle)) {
-          currentView = 'front';
-        } else if (currentView === 'front' && backSet.has(selectedMuscle) && !frontSet.has(selectedMuscle)) {
-          currentView = 'back';
-        }
-        renderSheet();
-        const detail = overlay.querySelector('[data-hbmd-detail]');
-        if (detail && detail.scrollIntoView) {
-          detail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
+        applyListSelection(btn.getAttribute('data-hbmd-muscle'));
       });
     });
 
@@ -930,7 +939,6 @@ const HomeBodyMapDetail = (() => {
 
   function open(mode) {
     ensureStyles();
-    ensureHistoryHook();
     refreshCaches();
     currentMode = resolveMode(mode);
     currentView = 'front';
@@ -939,28 +947,25 @@ const HomeBodyMapDetail = (() => {
     renderSheet();
     const overlay = ensureOverlay();
     overlay.classList.add('show');
-    if (!isOpen) {
-      isOpen = true;
-      try {
-        history.pushState({ [HISTORY_FLAG]: true }, '');
-      } catch (e) { /* ignore */ }
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.add('hbmd-detail-open');
     }
+    isOpen = true;
   }
 
   function close(opts) {
-    const fromPopstate = !!(opts && opts.fromPopstate);
     if (!isOpen && !document.getElementById(OVERLAY_ID)) return;
-    const wasOpen = isOpen;
     isOpen = false;
     const overlay = document.getElementById(OVERLAY_ID);
     if (overlay) {
       overlay.classList.remove('show');
       overlay.innerHTML = '';
     }
-    if (wasOpen && !fromPopstate) {
-      try {
-        if (history.state && history.state[HISTORY_FLAG]) history.back();
-      } catch (e) { /* ignore */ }
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.remove('hbmd-detail-open');
+    }
+    if (typeof ExerciseStimHeatmap !== 'undefined' && ExerciseStimHeatmap.closeMuscle) {
+      try { ExerciseStimHeatmap.closeMuscle(); } catch (e) { /* ignore */ }
     }
   }
 
@@ -1131,6 +1136,8 @@ const HomeBodyMapDetail = (() => {
     open,
     close,
     ensureOpenButton,
+    openMuscleExercises,
+    applyListSelection,
     getSortedListForTest,
     buildTipForTest,
     formatValueColorForTest,

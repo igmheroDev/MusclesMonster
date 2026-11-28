@@ -4016,10 +4016,23 @@
 <script src="heatmapModeTabs.js"></script>
 <script src="heatmap3dModes.js"></script>
 <script src="homeBodyMapDetail.js"></script>
+<script src="appBackStack.js"></script>
 <script src="prTrendDetail.js"></script>
 <script src="listQuickActions.js"></script>
 <script src="cardioListQuickActions.js"></script>
 <script src="trendChartQuickActions.js"></script>
-<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init(); if (typeof YoutubeSearchLink !== 'undefined') YoutubeSearchLink.init(); if (typeof HeatmapModeTabs !== 'undefined') HeatmapModeTabs.init(); if (typeof ListQuickActions !== 'undefined') ListQuickActions.init(); if (typeof CardioListQuickActions !== 'undefined') CardioListQuickActions.init(); if (typeof TrendChartQuickActions !== 'undefined') TrendChartQuickActions.init();</script>
+<script>init(); ExercisePicker.init(); if (typeof ExerciseStimHeatmap !== 'undefined') ExerciseStimHeatmap.init(); if (typeof YoutubeSearchLink !== 'undefined') YoutubeSearchLink.init(); if (typeof HeatmapModeTabs !== 'undefined') HeatmapModeTabs.init(); if (typeof ListQuickActions !== 'undefined') ListQuickActions.init(); if (typeof CardioListQuickActions !== 'undefined') CardioListQuickActions.init(); if (typeof TrendChartQuickActions !== 'undefined') TrendChartQuickActions.init(); if (typeof AppBackStack !== 'undefined') AppBackStack.init({ modules: {
+      ExerciseStimHeatmap: typeof ExerciseStimHeatmap !== 'undefined' ? ExerciseStimHeatmap : null,
+      ExercisePicker: typeof ExercisePicker !== 'undefined' ? ExercisePicker : null,
+      WorkoutCelebrateVideo: typeof WorkoutCelebrateVideo !== 'undefined' ? WorkoutCelebrateVideo : null,
+      WorkoutCompleteMap: typeof WorkoutCompleteMap !== 'undefined' ? WorkoutCompleteMap : null,
+      PrTrendDetail: typeof PrTrendDetail !== 'undefined' ? PrTrendDetail : null,
+      MuscleGrowthDetail: typeof MuscleGrowthDetail !== 'undefined' ? MuscleGrowthDetail : null,
+      CardioListQuickActions: typeof CardioListQuickActions !== 'undefined' ? CardioListQuickActions : null,
+      AiCoach: typeof AiCoach !== 'undefined' ? AiCoach : null,
+      CelebrateFx: typeof CelebrateFx !== 'undefined' ? CelebrateFx : null,
+      RestTimer: typeof RestTimer !== 'undefined' ? RestTimer : null,
+      HomeBodyMapDetail: typeof HomeBodyMapDetail !== 'undefined' ? HomeBodyMapDetail : null
+    }});</script>
 </body>
 </html>

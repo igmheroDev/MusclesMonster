@@ -24,8 +24,11 @@ const bm3 = fs.readFileSync(path.join(root, 'bodyMap3d.js'), 'utf8');
 console.log('=== 1. Module surface ===');
 assert(src.includes('const HomeBodyMapDetail'), 'HomeBodyMapDetail module');
 assert(src.includes('자세히 보기'), 'Korean open button label');
-assert(src.includes('history.pushState'), 'history push for Android back');
-assert(src.includes('popstate'), 'popstate closes sheet');
+assert(src.includes('ExerciseStimHeatmap.openMuscle'), 'list/map reuses ExerciseStimHeatmap.openMuscle');
+assert(src.includes('function openMuscleExercises'), 'openMuscleExercises helper');
+assert(src.includes('function applyListSelection'), 'shared list/map selection');
+assert(src.includes('hbmd-detail-open'), 'raises exercise sheet above detail overlay');
+assert(!src.includes('history.pushState'), 'detail no longer pushes its own history (AppBackStack owns back)');
 assert(src.includes('touchstart') && src.includes('touchmove'), 'swipe-to-close hooks');
 assert(src.includes('min-height: 44px') || src.includes('MIN_TAP = 44'), '44px tap targets');
 assert(src.includes('touch-action: pan-y'), 'sheet body pan-y (no scroll trap)');
@@ -45,10 +48,13 @@ assert(src.includes('MODE_TITLES'), 'mode titles');
 
 console.log('=== 2. Wiring ===');
 assert(indexHtml.includes('homeBodyMapDetail.js'), 'index loads module');
+assert(indexHtml.includes('appBackStack.js'), 'index loads AppBackStack');
+assert(indexHtml.includes('AppBackStack.init'), 'AppBackStack inits after other modules');
+assert(swJs.includes('appBackStack.js'), 'SW caches AppBackStack');
 assert(indexHtml.includes('id="hbmdOverlay"'), 'overlay container in DOM');
 assert(appJs.includes('HomeBodyMapDetail.afterHomeRender'), 'app hooks afterHomeRender');
 assert(swJs.includes('homeBodyMapDetail.js'), 'SW caches module');
-assert(swJs.includes('recovr-cache-v98'), 'SW cache bump v97');
+assert(swJs.includes('recovr-cache-v99'), 'SW cache bump v97');
 assert(src.includes('hbmdMask-'), 'uses SVG mask ids');
 assert(!/mask-image\s*:/.test(src), 'no CSS mask-image on fill layer');
 assert(src.includes('preserveAspectRatio="xMidYMid meet"'), 'image+mask preserveAspectRatio meet');
@@ -335,6 +341,22 @@ assert(
 const svgGrowth = HomeBodyMapDetail.buildSvgForTest('front', 'growth', recovery, growth);
 assert(svgGrowth.includes('#b8ff3d') || svgGrowth.includes('#1aa88a'), 'growth SVG uses teal/lime fills');
 assert(svgGrowth.includes('data-muscle="chest"'), 'growth paints trained chest');
+
+console.log('=== 3g. List / map tap opens recommended exercises ===');
+const openedMuscles = [];
+global.ExerciseStimHeatmap = {
+  openMuscle(key) { openedMuscles.push(key); },
+  closeMuscle() {},
+};
+assert(typeof HomeBodyMapDetail.openMuscleExercises === 'function', 'openMuscleExercises exported');
+assert(HomeBodyMapDetail.openMuscleExercises('core') === true, 'openMuscleExercises calls stim API');
+assert(openedMuscles[0] === 'core', 'opens core exercises');
+assert(HomeBodyMapDetail.openMuscleExercises('chest') === true, 'opens chest');
+assert(openedMuscles[1] === 'chest', 'opens chest exercises');
+assert(src.includes('applyListSelection(') && src.includes('openMuscleExercises(selectedMuscle)'), 'list/map selection opens exercises');
+assert(HomeBodyMapDetail.openMuscleExercises('quads') === true, 'quads also open the shared sheet');
+assert(openedMuscles[2] === 'quads', 'quads recorded');
+delete global.ExerciseStimHeatmap;
 
 console.log('=== 4. Korean rotate hint ===');
 assert(bm3.includes('밀어 돌리기'), 'rotate hint Korean');
