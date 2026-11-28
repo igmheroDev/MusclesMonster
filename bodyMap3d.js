@@ -25,10 +25,12 @@ const BodyMap3D = (() => {
   const GROWTH_DEEP = '#1aa88a';  // Growing (deep teal)
   const LOSS = '#7b6cff';
   const LOSS_DEEP = '#4a3dc8';
-  // Dark charcoal unlit — high contrast against glowing muscles
-  const BASE_COLOR = '#1e1e26';
-  const CONTEXT_COLOR = '#16161c';
-  const BG = '#0a0a0f';
+  // Visible slate unlit — must read against the darker vignette,
+  // while recovery coral/amber/mint and growth/loss glow still pop.
+  const BASE_COLOR = '#45485a';
+  const CONTEXT_COLOR = '#333544';
+  const BG = '#07080c';
+  const BG_MID = '#1c1e2a';
   const TRANSITION_MS = 400;
   // Tight back-face shells — previous 1.028/1.055 bled past muscle edges.
   // Scale-aware: tiny meshes inflate less (absolute bleed ∝ radius × (s−1)).
@@ -169,7 +171,7 @@ const BodyMap3D = (() => {
       .bm3-stage {
         position: relative; width: min(100%, 280px); margin: 0 auto; aspect-ratio: 3 / 4;
         border-radius: 16px; overflow: hidden;
-        background: radial-gradient(ellipse at 50% 42%, #14141c 0%, ${BG} 72%);
+        background: radial-gradient(ellipse at 50% 40%, ${BG_MID} 0%, #101119 52%, ${BG} 100%);
         /* pan-y: vertical page scroll must work when the finger starts on the canvas.
            Horizontal drags are claimed in JS (axis lock) for rotate. */
         touch-action: pan-y; user-select: none; -webkit-user-select: none;
@@ -276,10 +278,10 @@ const BodyMap3D = (() => {
     // Always a fresh instance — never share across meshes
     const mat = new THREE.MeshStandardMaterial({
       color: hexToInt(BASE_COLOR),
-      roughness: 0.72,
+      roughness: 0.68,
       metalness: 0.08,
       emissive: hexToInt(BASE_COLOR),
-      emissiveIntensity: 0.03,
+      emissiveIntensity: 0.08,
       flatShading: false,
       vertexColors: false,
     });
@@ -290,10 +292,10 @@ const BodyMap3D = (() => {
   function makeContextMat() {
     return new THREE.MeshStandardMaterial({
       color: hexToInt(CONTEXT_COLOR),
-      roughness: 0.92,
-      metalness: 0.02,
+      roughness: 0.88,
+      metalness: 0.03,
       emissive: hexToInt(CONTEXT_COLOR),
-      emissiveIntensity: 0.02,
+      emissiveIntensity: 0.06,
       vertexColors: false,
     });
   }
@@ -809,14 +811,14 @@ const BodyMap3D = (() => {
   function computeMatTarget(state, mesh) {
     const appIds = mesh.userData.appIds || [];
     const { colorMode, data, showPedestal } = state;
-    // Charcoal unlit with slight definition (not flat black)
+    // Slate unlit with rim so the silhouette stays readable
     const idle = {
       color: hexToInt(BASE_COLOR),
       emissive: hexToInt(BASE_COLOR),
-      emissiveIntensity: showPedestal ? 0.04 : 0.025,
-      roughness: 0.86,
-      fresnel: 0.08,
-      metalness: 0.04,
+      emissiveIntensity: showPedestal ? 0.1 : 0.08,
+      roughness: 0.7,
+      fresnel: 0.36,
+      metalness: 0.06,
       lit: false,
       glowStrength: 0,
     };
@@ -1311,7 +1313,8 @@ const BodyMap3D = (() => {
     if (state.disposed) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(hexToInt(BG));
+    // Transparent clear so the CSS vignette shows through the canvas
+    scene.background = null;
 
     const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 40);
     camera.position.set(0, 1.05, 3.35);
@@ -1319,29 +1322,29 @@ const BodyMap3D = (() => {
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: false,
+      alpha: true,
       powerPreference: 'high-performance',
     });
-    renderer.setClearColor(hexToInt(BG), 1);
+    renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     state.canvasWrap.appendChild(renderer.domElement);
 
     // Stronger key/rim so coral albedo keeps fiber volume when emissive is moderate
-    const ambient = new THREE.AmbientLight(0x6e6e7c, 0.32);
+    const ambient = new THREE.AmbientLight(0x7a7a8c, 0.42);
     scene.add(ambient);
-    const key = new THREE.DirectionalLight(0xffffff, 1.15);
+    const key = new THREE.DirectionalLight(0xffffff, 1.2);
     key.position.set(1.5, 2.6, 2.4);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0xb8d0ff, 1.2);
+    const rim = new THREE.DirectionalLight(0xc4d8ff, 1.45);
     rim.position.set(-2.1, 1.5, -2.5);
     scene.add(rim);
-    const rim2 = new THREE.DirectionalLight(0xffb8a0, 0.55);
+    const rim2 = new THREE.DirectionalLight(0xffc4b0, 0.7);
     rim2.position.set(2.3, 0.7, -1.5);
     scene.add(rim2);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.38);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.48);
     fill.position.set(0, -1.2, 1.9);
     scene.add(fill);
-    const hemi = new THREE.HemisphereLight(0x8a9bb8, 0x1a1210, 0.4);
+    const hemi = new THREE.HemisphereLight(0x8a9bb8, 0x1a1210, 0.5);
     scene.add(hemi);
 
     const cloned = template.scene.clone(true);
@@ -1615,6 +1618,9 @@ const BodyMap3D = (() => {
     LOSS,
     LOSS_DEEP,
     BASE_COLOR,
+    CONTEXT_COLOR,
+    BG,
+    BG_MID,
     TRANSITION_MS,
     TARGET_FPS,
     getPreferredMode,

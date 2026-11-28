@@ -83,7 +83,7 @@ const Heatmap3dModes = (() => {
         min-height: 280px;
         border-radius: 14px;
         overflow: hidden;
-        background: #0a0a0f;
+        background: #07080c;
         border: 1px solid var(--border);
         margin-bottom: 8px;
         touch-action: pan-y;
@@ -151,7 +151,7 @@ const Heatmap3dModes = (() => {
       return `
         <span><i style="background:${growing}"></i>성장 중</span>
         <span><i style="background:${strong}"></i>강한 성장</span>
-        <span><i style="background:#1e1e26"></i>신호 없음</span>`;
+        <span><i style="background:${(typeof BodyMap3D !== 'undefined' && BodyMap3D.BASE_COLOR) || '#45485a'}"></i>신호 없음</span>`;
     }
     if (mode === 'loss') {
       return `
